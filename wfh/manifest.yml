@@ -1,0 +1,9 @@
+---
+applications:
+- name: wfh
+  memory: 75M
+  disk_quota: 200M
+  instances: 1
+  no-route: true
+  command: bundle exec foreman start wfh
+  health-check-type: none

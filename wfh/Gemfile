@@ -1,0 +1,14 @@
+source 'https://rubygems.org'
+
+ruby '2.4.0'
+
+gem 'google-api-client'
+gem 'slack-notifier'
+gem 'rufus-scheduler'
+gem 'tzinfo-data'
+gem 'foreman'
+
+group :development do
+  gem 'pry'
+end
+
