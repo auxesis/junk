@@ -17,6 +17,10 @@ bundle exec ruby wfh.rb
 
 ## Deploying
 
+wfh is automatically [deployed by Travis](https://travis-ci.org/auxesis/junk).
+
+But if you're deploying locally:
+
 ```
 cf push wfh
 ```
