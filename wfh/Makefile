@@ -17,4 +17,5 @@ cf:
 	tar zxvf cf.tar.gz -C bin
 
 deploy: cf
+	cf login -a https://api.run.pivotal.io -u $(CF_USERNAME) -p $(CF_PASSWORD) -o $(CF_ORG) -s $(CF_SPACE)
 	cf push wfh
