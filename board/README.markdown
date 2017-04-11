@@ -91,3 +91,15 @@ BAU     S       Rework content in existing transactional mailings
 Prints a summary of all the DONE lists matching `/sprint/i` on the History board (it should only return lists since we started the new way of working).
 
 Useful for feeding into broader analysis spreadsheets.
+
+## `setup_board_labels.rb`
+
+**This script DOES modify the board.**
+
+Adds labels to Trello boards, in line with our ways of working.
+
+Usage:
+
+``` bash
+sh -x run.sh setup_board_labels.rb GmHJwCF1 ywIFf2Zg
+```
