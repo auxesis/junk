@@ -98,7 +98,7 @@ Useful for feeding into broader analysis spreadsheets.
 
 Adds labels to Trello boards, in line with our ways of working.
 
-Usage:
+Expects a list of Trello board ids as an argument:
 
 ``` bash
 sh -x run.sh setup_board_labels.rb GmHJwCF1 ywIFf2Zg
