@@ -13,7 +13,7 @@ end
 def animals
   query = {
     query: "select name,description,breed,id,link from data where type = 'dog' and (breed like '%labrador%' or breed like '%poodle%') and state = 'New South Wales' and scraped_at > date('now', '-3 days');",
-    key: ENV['MORPH_API_KEY'],
+    key: morph_api_key,
   }
   url = 'https://api.morph.io/auxesis/petrescue_scraper/data.json'
   HTTParty.get(url, :query => query)
@@ -38,12 +38,26 @@ def mail(animals)
 end
 
 def recipients
-  ENV['RECIPIENTS'].split(',')
+  ENV['RECIPIENTS'] ? ENV['RECIPIENTS'].split(',') : []
+end
+
+def morph_api_key
+  ENV['MORPH_API_KEY']
 end
 
 def validate_recipients!
-  if ENV['RECIPIENTS'].nil?
+  if recipients.size < 1
     puts '[info] You must specify RECIPIENTS to receive the alerts'
+    puts '[info] Example: RECIPIENTS=me@hello.example,you@hello.example'
+    puts '[info] Exiting!'
+    exit(2)
+  end
+end
+
+def validate_morph_api_key!
+  unless morph_api_key
+    puts '[info] You must specify MORPH_API_KEY to collect data from Morph'
+    puts '[info] Example: MORPH_API_KEY=abcdefg'
     puts '[info] Exiting!'
     exit(2)
   end
@@ -69,6 +83,7 @@ end
 
 def main
   validate_recipients!
+  validate_morph_api_key!
 
   scheduler = Rufus::Scheduler.new
   scheduler.cron '*/2 * * * * Australia/Sydney' do
