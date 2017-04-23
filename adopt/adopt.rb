@@ -6,8 +6,35 @@ require 'redcarpet'
 
 ENV['TZ'] = 'Australia/Sydney'
 
-Mail.defaults do
-  delivery_method :smtp, address: 'localhost', port: 1025
+def sendgrid
+  return @sendgrid_credentials if @sendgrid_credentials
+  if ENV['VCAP_SERVICES']
+    vcap_services = JSON.parse(ENV['VCAP_SERVICES'])
+    if vcap_services['sendgrid']
+      @sendgrid_credentials = vcap_services['sendgrid'].first['credentials']
+      return @sendgrid_credentials
+    end
+  end
+  return nil
+end
+
+def setup_mail!
+  if sendgrid
+    credentials = {
+      :address => sendgrid['hostname'],
+      :port    => '587',
+      :user_name => sendgrid['username'],
+      :password  => sendgrid['password'],
+      :authentication       => :plain,
+      :enable_starttls_auto => true,
+    }
+  else
+    credentials = { address: 'localhost', port: 1025 }
+  end
+  puts "[debug] Mail settings: #{credentials}"
+  Mail.defaults do
+    delivery_method :smtp, credentials
+  end
 end
 
 def animals
@@ -90,6 +117,7 @@ end
 def main
   validate_recipients!
   validate_morph_api_key!
+  setup_mail!
 
   scheduler = Rufus::Scheduler.new
   scheduler.cron '*/2 * * * * Australia/Sydney' do
