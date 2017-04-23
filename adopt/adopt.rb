@@ -71,7 +71,7 @@ def main
   validate_recipients!
 
   scheduler = Rufus::Scheduler.new
-  scheduler.cron '0 18 * * * Australia/Sydney' do
+  scheduler.cron '*/2 * * * * Australia/Sydney' do
     begin
       mail(animals)
     rescue => e
