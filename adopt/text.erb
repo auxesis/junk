@@ -1,0 +1,11 @@
+Hey there,
+These are animals matching your criteria added to Pet Rescue in the last 24 hours:
+
+<% animals.each do |animal| %>
+Name: <%= animal['name'] %>
+Breed: <%= animal['breed'] %>
+Link: <%= animal['link'] %>
+
+<% end %>
+Thanks,
+Adopt Bot
