@@ -18,8 +18,29 @@ def sendgrid
   return nil
 end
 
+def gmail
+  if ENV['GMAIL_USERNAME'] && ENV['GMAIL_PASSWORD']
+    {
+      'username' => ENV['GMAIL_USERNAME'],
+      'password' => ENV['GMAIL_PASSWORD'],
+    }
+  else
+    nil
+  end
+end
+
 def setup_mail!
-  if sendgrid
+  case
+  when gmail
+    credentials = {
+      :address   => 'smtp.gmail.com',
+      :user_name => gmail['username'],
+      :password  => gmail['password'],
+      :port      => '587',
+      :authentication       => :plain,
+      :enable_starttls_auto => true,
+    }
+  when sendgrid
     credentials = {
       :address => sendgrid['hostname'],
       :port    => '587',
