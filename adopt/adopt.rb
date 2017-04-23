@@ -16,7 +16,13 @@ def animals
     key: morph_api_key,
   }
   url = 'https://api.morph.io/auxesis/petrescue_scraper/data.json'
-  HTTParty.get(url, :query => query)
+  response = HTTParty.get(url, :query => query)
+  if response.ok?
+    response
+  else
+    puts "[debug] unexpected response: #{response.inspect}"
+    []
+  end
 end
 
 def mail(animals)
