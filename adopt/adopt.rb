@@ -141,7 +141,7 @@ def main
   setup_mail!
 
   scheduler = Rufus::Scheduler.new
-  scheduler.cron '*/2 * * * * Australia/Sydney' do
+  scheduler.cron '5 18 * * * Australia/Sydney' do
     begin
       mail(animals)
     rescue => e
