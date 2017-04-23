@@ -58,11 +58,22 @@ def setup_mail!
   end
 end
 
-def animals
+def build_query(opts={})
+  breed = opts[:breed] || %w(poodle labrador retriever)
+  breed_query = '(' + breed.map {|b| "breed like '%#{b}%'" }.join(' or ') + ')'
+
+  scraped_at = opts[:scraped_at] || '25 hours'
+  scraped_at_query = "datetime('now', '-#{scraped_at}')"
+
+  "select name,description,breed,id,link from data where type = 'dog' and #{breed_query} and (state = 'New South Wales' or state = 'Australian Capital Territory') and scraped_at > #{scraped_at_query};"
+end
+
+def animals(opts={})
   query = {
-    query: "select name,description,breed,id,link from data where type = 'dog' and (breed like '%labrador%' or breed like '%poodle%') and state = 'New South Wales' and scraped_at > date('now', '-3 days');",
+    query: build_query(opts),
     key: morph_api_key,
   }
+  puts "[debug] Morph query: #{query}"
   url = 'https://api.morph.io/auxesis/petrescue_scraper/data.json'
   response = HTTParty.get(url, :query => query)
   if response.ok?
