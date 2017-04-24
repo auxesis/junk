@@ -3,6 +3,7 @@ require 'httparty'
 require 'mail'
 require 'tilt'
 require 'redcarpet'
+require 'table_print'
 
 ENV['TZ'] = 'Australia/Sydney'
 

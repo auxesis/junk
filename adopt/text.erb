@@ -1,11 +1,7 @@
 Hey there,
 These are animals matching your criteria added to Pet Rescue in the last 24 hours:
 
-<% animals.each do |animal| %>
-Name: <%= animal['name'] %>
-Breed: <%= animal['breed'] %>
-Link: <%= animal['link'] %>
+<%= TablePrint::Printer.new(animals, ['name', 'breed', {'link' => {:width => 60}}]).table_print %>
 
-<% end %>
 Thanks,
 Adopt Bot

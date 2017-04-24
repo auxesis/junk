@@ -10,6 +10,7 @@ gem 'httparty'
 gem 'tilt'
 gem 'haml'
 gem 'redcarpet'
+gem 'table_print'
 
 group :development do
   gem 'pry'
