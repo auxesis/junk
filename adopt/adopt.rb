@@ -59,7 +59,7 @@ def setup_mail!
 end
 
 def build_query(opts={})
-  breed = opts[:breed] || %w(poodle labrador retriever)
+  breed = opts[:breed] || %w(oodle labrador retriever)
   breed_query = '(' + breed.map {|b| "breed like '%#{b}%'" }.join(' or ') + ')'
 
   scraped_at = opts[:scraped_at] || '25 hours'
