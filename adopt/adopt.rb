@@ -60,13 +60,18 @@ def setup_mail!
 end
 
 def build_query(opts={})
-  breed = opts[:breed] || %w(oodle labrador retriever)
-  breed_query = '(' + breed.map {|b| "breed like '%#{b}%'" }.join(' or ') + ')'
+  breeds = opts[:breed] || %w(oodle labrador retriever)
+  breed = breeds.map {|q| "breed like '%#{q}%'" }.join(' or ')
+
+  descriptions = [ 'good with child', 'good with kid' ]
+  description = descriptions.map {|q| "description like '%#{q}%'" }.join(' or ')
+
+  ors = [ '(', breed, ' or ', description, ')' ].join
 
   scraped_at = opts[:scraped_at] || '25 hours'
   scraped_at_query = "datetime('now', '-#{scraped_at}')"
 
-  "select name,description,breed,id,link from data where type = 'dog' and #{breed_query} and (state = 'New South Wales' or state = 'Australian Capital Territory') and scraped_at > #{scraped_at_query};"
+  "select name,description,breed,id,link from data where type = 'dog' and #{ors} and (state = 'New South Wales' or state = 'Australian Capital Territory') and scraped_at > #{scraped_at_query};"
 end
 
 def animals(opts={})
