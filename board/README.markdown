@@ -84,6 +84,12 @@ BAU     S       New transactional mailing list
 BAU     S       Rework content in existing transactional mailings
 ```
 
+## `calculate_cycle_time.rb`
+
+✅ **This script DOES NOT modify the board.**
+
+The same as `snapshot_board_status.rb`, but also calculates and outputs the cycle time for tasks going from Ready -> DONE.
+
 ## `snapshot_history_status.rb`
 
 ✅ **This script DOES NOT modify the board.**
