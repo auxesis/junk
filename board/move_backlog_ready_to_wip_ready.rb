@@ -22,5 +22,8 @@ readies.each do |list|
   list.cards.reverse.each_with_index do |card, index|
     puts "[info] Moving '#{card.name}' (#{card.id}) to '#{wip_target.name}' (#{wip_target.id}) on '#{wip_board.name}' (#{wip_board.id})"
     card.move_to_board(wip_board, wip_target)
+    # Move the cards to the top of the board (may only want to do this for some streams, some of the time)
+    #card.pos = 'top'
+    #card.save
   end
 end
