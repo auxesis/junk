@@ -55,36 +55,38 @@ def blocked(lists)
   }.flatten
 end
 
+def format_cards(cards:, header:)
+  message = [ header, '' ]
+  cards.each do |card|
+    message << ":trello: <#{card.url}|#{card.name}>"
+  end
+  message.join("\n")
+end
+
 lists = board.lists[0..3]
 
 cards = no_estimates(lists)
 if cards.size > 0 then
   puts "[info] There are #{cards.size} cards with no estimates"
-  message = [':warning::clock4: *Cards with no estimates*', '']
-  cards.each do |card|
-    message << ":trello: <#{card.url}|#{card.name}>"
-  end
-  post(message.join("\n"))
+  header = ':warning::clock4: *Cards with no estimates*'
+  message = format_cards(cards: cards, header: header)
+  post(message)
 end
 
 cards = no_labels(lists)
 if cards.size > 0 then
   puts "[info] There are #{cards.size} cards with no labels"
-  message = [':warning::label: *Cards with no labels*', '']
-  cards.each do |card|
-    message << ":trello: <#{card.url}|#{card.name}>"
-  end
-  post(message.join("\n"))
+  header = ':warning::label: *Cards with no labels*'
+  message = format_cards(cards: cards, header: header)
+  post(message)
 end
 
 cards = blocked(lists)
 if cards.size > 0 then
   puts "[info] There are #{cards.size} cards that are blocked"
-  message = [':no_entry_sign::construction: *Cards that are blocked*', '']
-  cards.each do |card|
-    message << ":trello: <#{card.url}|#{card.name}>"
-  end
-  post(message.join("\n"))
+  header = ':no_entry_sign::construction: *Cards that are blocked*'
+  message = format_cards(cards: cards, header: header)
+  post(message)
 end
 
 
