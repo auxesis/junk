@@ -42,6 +42,8 @@ GEM
       json
       oauth (>= 0.4.5)
       rest-client (>= 1.8.0)
+    rufus-scheduler (3.3.4)
+      tzinfo
     slack-notifier (2.0.0)
     slop (3.6.0)
     thread_safe (0.3.6)
@@ -58,6 +60,7 @@ DEPENDENCIES
   launchy
   pry
   ruby-trello
+  rufus-scheduler
   slack-notifier
 
 BUNDLED WITH

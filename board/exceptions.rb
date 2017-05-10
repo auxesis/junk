@@ -6,14 +6,12 @@
 
 require 'slack-notifier'
 require 'trello'
+require 'rufus-scheduler'
 
 Trello.configure do |config|
   config.developer_public_key = ENV['TRELLO_DEVELOPER_PUBLIC_KEY']
   config.member_token = ENV['TRELLO_MEMBER_TOKEN']
 end
-
-board_id = 'pwRFfOZj'
-board = Trello::Board.find(board_id)
 
 def post(message, opts={})
   webhook_url = '***REMOVED***'
@@ -63,30 +61,49 @@ def format_cards(cards:, header:)
   message.join("\n")
 end
 
-lists = board.lists[0..3]
+def notify_problems!
+  board_id = 'pwRFfOZj'
+  board = Trello::Board.find(board_id)
 
-cards = no_estimates(lists)
-if cards.size > 0 then
-  puts "[info] There are #{cards.size} cards with no estimates"
-  header = ':warning::clock4: *Cards with no estimates*'
-  message = format_cards(cards: cards, header: header)
-  post(message)
+  lists = board.lists[0..3]
+
+  cards = no_estimates(lists)
+  if cards.size > 0 then
+    puts "[info] There are #{cards.size} cards with no estimates"
+    header = ':warning::clock4: *Cards with no estimates*'
+    message = format_cards(cards: cards, header: header)
+    post(message)
+  end
+
+  cards = no_labels(lists)
+  if cards.size > 0 then
+    puts "[info] There are #{cards.size} cards with no labels"
+    header = ':warning::label: *Cards with no labels*'
+    message = format_cards(cards: cards, header: header)
+    post(message)
+  end
+
+  cards = blocked(lists)
+  if cards.size > 0 then
+    puts "[info] There are #{cards.size} cards that are blocked"
+    header = ':no_entry_sign::construction: *Cards that are blocked*'
+    message = format_cards(cards: cards, header: header)
+    post(message)
+  end
 end
 
-cards = no_labels(lists)
-if cards.size > 0 then
-  puts "[info] There are #{cards.size} cards with no labels"
-  header = ':warning::label: *Cards with no labels*'
-  message = format_cards(cards: cards, header: header)
-  post(message)
+ENV['TZ'] = 'Australia/Sydney'
+
+def main
+  scheduler = Rufus::Scheduler.new
+  scheduler.cron '0 10,13,15 * * 1-5 Australia/Sydney' do
+    begin
+      notify_problems!
+    rescue => e
+      p e
+    end
+  end
+  scheduler.join
 end
 
-cards = blocked(lists)
-if cards.size > 0 then
-  puts "[info] There are #{cards.size} cards that are blocked"
-  header = ':no_entry_sign::construction: *Cards that are blocked*'
-  message = format_cards(cards: cards, header: header)
-  post(message)
-end
-
-
+main()
