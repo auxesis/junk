@@ -42,6 +42,7 @@ GEM
       json
       oauth (>= 0.4.5)
       rest-client (>= 1.8.0)
+    slack-notifier (2.0.0)
     slop (3.6.0)
     thread_safe (0.3.6)
     tzinfo (1.2.3)
@@ -57,6 +58,7 @@ DEPENDENCIES
   launchy
   pry
   ruby-trello
+  slack-notifier
 
 BUNDLED WITH
    1.14.6

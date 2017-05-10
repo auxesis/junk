@@ -4,6 +4,7 @@
 # - without estimates
 # - blocked
 
+require 'slack-notifier'
 require 'trello'
 
 Trello.configure do |config|
@@ -14,6 +15,18 @@ end
 board_id = 'pwRFfOZj'
 board = Trello::Board.find(board_id)
 
+def post(message, opts={})
+  webhook_url = '***REMOVED***'
+  options = {
+    channel: '@lindsay',
+    username: 'Trello',
+    icon_url: 'https://emoji.slack-edge.com/***REMOVED***/trello/f5e87fbfb84cba43.png'
+  }.merge(opts)
+
+  notifier = Slack::Notifier.new(webhook_url, options)
+  notifier.ping(message)
+end
+
 def no_estimates(lists)
   lists.map(&:cards).map {|cards|
     cards.reject {|c|
@@ -22,6 +35,8 @@ def no_estimates(lists)
       c.name =~ /💥/ # Boom gates
     }.reject {|c|
       c.id == '58dc42fb4f07f4ca4059f807' # SLAB O' CHANGE
+    }.reject {|c|
+      c.name =~ /^\[\?\]/ && c.list.name == 'Ready'
     }
   }.flatten
 end
@@ -44,32 +59,32 @@ lists = board.lists[0..3]
 
 cards = no_estimates(lists)
 if cards.size > 0 then
-  puts
   puts "[info] There are #{cards.size} cards with no estimates"
-  puts
+  message = [':warning::clock4: *Cards with no estimates*', '']
   cards.each do |card|
-    puts [ card.name, card.url ].join("\t")
+    message << ":trello: <#{card.url}|#{card.name}>"
   end
+  post(message.join("\n"))
 end
 
 cards = no_labels(lists)
 if cards.size > 0 then
-  puts
   puts "[info] There are #{cards.size} cards with no labels"
-  puts
+  message = [':warning::label: *Cards with no labels*', '']
   cards.each do |card|
-    puts [ card.name, card.url ].join("\t")
+    message << ":trello: <#{card.url}|#{card.name}>"
   end
+  post(message.join("\n"))
 end
 
 cards = blocked(lists)
 if cards.size > 0 then
-  puts
   puts "[info] There are #{cards.size} cards that are blocked"
-  puts
+  message = [':no_entry_sign::construction: *Cards that are blocked*', '']
   cards.each do |card|
-    puts [ card.name, card.url ].join("\t")
+    message << ":trello: <#{card.url}|#{card.name}>"
   end
+  post(message.join("\n"))
 end
 
 
