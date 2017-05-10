@@ -26,9 +26,50 @@ def no_estimates(lists)
   }.flatten
 end
 
-lists = board.lists[0..3]
-cards = no_estimates(lists)
+def no_labels(lists)
+  lists.map(&:cards).map {|cards|
+    cards.select {|c| c.labels.size == 0}
+  }.flatten
+end
 
-puts "[info] There are #{cards.size} cards with no estimates"
-require 'pry'
-binding.pry
+def blocked(lists)
+  lists.map(&:cards).map {|cards|
+    cards.select {|c|
+      c.labels.detect {|l| l.name == 'BLOCKED'}
+    }
+  }.flatten
+end
+
+lists = board.lists[0..3]
+
+cards = no_estimates(lists)
+if cards.size > 0 then
+  puts
+  puts "[info] There are #{cards.size} cards with no estimates"
+  puts
+  cards.each do |card|
+    puts [ card.name, card.url ].join("\t")
+  end
+end
+
+cards = no_labels(lists)
+if cards.size > 0 then
+  puts
+  puts "[info] There are #{cards.size} cards with no labels"
+  puts
+  cards.each do |card|
+    puts [ card.name, card.url ].join("\t")
+  end
+end
+
+cards = blocked(lists)
+if cards.size > 0 then
+  puts
+  puts "[info] There are #{cards.size} cards that are blocked"
+  puts
+  cards.each do |card|
+    puts [ card.name, card.url ].join("\t")
+  end
+end
+
+
