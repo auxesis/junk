@@ -16,7 +16,7 @@ end
 def post(message, opts={})
   webhook_url = '***REMOVED***'
   options = {
-    channel: '@lindsay',
+    channel: '#elements-engineering',
     username: 'Trello',
     icon_url: 'https://emoji.slack-edge.com/***REMOVED***/trello/f5e87fbfb84cba43.png'
   }.merge(opts)
@@ -58,6 +58,7 @@ def format_cards(cards:, header:)
   cards.each do |card|
     message << ":trello: <#{card.url}|#{card.name}>"
   end
+  message << ''
   message.join("\n")
 end
 
@@ -88,7 +89,7 @@ def notify_problems!
     puts "[info] There are #{cards.size} cards that are blocked"
     header = ':no_entry_sign::construction: *Cards that are blocked*'
     message = format_cards(cards: cards, header: header)
-    post(message)
+    post(message, :channel => '@lindsay')
   end
 end
 
@@ -96,6 +97,7 @@ ENV['TZ'] = 'Australia/Sydney'
 
 def main
   scheduler = Rufus::Scheduler.new
+  #scheduler.cron '* * * * 1-5 Australia/Sydney' do
   scheduler.cron '0 10,13,15 * * 1-5 Australia/Sydney' do
     begin
       notify_problems!
