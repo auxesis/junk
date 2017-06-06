@@ -28,11 +28,13 @@ end
 def no_estimates(lists)
   lists.map(&:cards).map {|cards|
     cards.reject {|c|
-      c.name =~ /^\[(S|M|L|XL|2XL|EPIC)\]/
+      c.name =~ /^\[(XS|S|M|L|XL|2XL|EPIC)\]/
     }.reject {|c|
       c.name =~ /💥/ # Boom gates
     }.reject {|c|
       c.id == '58dc42fb4f07f4ca4059f807' # SLAB O' CHANGE
+    }.reject {|c|
+      c.id == '5934a926c6f8b682ebcceb5f' # Line of public 1% launch
     }.reject {|c|
       c.name =~ /^\[\?\]/ && c.list.name == 'Ready'
     }
