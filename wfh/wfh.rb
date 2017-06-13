@@ -51,10 +51,10 @@ def whereami
                                  max_results: 10,
                                  single_events: true,
                                  order_by: 'startTime',
-                                 time_min: Time.now.iso8601,
+                                 time_min: (Time.now).iso8601,
                                  time_max: (Time.now + 86400).iso8601,
                                  fields: 'items(end/date,start/date,summary)')
-  response.items.find {|i|i.start}.summary
+  response.items.find {|i|i.summary =~ /^WF/}&.summary
 end
 
 
@@ -85,5 +85,3 @@ def main
 end
 
 main()
-
-binding.pry

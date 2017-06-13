@@ -10,5 +10,7 @@ gem 'foreman'
 
 group :development do
   gem 'pry'
+  gem 'byebug'
+  gem 'pry-byebug'
 end
 
