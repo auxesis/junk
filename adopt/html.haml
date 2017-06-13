@@ -1,0 +1,33 @@
+- styles = { :body      => 'font-family: sans-serif; padding: 10px;',
+             :heading   => 'background-color: blue; color: #eee; padding: 15px 10px; border-color: #24a528; border-bottom-width: 10px;',
+             :intro     => 'color: #333; padding: 10px; font-size: 120%;',
+             :offence   => 'background-color: #fafafa; color: #111; padding: 10px; margin-bottom: 10px;',
+             :title     => 'color: blue;',
+             :signature => 'padding: 10px;',
+             :link      => 'color: blue' }
+%html
+  %body{:style => styles[:body]}
+    %p{:style => styles[:intro]}
+      These are
+      %strong
+        = animals.size
+        animals matching your criteria
+      added to Pet Rescue in
+      %strong the last 24 hours:
+
+    %div
+      - animals.each_with_index do |animal, index|
+        %div{:style => styles[:offence]}
+          %h3{:style => styles[:title]}
+            %a{:style => styles[:link], :href => animal['link']}
+              = (index + 1).to_s + '.'
+              = animal['name'] + ':'
+              = animal['breed']
+          %p
+            :markdown
+              #{animal['description']}
+
+    %p{:style => styles[:signature]}
+      Thanks,
+      %br/
+      Adopt Bot

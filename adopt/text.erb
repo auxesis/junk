@@ -1,0 +1,7 @@
+Hey there,
+These are animals matching your criteria added to Pet Rescue in the last 24 hours:
+
+<%= TablePrint::Printer.new(animals, ['name', 'breed', {'link' => {:width => 60}}]).table_print %>
+
+Thanks,
+Adopt Bot

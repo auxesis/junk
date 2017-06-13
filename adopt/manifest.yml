@@ -1,0 +1,9 @@
+---
+applications:
+- name: adopt
+  memory: 75M
+  disk_quota: 200M
+  instances: 1
+  no-route: true
+  command: bundle exec foreman start adopt
+  health-check-type: none
