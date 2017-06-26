@@ -54,7 +54,7 @@ def whereami
                                  time_min: (Time.now).iso8601,
                                  time_max: (Time.now + 86400).iso8601,
                                  fields: 'items(end/date,start/date,summary)')
-  response.items.find {|i|i.summary =~ /^WF/}&.summary
+  response.items.find {|i|i.summary =~ /^WF|Annual/}&.summary
 end
 
 
