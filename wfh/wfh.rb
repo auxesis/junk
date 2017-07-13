@@ -47,13 +47,15 @@ def whereami
 
   # Fetch the next 10 events for the user
   calendar_id = 'primary'
-  response = service.list_events(calendar_id,
-                                 max_results: 10,
-                                 single_events: true,
-                                 order_by: 'startTime',
-                                 time_min: (Time.now).iso8601,
-                                 time_max: (Time.now + 86400).iso8601,
-                                 fields: 'items(end/date,start/date,summary)')
+  event_options = {
+    max_results: 10,
+    single_events: true,
+    order_by: 'startTime',
+    time_min: (Time.now).iso8601,
+    time_max: (Time.now + 86400).iso8601,
+    fields: 'items(end/date,start/date,summary)'
+  }
+  response = service.list_events(calendar_id,event_options)
   response.items.find {|i|i.summary =~ /^WF|Annual/}&.summary
 end
 
