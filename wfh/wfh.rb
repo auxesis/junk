@@ -56,7 +56,7 @@ def whereami
     fields: 'items(end/date,start/date,summary)'
   }
   response = service.list_events(calendar_id,event_options)
-  response.items.find {|i|i.summary =~ /^WF|Annual/}&.summary
+  response.items.find {|i|i.summary =~ /^WF|AL|Annual/}&.summary
 end
 
 
