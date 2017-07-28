@@ -11,18 +11,18 @@ board_id = 'pwRFfOZj'
 board = Trello::Board.find(board_id)
 
 puts "Ready"
-names = board.lists.first.cards.map(&:name)
-names.select! {|n| n =~ / \[.*[A-Z]\]/ }
-names.each do |name|
-  stream, estimate, title = name.split(' ', 3)
-  puts [ stream[1..-2], estimate[1..-2], title ].join("\t")
+cards = board.lists.find {|l| l.name =~ /^ready$/i}.cards
+cards.each do |card|
+  stream = card.labels.map(&:name).find{|name| name =~ /stream/i}
+  estimate, title = card.name.split(' ', 2)
+  puts [ stream, estimate[1..-2], title ].join("\t")
 end
 
 puts
 puts "DONE"
-names = board.lists.last.cards.map(&:name)
-names.select! {|n| n =~ / \[.*[A-Z]\]/ }
-names.each do |name|
-  stream, estimate, title = name.split(' ', 3)
-  puts [ stream[1..-2], estimate[1..-2], title ].join("\t")
+cards = board.lists.select {|l| l.name =~ /done/i}.first.cards
+cards.each do |card|
+  stream = card.labels.map(&:name).find{|name| name =~ /stream/i}
+  estimate, title = card.name.split(' ', 2)
+  puts [ stream, estimate[1..-2], title ].join("\t")
 end

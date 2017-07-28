@@ -14,7 +14,7 @@ Trello.configure do |config|
 end
 
 def post(message, opts={})
-  webhook_url = '***REMOVED***'
+  webhook_url = 'https://hooks.slack.com/services/***REMOVED***/***REMOVED***/***REMOVED***'
   options = {
     channel: '#elements-engineering',
     username: 'Trello',

@@ -61,7 +61,7 @@ end
 
 
 def post(message, opts={})
-  webhook_url = '***REMOVED***'
+  webhook_url = 'https://hooks.slack.com/services/***REMOVED***/***REMOVED***/***REMOVED***'
   options = {
     channel: '#elements-humans',
     username: 'lindsay',
