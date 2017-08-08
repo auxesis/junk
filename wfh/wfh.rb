@@ -61,11 +61,11 @@ end
 
 
 def post(message, opts={})
-  webhook_url = 'https://hooks.slack.com/services/***REMOVED***/***REMOVED***/***REMOVED***'
+  webhook_url = ENV['SLACK_WEBHOOK_URL']
   options = {
     channel: '#elements-humans',
     username: 'lindsay',
-    icon_url: 'https://ca.slack-edge.com/***REMOVED***-U43EQGRQB-32d2749f6e4b-72'
+    icon_url: 'https://ca.slack-edge.com/T0253B9P9-U43EQGRQB-32d2749f6e4b-72'
   }.merge(opts)
 
   notifier = Slack::Notifier.new(webhook_url, options)

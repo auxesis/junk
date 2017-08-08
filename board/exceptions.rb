@@ -14,11 +14,11 @@ Trello.configure do |config|
 end
 
 def post(message, opts={})
-  webhook_url = 'https://hooks.slack.com/services/***REMOVED***/***REMOVED***/***REMOVED***'
+  webhook_url = ENV['SLACK_WEBHOOK_URL']
   options = {
     channel: '#elements-engineering',
     username: 'Trello',
-    icon_url: 'https://emoji.slack-edge.com/***REMOVED***/trello/f5e87fbfb84cba43.png'
+    icon_url: 'https://emoji.slack-edge.com/T0253B9P9/trello/f5e87fbfb84cba43.png'
   }.merge(opts)
 
   notifier = Slack::Notifier.new(webhook_url, options)
