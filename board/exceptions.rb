@@ -16,7 +16,7 @@ end
 def post(message, opts={})
   webhook_url = ENV['SLACK_WEBHOOK_URL']
   options = {
-    channel: '#elements-engineering',
+    channel: '#elements-cust-eng',
     username: 'Trello',
     icon_url: 'https://emoji.slack-edge.com/T0253B9P9/trello/f5e87fbfb84cba43.png'
   }.merge(opts)
