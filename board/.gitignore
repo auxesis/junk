@@ -1,2 +1,3 @@
 run.sh
 data.sqlite
+.env

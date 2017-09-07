@@ -23,6 +23,7 @@ GEM
     concurrent-ruby (1.0.5)
     domain_name (0.5.20170404)
       unf (>= 0.0.5, < 1.0.0)
+    dotenv (2.2.1)
     http-cookie (1.0.3)
       domain_name (~> 0.5)
     httpclient (2.8.3)
@@ -70,6 +71,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  dotenv
   launchy
   pry
   ruby-trello
