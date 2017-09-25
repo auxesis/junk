@@ -15,7 +15,14 @@ board_ids = {
   wip: 'pwRFfOZj',
 }
 
+Pry.config.prompt_name = 'trello'
+Pry.config.should_load_rc = false
+Pry.config.history.should_save = true
+Pry.config.history.should_load = true
+
 backlog = Trello::Board.find(board_ids[:backlog])
 wip = Trello::Board.find(board_ids[:wip])
 
-binding.pry
+puts "Two boards available: backlog + wip"
+
+binding.pry quiet: true
