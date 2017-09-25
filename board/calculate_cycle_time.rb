@@ -2,6 +2,8 @@
 
 require 'trello'
 require 'pry'
+require 'dotenv'
+Dotenv.load
 
 def has_weekends?(range)
   range = (range.first.to_date..range.last.to_date) if range.first.is_a?(Time)

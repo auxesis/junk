@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 
 require 'trello'
+require 'dotenv'
+Dotenv.load
 
 Trello.configure do |config|
   config.developer_public_key = ENV['TRELLO_DEVELOPER_PUBLIC_KEY']
