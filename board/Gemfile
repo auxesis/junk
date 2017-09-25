@@ -1,10 +1,15 @@
-ruby '2.4.1'
+ruby '2.4.2'
 source 'https://rubygems.org'
 
 gem 'ruby-trello'
-gem 'pry'
 gem 'launchy'
 gem 'slack-notifier'
 gem 'rufus-scheduler'
 gem 'scraperwiki', git: 'https://github.com/openaustralia/scraperwiki-ruby.git', branch: 'morph_defaults'
 gem 'dotenv'
+
+group :development do
+  gem 'pry'
+  gem 'pry-byebug'
+  gem 'rubocop'
+end

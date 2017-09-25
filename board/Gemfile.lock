@@ -19,6 +19,8 @@ GEM
       tzinfo (~> 1.1)
     addressable (2.5.1)
       public_suffix (~> 2.0, >= 2.0.2)
+    ast (2.3.0)
+    byebug (9.0.6)
     coderay (1.1.1)
     concurrent-ruby (1.0.5)
     domain_name (0.5.20170404)
@@ -38,15 +40,33 @@ GEM
     minitest (5.10.1)
     netrc (0.11.0)
     oauth (0.5.1)
+    parallel (1.12.0)
+    parser (2.4.0.0)
+      ast (~> 2.2)
+    powerpack (0.1.1)
     pry (0.10.4)
       coderay (~> 1.1.0)
       method_source (~> 0.8.1)
       slop (~> 3.4)
+    pry-byebug (3.4.2)
+      byebug (~> 9.0)
+      pry (~> 0.10)
     public_suffix (2.0.5)
+    rainbow (2.2.2)
+      rake
+    rake (12.1.0)
     rest-client (2.0.2)
       http-cookie (>= 1.0.2, < 2.0)
       mime-types (>= 1.16, < 4.0)
       netrc (~> 0.8)
+    rubocop (0.50.0)
+      parallel (~> 1.10)
+      parser (>= 2.3.3.1, < 3.0)
+      powerpack (~> 0.1)
+      rainbow (>= 2.2.2, < 3.0)
+      ruby-progressbar (~> 1.7)
+      unicode-display_width (~> 1.0, >= 1.0.1)
+    ruby-progressbar (1.8.3)
     ruby-trello (2.0.0)
       activemodel (>= 3.2.0)
       addressable (~> 2.3)
@@ -66,6 +86,7 @@ GEM
     unf (0.1.4)
       unf_ext
     unf_ext (0.0.7.4)
+    unicode-display_width (1.3.0)
 
 PLATFORMS
   ruby
@@ -74,13 +95,15 @@ DEPENDENCIES
   dotenv
   launchy
   pry
+  pry-byebug
+  rubocop
   ruby-trello
   rufus-scheduler
   scraperwiki!
   slack-notifier
 
 RUBY VERSION
-   ruby 2.4.1p111
+   ruby 2.4.2p198
 
 BUNDLED WITH
-   1.15.3
+   1.15.4
