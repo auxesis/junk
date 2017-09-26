@@ -3,6 +3,8 @@
 require 'scraperwiki'
 require 'trello'
 require 'pry'
+require 'dotenv'
+Dotenv.load
 
 def existing_record_ids(table: 'data', id: 'id')
   @cached ||= {}
@@ -24,8 +26,7 @@ def cards_and_actions
   board_id = 'pwRFfOZj' # WIP
   board = Trello::Board.find(board_id)
 
-  # DONE column
-  cards = board.lists.last.cards
+  cards = board.cards
 
   actions = cards.map { |card|
     a = JSON.parse(card.actions.to_json)
