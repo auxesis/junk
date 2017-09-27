@@ -95,7 +95,6 @@ def snapshot_cards_and_actions
   puts "[info] There are #{new_actions.size} new actions records"
   ScraperWiki.save_sqlite(%w[id], new_actions, 'actions')
 end
-# rubocop:enable Metrics/LineLength
 
 def main
   snapshot_lists
