@@ -1,0 +1,19 @@
+# frozen_string_literal: true
+
+ruby '2.4.2'
+source 'https://rubygems.org'
+
+gem 'dotenv'
+gem 'launchy'
+gem 'ruby-trello'
+gem 'rufus-scheduler'
+gem 'scraperwiki', git: 'https://github.com/openaustralia/scraperwiki-ruby.git', branch: 'morph_defaults'
+gem 'sequel'
+gem 'slack-notifier'
+
+group :development do
+  gem 'pry'
+  gem 'pry-byebug'
+  gem 'rspec'
+  gem 'rubocop'
+end
