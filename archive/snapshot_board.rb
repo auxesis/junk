@@ -51,7 +51,7 @@ def cards
 end
 
 def lists
-  board.lists.map { |l| JSON.parse(l.to_json) }
+  @lists ||= board.lists.map { |l| JSON.parse(l.to_json) }
 end
 
 def filter_to_new(records, key: 'id', table:)
@@ -64,10 +64,9 @@ end
 
 def snapshot_lists
   puts "[info] There are #{existing_record_count(table: 'lists')} existing list records"
-  new_lists = filter_to_new(lists, table: 'lists')
-  puts "[info] There are #{new_lists.size} new list records"
-  new_lists.each { |l| l['closed'] = l['closed'] ? 1 : 0 } # Make data sqlite friendly
-  ScraperWiki.save_sqlite(%w[id], new_lists, 'lists')
+  puts "[info] Saving #{lists.size} list records"
+  lists.each { |l| l['closed'] = l['closed'] ? 1 : 0 } # Make data sqlite friendly
+  ScraperWiki.save_sqlite(%w[id], lists, 'lists')
 end
 
 def snapshot_cards_and_actions
