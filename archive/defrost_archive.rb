@@ -4,4 +4,4 @@ require_relative('lib/data')
 
 binding.pry
 
-updates = Action.all.select {|a| a.attrs['type'] == 'updateCard' }
+updates = Action.all.select { |a| a.attrs['type'] == 'updateCard' }
