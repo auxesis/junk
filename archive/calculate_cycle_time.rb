@@ -14,7 +14,7 @@ end
 def lists
   {
     start: List.find(name: 'Ready'),
-    finish: List.find(name: 'DONE – Sprint 4')
+    finish: List.find(name: Options.finish_list_name)
   }
 end
 
@@ -57,7 +57,26 @@ def calculate_and_print_cycle_time(card)
   print_cycle_time(record: record, cycle_start: cycle_start, cycle_end: cycle_end)
 end
 
+Options = OpenStruct.new(finish_list_name: 'DONE')
+
+# rubocop:disable Metrics/MethodLength
+def parse_options!
+  require 'optparse'
+  OptionParser.new do |opts|
+    opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
+    opts.on('-f', '--finish=NAME', 'Name of finish column') do |name|
+      Options.finish_list_name = name
+      raise ArgumentError, "Error: --finish - Unknown list: #{name}" unless lists[:finish]
+    end
+  end.parse!
+rescue ArgumentError => e
+  puts e.message
+  exit(1)
+end
+# rubocop:enable Metrics/MethodLength
+
 def main
+  parse_options!
   cards = lists[:finish].cards.select { |c| c.attrs['name'] =~ /^\[[S|M|L|\d*XL]\]/ }
   cards.each { |card| calculate_and_print_cycle_time(card) }
 end
