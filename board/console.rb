@@ -26,3 +26,5 @@ wip = Trello::Board.find(board_ids[:wip])
 puts "Two boards available: backlog + wip"
 
 binding.pry quiet: true
+
+puts 'Bye!'
