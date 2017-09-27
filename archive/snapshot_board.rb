@@ -74,7 +74,6 @@ def existing_record_count(table:)
   existing_record_ids(table: table).size
 end
 
-# rubocop:disable Metrics/LineLength
 def snapshot_lists
   puts "[info] There are #{existing_record_count(table: 'lists')} existing list records"
   new_lists = filter_to_new(lists, table: 'lists')
