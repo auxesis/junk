@@ -18,22 +18,25 @@ Remember, work flows through the boards like this:
 
 ## Setup
 
-`git clone` this repo, and run a `bundle install` to pull down the dependencies.
+Clone and set up the repo:
 
-Then add a `run.sh` wrapper script with your Trello developer public key, and member token:
+```
+git clone https://github.com/auxesis/junk.git
+cd junk/board
+bundle
+```
+
+Add a `.env` with your Trello developer public key + member token:
 
 ``` bash
-# run.sh
-export TRELLO_DEVELOPER_PUBLIC_KEY='b1946ac92492d2347c6235b4d2611184'
-export TRELLO_MEMBER_TOKEN='591785b794601e212b260e25925636fd'
-
-bundle exec ruby -rpry $@
+TRELLO_DEVELOPER_PUBLIC_KEY='b1946ac92492d2347c6235b4d2611184'
+TRELLO_MEMBER_TOKEN='591785b794601e212b260e25925636fd'
 ```
 
-Now you can run any of these helper scripts in this repo:
+Run any of the scripts in this repo:
 
 ```
-sh -x run.sh move_backlog_ready_to_wip_ready.rb
+bundle exec ruby console.rb
 ```
 
 This separates your credentials, and helps you debug more easily.
