@@ -32,15 +32,30 @@ def actions_from_cards(cards)
   end.flatten!
 end
 
-def cards_and_actions
-  board_id = 'pwRFfOZj' # WIP
-  board = Trello::Board.find(board_id)
+def board_id
+  'pwRFfOZj' # WIP
+end
 
+def board
+  Trello::Board.find(board_id)
+end
+
+def cards_and_actions
   cards = board.cards
   actions = actions_from_cards(cards)
-  cards.map! { |c| { 'id': c.id, 'json': c.to_json } }
+  cards.map! do |c|
+    {
+      'id': c.id,
+      'list_id': c.list_id,
+      'json': c.to_json
+    }
+  end
 
   [cards, actions]
+end
+
+def lists
+  board.lists.map { |l| JSON.parse(l.to_json) }
 end
 
 def filter_to_new_cards(cards)
@@ -51,12 +66,24 @@ def filter_to_new_actions(actions)
   actions.reject { |a| existing_record_ids(table: 'actions').include?(a['id']) }
 end
 
+def filter_to_new(records, key: 'id', table:)
+  records.reject { |r| existing_record_ids(table: table).include?(r[key]) }
+end
+
 def existing_record_count(table:)
   existing_record_ids(table: table).size
 end
 
 # rubocop:disable Metrics/LineLength
-def main
+def snapshot_lists
+  puts "[info] There are #{existing_record_count(table: 'lists')} existing list records"
+  new_lists = filter_to_new(lists, table: 'lists')
+  puts "[info] There are #{new_lists.size} new list records"
+  new_lists.each { |l| l['closed'] = l['closed'] ? 1 : 0 } # Make data sqlite friendly
+  ScraperWiki.save_sqlite(%w[id], new_lists, 'lists')
+end
+
+def snapshot_cards_and_actions
   cards, actions = cards_and_actions
 
   puts "[info] There are #{existing_record_count(table: 'cards')} existing card records"
@@ -70,5 +97,10 @@ def main
   ScraperWiki.save_sqlite(%w[id], new_actions, 'actions')
 end
 # rubocop:enable Metrics/LineLength
+
+def main
+  snapshot_lists
+  snapshot_cards_and_actions
+end
 
 main if $PROGRAM_NAME == __FILE__
