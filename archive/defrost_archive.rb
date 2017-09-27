@@ -1,19 +1,23 @@
 #!/usr/bin/env ruby
 
-require 'scraperwiki'
-require 'pry'
 require 'json'
+require 'pry'
+require 'sequel'
 
-def main
-  cards = ScraperWiki.select('* from cards').map {|c| JSON.parse(c['json'])}
-  actions = ScraperWiki.select('* from actions').map {|c| JSON.parse(c['json'])}
+DB = Sequel.sqlite('data.sqlite')
 
-  cards.each do |card|
-    card_actions = actions.select {|a| a['card_id'] == card['id']}
-    card['actions'] = card_actions
-  end
-
-  binding.pry
+class Card < Sequel::Model
+  set_primary_key :id
+  one_to_many :actions
 end
 
-main()
+class Action < Sequel::Model
+  set_primary_key :id
+  many_to_one :card
+
+  plugin :serialization, :json, :json
+end
+
+binding.pry
+
+updates = Action.all.select {|a| a.attrs['type'] == 'updateCard' }
