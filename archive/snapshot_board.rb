@@ -76,7 +76,7 @@ def snapshot_cards_and_actions
 
   actions = actions_from_cards(cards)
   puts "[info] There are #{existing_record_count(table: 'actions')} existing action records"
-  puts "[info] There are #{actions.size} action records"
+  puts "[info] Saving #{actions.size} action records"
   ScraperWiki.save_sqlite(%w[id], actions, 'actions')
 end
 
