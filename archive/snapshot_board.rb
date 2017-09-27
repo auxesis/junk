@@ -21,12 +21,12 @@ end
 
 def actions_from_cards(cards)
   cards.map do |card|
-    a = JSON.parse(card.actions.to_json)
+    a = JSON.parse(Trello::Card.find(card[:id]).actions.to_json)
     a.map do |attr|
       {
         'id'      => attr['id'],
-        'card_id' => card.id,
-        'json'    => attr.merge('card_id' => card.id).to_json
+        'card_id' => card[:id],
+        'json'    => attr.merge('card_id' => card[:id]).to_json
       }
     end
   end.flatten!
@@ -40,30 +40,18 @@ def board
   Trello::Board.find(board_id)
 end
 
-def cards_and_actions
-  cards = board.cards
-  actions = actions_from_cards(cards)
-  cards.map! do |c|
+def cards
+  @cards ||= board.cards.map do |c|
     {
       'id': c.id,
       'list_id': c.list_id,
       'json': c.to_json
     }
   end
-
-  [cards, actions]
 end
 
 def lists
   board.lists.map { |l| JSON.parse(l.to_json) }
-end
-
-def filter_to_new_cards(cards)
-  cards.reject { |c| existing_record_ids(table: 'cards').include?(c['id']) }
-end
-
-def filter_to_new_actions(actions)
-  actions.reject { |a| existing_record_ids(table: 'actions').include?(a['id']) }
 end
 
 def filter_to_new(records, key: 'id', table:)
@@ -83,17 +71,14 @@ def snapshot_lists
 end
 
 def snapshot_cards_and_actions
-  cards, actions = cards_and_actions
-
   puts "[info] There are #{existing_record_count(table: 'cards')} existing card records"
-  new_cards = filter_to_new_cards(cards)
-  puts "[info] There are #{new_cards.size} new card records"
-  ScraperWiki.save_sqlite(%w[id], new_cards, 'cards')
+  puts "[info] Saving #{cards.size} card records"
+  ScraperWiki.save_sqlite(%i[id], cards, 'cards')
 
+  actions = actions_from_cards(cards)
   puts "[info] There are #{existing_record_count(table: 'actions')} existing action records"
-  new_actions = filter_to_new_actions(actions)
-  puts "[info] There are #{new_actions.size} new actions records"
-  ScraperWiki.save_sqlite(%w[id], new_actions, 'actions')
+  puts "[info] There are #{actions.size} action records"
+  ScraperWiki.save_sqlite(%w[id], actions, 'actions')
 end
 
 def main
