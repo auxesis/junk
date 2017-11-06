@@ -78,6 +78,25 @@ contributions = @prs.map do |pr, issue_comments, pr_comments, pr_reviews|
   }
 end
 
+stream0_prs = contributions.select { |contrib| usernames[contrib[:owner]] == 0 }
+stream1_prs = contributions.select { |contrib| usernames[contrib[:owner]] == 1 }
+
+stream0_counts = stream0_prs.map do |contrib|
+  logins = contrib[:participants].uniq.map { |u| usernames[u] }
+
+  counts = logins.inject({0 => 0, 1 => 0, -1 => 0}) { |summary, stream|
+    summary[stream] += 1
+    summary
+  }.values
+
+  [ contrib[:number], counts ].flatten
+end
+
+#puts stream0_counts.sort_by {|c| [ c[1], c[2], c[3] ]}.map {|c| c.join("\t")}
+puts stream0_counts.map {|c| c.join("\t")}.reverse
+
+exit
+
 counts = contributions.map do |contrib|
   logins = [
     usernames[contrib[:owner]],
