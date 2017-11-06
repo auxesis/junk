@@ -12,9 +12,14 @@ end
 
 Octokit.auto_paginate = true
 
-repo = 'envato/elements-backend'
-client = Octokit::Client.new(:access_token => ENV['GITHUB_TOKEN'])
-#client.ensure_api_media_type(:reviews, accept: 'application/vnd.github.black-cat-preview')
+def repo
+  'envato/elements-backend'
+end
+
+def client
+  @client ||= Octokit::Client.new(:access_token => ENV['GITHUB_TOKEN'])
+  #@client.ensure_api_media_type(:reviews, accept: 'application/vnd.github.black-cat-preview')
+end
 
 def usernames
   return @usernames if @usernames
@@ -39,103 +44,75 @@ def usernames
   })
 end
 
-if ENV['FAST']
-  #File.open('marshal.bin', 'w') { |f| f << Marshal::dump(@prs) }
-  #WebMock.allow_net_connect!
-  #VCR.turn_off!
-  @prs = Marshal::load(File.read('marshal.bin'))
-else
-  VCR.use_cassette('elements-backend-pull-requests', record: :new_episodes) do
-    @all_pull_requests = client.pull_requests(repo, state: 'closed')
-    @pull_requests = @all_pull_requests.select { |pr| pr[:created_at] > Date.parse('2017-02-13').to_time }
-    @prs = @pull_requests.map do |pr|
-      STDERR.puts "Fetching activity for #{repo}##{pr[:number]}"
-      [
-        pr,
-        client.issue_comments(repo, pr[:number]),
-        client.pull_request_comments(repo, pr[:number]),
-        client.pull_request_reviews(repo, pr[:number])
-      ]
+def prs
+  if ENV['FAST']
+    #File.open('marshal.bin', 'w') { |f| f << Marshal::dump(@prs) }
+    #WebMock.allow_net_connect!
+    #VCR.turn_off!
+    records = Marshal::load(File.read('marshal.bin'))
+  else
+    VCR.use_cassette('elements-backend-pull-requests', record: :new_episodes) do
+      all_pull_requests = client.pull_requests(repo, state: 'closed')
+      pull_requests = all_pull_requests.select { |pr| pr[:created_at] > Date.parse('2017-02-13').to_time }
+      records = pull_requests.map do |pr|
+        STDERR.puts "Fetching activity for #{repo}##{pr[:number]}"
+        [
+          pr,
+          client.issue_comments(repo, pr[:number]),
+          client.pull_request_comments(repo, pr[:number]),
+          client.pull_request_reviews(repo, pr[:number])
+        ]
+      end
     end
+
+    File.open('marshal.bin', 'w') { |f| f << Marshal::dump(records) }
   end
-  File.open('marshal.bin', 'w') { |f| f << Marshal::dump(@prs) }
+
+  return records
 end
 
-contributions = @prs.map do |pr, issue_comments, pr_comments, pr_reviews|
-  owner = pr[:user][:login]
-  participants = [
-    issue_comments.map {|c| c[:user][:login]},
-    pr_comments.map {|c| c[:user][:login]},
-    pr_reviews.map {|c| c[:user][:login]}
-  ].flatten.uniq - [ owner ]
+def contributions
+  prs.map do |pr, issue_comments, pr_comments, pr_reviews|
+    owner = pr[:user][:login]
+    participants = [
+      issue_comments.map {|c| c[:user][:login]},
+      pr_comments.map {|c| c[:user][:login]},
+      pr_reviews.map {|c| c[:user][:login]}
+    ].flatten.uniq - [ owner ]
 
-  {
-    repo: repo,
-    number: pr[:number],
-    owner: owner,
-    participants: participants,
-    week_of_year: pr[:closed_at].strftime('%W').to_i,
-  }
+    {
+      repo: repo,
+      number: pr[:number],
+      owner: owner,
+      participants: participants,
+      week_of_year: pr[:closed_at].strftime('%W').to_i,
+    }
+  end
 end
 
-stream0_prs = contributions.select { |contrib| usernames[contrib[:owner]] == 0 }
-stream1_prs = contributions.select { |contrib| usernames[contrib[:owner]] == 1 }
+def stream_prs(stream:)
+  contributions.select { |contrib| usernames[contrib[:owner]] == stream }
+end
 
-stream0_counts = stream0_prs.map do |contrib|
-  logins = contrib[:participants].uniq.map { |u| usernames[u] }
+def add_missing_weeks!(prs_by_week)
+  min = prs_by_week.keys.sort.first
+  max = prs_by_week.keys.sort.last
+  missing_weeks = (min..max).to_a - prs_by_week.keys
+  missing_weeks.each { |week| prs_by_week[week] = [] }
+end
+
+prs_by_week = stream_prs(stream: 1).group_by { |c| c[:week_of_year] }
+add_missing_weeks!(prs_by_week)
+
+pr_counts_by_week = prs_by_week.map do |week, contribs|
+  logins = contribs.map { |c| c[:participants].uniq }.flatten.map { |u| usernames[u] }
 
   counts = logins.inject({0 => 0, 1 => 0, -1 => 0}) { |summary, stream|
     summary[stream] += 1
     summary
   }.values
 
-  [ contrib[:number], counts ].flatten
+  [ week, counts ].flatten
 end
 
-#puts stream0_counts.sort_by {|c| [ c[1], c[2], c[3] ]}.map {|c| c.join("\t")}
-puts stream0_counts.map {|c| c.join("\t")}.reverse
-
-exit
-
-counts = contributions.map do |contrib|
-  logins = [
-    usernames[contrib[:owner]],
-    contrib[:commenters].map { |u| usernames[u] },
-    contrib[:reviewers].map { |u| usernames[u] }
-  ].flatten
-  # 0 => stream 0
-  # 1 => stream 1
-  # -1 => outside Elements
-  counts = logins.inject({0 => 0, 1 => 0, -1 => 0}) { |summary, stream|
-    summary[stream] += 1
-    summary
-  }.values
-
-  [ contrib[:number], counts ].flatten
-end
-
-puts counts.sort_by {|c| [ c[1], c[2], c[3] ]}.map {|c| c.join("\t")}
-
-#binding.pry
-
-exit
-
-contributions.each do |contrib|
-  logins = [
-    usernames[contrib[:owner]],
-    contrib[:commenters].map { |u| usernames[u] },
-    contrib[:reviewers].map { |u| usernames[u] }
-  ]
-  # 0 => stream 0
-  # 1 => stream 1
-  # 2 => outside Elements
-  counts = logins.flatten.inject({0 => 0, 1 => 0, 2 => 0}) { |summary, stream|
-    summary[stream] += 1
-    summary
-  }.values
-
-  puts [
-    contrib[:number],
-    counts
-  ].join("\t")
-end
+puts pr_counts_by_week.sort.map { |c| c.join("\t") }
