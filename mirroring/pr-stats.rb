@@ -61,14 +61,20 @@ else
   File.open('marshal.bin', 'w') { |f| f << Marshal::dump(@prs) }
 end
 
-contributions = @prs.map do |pr, comments, reviews|
+contributions = @prs.map do |pr, issue_comments, pr_comments, pr_reviews|
   owner = pr[:user][:login]
+  participants = [
+    issue_comments.map {|c| c[:user][:login]},
+    pr_comments.map {|c| c[:user][:login]},
+    pr_reviews.map {|c| c[:user][:login]}
+  ].flatten.uniq - [ owner ]
+
   {
     repo: repo,
     number: pr[:number],
     owner: owner,
-    commenters: comments.map {|c| c[:user][:login]}.uniq - [ owner ],
-    reviewers: reviews.map {|c| c[:user][:login]}.uniq - [ owner ],
+    participants: participants,
+    week_of_year: pr[:closed_at].strftime('%W').to_i,
   }
 end
 
