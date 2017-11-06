@@ -39,17 +39,26 @@ def usernames
   })
 end
 
-VCR.use_cassette('elements-backend-pull-requests', record: :new_episodes) do
-  @all_pull_requests = client.pull_requests(repo, state: 'closed')
-  @pull_requests = @all_pull_requests.select { |pr| pr[:created_at] > Date.parse('2017-02-13').to_time }
-  @prs = @pull_requests.map do |pr|
-    STDERR.puts "Fetching activity for #{repo}##{pr[:number]}"
-    [
-      pr,
-      client.pull_request_comments(repo, pr[:number]),
-      client.pull_request_reviews(repo, pr[:number])
-    ]
+if ENV['FAST']
+  #File.open('marshal.bin', 'w') { |f| f << Marshal::dump(@prs) }
+  #WebMock.allow_net_connect!
+  #VCR.turn_off!
+  @prs = Marshal::load(File.read('marshal.bin'))
+else
+  VCR.use_cassette('elements-backend-pull-requests', record: :new_episodes) do
+    @all_pull_requests = client.pull_requests(repo, state: 'closed')
+    @pull_requests = @all_pull_requests.select { |pr| pr[:created_at] > Date.parse('2017-02-13').to_time }
+    @prs = @pull_requests.map do |pr|
+      STDERR.puts "Fetching activity for #{repo}##{pr[:number]}"
+      [
+        pr,
+        client.issue_comments(repo, pr[:number]),
+        client.pull_request_comments(repo, pr[:number]),
+        client.pull_request_reviews(repo, pr[:number])
+      ]
+    end
   end
+  File.open('marshal.bin', 'w') { |f| f << Marshal::dump(@prs) }
 end
 
 contributions = @prs.map do |pr, comments, reviews|
