@@ -19,11 +19,11 @@ client = Octokit::Client.new(:access_token => ENV['GITHUB_TOKEN'])
 def usernames
   return @usernames if @usernames
   @usernames = {}
-  @usernames.default = 2
+  @usernames.default = -1
   @usernames.merge!({
     'MJIO' => 1,
     'asellitt' => 0,
-    # 'auxesis' => 0,
+    'auxesis' => 0,
     'damienadermann' => 1,
     'gbakernet' => 1,
     'gstamp' => 1,
@@ -71,8 +71,8 @@ counts = contributions.map do |contrib|
   ].flatten
   # 0 => stream 0
   # 1 => stream 1
-  # 2 => outside Elements
-  counts = logins.inject({0 => 0, 1 => 0, 2 => 0}) { |summary, stream|
+  # -1 => outside Elements
+  counts = logins.inject({0 => 0, 1 => 0, -1 => 0}) { |summary, stream|
     summary[stream] += 1
     summary
   }.values
