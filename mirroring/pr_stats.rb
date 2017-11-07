@@ -7,21 +7,15 @@ require 'dotenv'
 Dotenv.load
 
 def target_streams
-  if ENV['TARGET_STREAMS']
-    ENV['TARGET_STREAMS'].split(',').map(&:to_i)
-  else
-    puts 'ERROR: The TARGET_STREAMS environment variable must be set'
-    exit(1)
-  end
+  return ENV['TARGET_STREAMS'].split(',').map(&:to_i) if ENV['TARGET_STREAMS']
+  puts 'ERROR: The TARGET_STREAMS environment variable must be set'
+  exit(1)
 end
 
 def target_repos
-  if ENV['TARGET_REPOS']
-    ENV['TARGET_REPOS'].split(',')
-  else
-    puts 'ERROR: The TARGET_REPOS environment variable must be set'
-    exit(1)
-  end
+  return ENV['TARGET_REPOS'].split(',') if ENV['TARGET_REPOS']
+  puts 'ERROR: The TARGET_REPOS environment variable must be set'
+  exit(1)
 end
 
 def usernames
