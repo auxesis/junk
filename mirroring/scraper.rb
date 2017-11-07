@@ -42,12 +42,12 @@ end
 
 def scrape_pull_requests(repos:, since:)
   repos.each do |repo|
-    puts "[info] Fetching Pull Requests for #{repo}"
+    puts "[info] #{repo} fetching Pull Requests"
     prs = pull_requests(repo: repo, since: since)
     records = prs.map do |pr|
       { 'id' => pr[:number], 'repo' => repo, 'json' => pr.to_hash.to_json }
     end
-    puts "[info] Saving #{records.size} Pull Requests on #{repo}"
+    puts "[info] #{repo} saving #{records.size} Pull Requests"
     ScraperWiki.save_sqlite(%w[id repo], records, 'pull_requests')
   end
 end
