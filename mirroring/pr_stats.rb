@@ -39,12 +39,14 @@ def usernames
   end
 end
 
-def pull_requests_participation(repo:)
-  pull_requests = ScraperWiki.select("* FROM pull_requests WHERE repo = '#{repo}'")
-  pull_requests.map do |pr|
-    pr = JSON.parse(pr['json'])
+def pull_requests_participation(repos:)
+  repos_query = '(' + repos.map {|r| "'#{r}'"}.join(',') + ')'
+  pull_requests = ScraperWiki.select("* FROM pull_requests WHERE repo IN #{repos_query}")
+  pull_requests.map do |record|
+    pr = JSON.parse(record['json'])
     owner = pr['user']['login']
     number = pr['number']
+    repo = record['repo']
 
     comments = ScraperWiki.select("* FROM comments WHERE repo = '#{repo}' and pr_id = #{number}")
     participants = comments.map do |c|
@@ -69,30 +71,26 @@ end
 
 def weekly_pr_counts(streams:, repos:)
   output = streams.map do |stream|
-    repos.map do |repo|
-      participations = pull_requests_participation(repo: repo)
-      prs_by_week = participations.select do |part|
-        usernames[part[:owner]] == stream
-      end.group_by do |part|
-        part[:week_of_year]
-      end
+    participations = pull_requests_participation(repos: repos)
+    prs_by_week = participations.select do |part|
+      usernames[part[:owner]] == stream
+    end.group_by do |part|
+      part[:week_of_year]
+    end
 
-      add_missing_weeks!(prs_by_week)
+    prs_by_week.map do |week, parts|
+      logins = parts.map { |c| c[:participants].uniq }.flatten.map { |u| usernames[u] }
 
-      prs_by_week.map do |week, parts|
-        logins = parts.map { |c| c[:participants].uniq }.flatten.map { |u| usernames[u] }
+      counts = logins.inject(0 => 0, 1 => 0, -1 => 0) do |summary, stream|
+        summary[stream] += 1
+        summary
+      end.values
 
-        counts = logins.inject(0 => 0, 1 => 0, -1 => 0) do |summary, stream|
-          summary[stream] += 1
-          summary
-        end.values
-
-        [week, stream, counts].flatten
-      end
+      [week, stream, counts].flatten
     end
   end
 
-  output.flatten(2).sort
+  output.flatten(1).sort
 end
 
 if $PROGRAM_NAME == __FILE__
