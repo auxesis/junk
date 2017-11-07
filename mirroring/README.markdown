@@ -24,8 +24,8 @@ This separates your credentials, and helps you debug more easily.
 
 ## Usage
 
-Run the `pr-stats.rb` script to scrape and print a report:
+Run the `pr_stats.rb` script to scrape and print a report:
 
 ```
-bundle exec ruby pr-stats.rb
+bundle exec ruby pr_stats.rb
 ```
