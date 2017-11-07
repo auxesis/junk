@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'octokit'
 require 'pry'
 require 'vcr'
@@ -6,7 +8,7 @@ require 'dotenv'
 Dotenv.load
 
 VCR.configure do |config|
-  config.cassette_library_dir = "fixtures"
+  config.cassette_library_dir = 'fixtures'
   config.hook_into :webmock
 end
 
@@ -21,38 +23,28 @@ def short_repo
 end
 
 def client
-  @client ||= Octokit::Client.new(:access_token => ENV['GITHUB_TOKEN'])
-  #@client.ensure_api_media_type(:reviews, accept: 'application/vnd.github.black-cat-preview')
+  @client ||= Octokit::Client.new(access_token: ENV['GITHUB_TOKEN'])
 end
 
 def usernames
   return @usernames if @usernames
+  streams = {
+    0 => %w[asellitt auxesis kellec khayman lparry rabidcarrot staceyjdouglas vesu],
+    1 => %w[MJIO damienadermann gbakernet gstamp madlep patpaev ppj]
+  }
   @usernames = {}
   @usernames.default = -1
-  @usernames.merge!({
-    'MJIO' => 1,
-    'asellitt' => 0,
-    'auxesis' => 0,
-    'damienadermann' => 1,
-    'gbakernet' => 1,
-    'gstamp' => 1,
-    'kellec' => 0,
-    'khayman' => 0,
-    'lparry' => 0,
-    'madlep' => 1,
-    'patpaev' => 1,
-    'ppj' => 1,
-    'rabidcarrot' => 0,
-    'staceyjdouglas' => 0,
-    'vesu' => 0
-  })
+  streams.each do |id, usernames|
+    usernames.each do |username|
+      @usernames[username] = id
+    end
+  end
 end
 
+# rubocop:disable Security/MarshalLoad
 def prs
   if ENV['FAST']
-    #WebMock.allow_net_connect!
-    #VCR.turn_off!
-    records = Marshal::load(File.read("marshal-#{short_repo}.bin"))
+    records = Marshal.load(File.read("marshal-#{short_repo}.bin"))
   else
     VCR.use_cassette("#{short_repo}-pull-requests", record: :new_episodes) do
       all_pull_requests = client.pull_requests(repo, state: 'closed')
@@ -68,27 +60,28 @@ def prs
       end
     end
 
-    File.open("marshal-#{short_repo}.bin", 'w') { |f| f << Marshal::dump(records) }
+    File.open("marshal-#{short_repo}.bin", 'w') { |f| f << Marshal.dump(records) }
   end
 
-  return records
+  records
 end
+# rubocop:enable Security/MarshalLoad
 
 def contributions
   prs.map do |pr, issue_comments, pr_comments, pr_reviews|
     owner = pr[:user][:login]
     participants = [
-      issue_comments.map {|c| c[:user][:login]},
-      pr_comments.map {|c| c[:user][:login]},
-      pr_reviews.map {|c| c[:user][:login]}
-    ].flatten.uniq - [ owner ]
+      issue_comments.map { |c| c[:user][:login] },
+      pr_comments.map { |c| c[:user][:login] },
+      pr_reviews.map { |c| c[:user][:login] }
+    ].flatten.uniq - [owner]
 
     {
       repo: repo,
       number: pr[:number],
       owner: owner,
       participants: participants,
-      week_of_year: pr[:closed_at].strftime('%W').to_i,
+      week_of_year: pr[:closed_at].strftime('%W').to_i
     }
   end
 end
@@ -110,12 +103,12 @@ add_missing_weeks!(prs_by_week)
 pr_counts_by_week = prs_by_week.map do |week, contribs|
   logins = contribs.map { |c| c[:participants].uniq }.flatten.map { |u| usernames[u] }
 
-  counts = logins.inject({0 => 0, 1 => 0, -1 => 0}) { |summary, stream|
+  counts = logins.inject(0 => 0, 1 => 0, -1 => 0) do |summary, stream|
     summary[stream] += 1
     summary
-  }.values
+  end.values
 
-  [ week, counts ].flatten
+  [week, counts].flatten
 end
 
 puts pr_counts_by_week.sort.map { |c| c.join("\t") }
