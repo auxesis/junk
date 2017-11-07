@@ -126,7 +126,7 @@ def scrape_pull_request_activity
   prs.each do |pr|
     number = pr['id']
     repo = pr['repo']
-    puts "[info] Fetching activity for #{repo}##{number}"
+    puts "[info] #{repo}##{number} fetching activity"
     scrape_issue_comments(number: number, repo: repo)
     scrape_pull_request_comments(number: number, repo: repo)
     scrape_pull_request_reviews(number: number, repo: repo)
@@ -141,7 +141,7 @@ def scrape_issue_comments(number:, repo:)
       'type' => 'issue', 'json' => comment.to_hash.to_json
     }
   end
-  puts "[info] Saving #{records.size} issue comments on #{repo}##{number}"
+  puts "[info] #{repo}##{number} saving #{records.size} issue comments"
   ScraperWiki.save_sqlite(%w[id pr_id repo type], records, 'comments')
 end
 
@@ -153,7 +153,7 @@ def scrape_pull_request_comments(number:, repo:)
       'type' => 'pull_request', 'json' => comment.to_hash.to_json
     }
   end
-  puts "[info] Saving #{records.size} pull request comments on #{repo}##{number}"
+  puts "[info] #{repo}##{number} saving #{records.size} pull request comments"
   ScraperWiki.save_sqlite(%w[id pr_id repo type], records, 'comments')
 end
 
@@ -166,7 +166,7 @@ def scrape_pull_request_reviews(number:, repo:)
       'type' => 'review', 'json' => review.to_hash.to_json
     }
   end
-  puts "[info] Saving #{records.size} pull request reviews on #{repo}##{number}"
+  puts "[info] #{repo}##{number} saving #{records.size} pull request reviews"
   ScraperWiki.save_sqlite(%w[id pr_id repo type], records, 'comments')
 end
 
