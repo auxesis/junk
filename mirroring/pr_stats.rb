@@ -97,18 +97,27 @@ def add_missing_weeks!(prs_by_week)
   missing_weeks.each { |week| prs_by_week[week] = [] }
 end
 
-prs_by_week = stream_prs(stream: 1).group_by { |c| c[:week_of_year] }
-add_missing_weeks!(prs_by_week)
+def weekly_pr_counts(stream:nil, repos: [])
+  target_streams = stream ? [stream] : streams
 
-pr_counts_by_week = prs_by_week.map do |week, contribs|
-  logins = contribs.map { |c| c[:participants].uniq }.flatten.map { |u| usernames[u] }
+  output = target_streams.map do |stream|
+    prs_by_week = stream_prs(stream: stream).group_by { |c| c[:week_of_year] }
+    add_missing_weeks!(prs_by_week)
 
-  counts = logins.inject(0 => 0, 1 => 0, -1 => 0) do |summary, stream|
-    summary[stream] += 1
-    summary
-  end.values
+    prs_by_week.map do |week, contribs|
+      logins = contribs.map { |c| c[:participants].uniq }.flatten.map { |u| usernames[u] }
 
-  [week, counts].flatten
+      counts = logins.inject(0 => 0, 1 => 0, -1 => 0) do |summary, stream|
+        summary[stream] += 1
+        summary
+      end.values
+
+      [week, stream, counts].flatten
+    end
+  end
+
+  output.flatten(1).sort
 end
 
-puts pr_counts_by_week.sort.map { |c| c.join("\t") }
+report = weekly_pr_counts(stream: nil)
+puts report.map { |c| c.join("\t") }
