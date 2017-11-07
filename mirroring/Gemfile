@@ -8,7 +8,9 @@ gem 'octokit'
 gem 'pry'
 gem 'vcr'
 gem 'webmock'
+gem 'scraperwiki', git: 'https://github.com/openaustralia/scraperwiki-ruby.git', branch: 'morph_defaults'
 
 group :development, :test do
   gem 'rubocop'
+  gem 'rspec'
 end

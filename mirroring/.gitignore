@@ -1,3 +1,4 @@
 fixtures/*.yml
 marshal*.bin
 .env
+data.sqlite
