@@ -1,3 +1,3 @@
 fixtures/*.yml
-marshal.bin
+marshal*.bin
 .env

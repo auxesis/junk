@@ -16,6 +16,10 @@ def repo
   'envato/elements-backend'
 end
 
+def short_repo
+  repo.split('/').last
+end
+
 def client
   @client ||= Octokit::Client.new(:access_token => ENV['GITHUB_TOKEN'])
   #@client.ensure_api_media_type(:reviews, accept: 'application/vnd.github.black-cat-preview')
@@ -46,12 +50,11 @@ end
 
 def prs
   if ENV['FAST']
-    #File.open('marshal.bin', 'w') { |f| f << Marshal::dump(@prs) }
     #WebMock.allow_net_connect!
     #VCR.turn_off!
-    records = Marshal::load(File.read('marshal.bin'))
+    records = Marshal::load(File.read("marshal-#{short_repo}.bin"))
   else
-    VCR.use_cassette('elements-backend-pull-requests', record: :new_episodes) do
+    VCR.use_cassette("#{short_repo}-pull-requests", record: :new_episodes) do
       all_pull_requests = client.pull_requests(repo, state: 'closed')
       pull_requests = all_pull_requests.select { |pr| pr[:created_at] > Date.parse('2017-02-13').to_time }
       records = pull_requests.map do |pr|
@@ -65,7 +68,7 @@ def prs
       end
     end
 
-    File.open('marshal.bin', 'w') { |f| f << Marshal::dump(records) }
+    File.open("marshal-#{short_repo}.bin", 'w') { |f| f << Marshal::dump(records) }
   end
 
   return records
