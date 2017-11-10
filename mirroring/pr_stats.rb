@@ -18,6 +18,12 @@ def target_repos
   exit(1)
 end
 
+def target_since
+  return Date.parse(ENV['TARGET_SINCE']).to_time if ENV['TARGET_SINCE']
+  puts '[info] The TARGET_SINCE environment variable must be set'
+  exit(1)
+end
+
 def usernames
   return @usernames if @usernames
   streams = {
@@ -57,13 +63,13 @@ def pull_requests_participation(repos:)
   end
 end
 
-def add_missing_weeks!(prs_by_week)
-  min = prs_by_week.keys.sort.first
-  max = prs_by_week.keys.sort.last
+def add_missing_weeks!(prs_by_week, since:)
+  min = since.strftime('%U').to_i
+  max = Time.now.strftime('%U').to_i - 1
   (min..max).to_a.each { |week| prs_by_week[week] ||= [] }
 end
 
-def weekly_pr_counts(streams:, repos:)
+def weekly_pr_counts(streams:, repos:, since:)
   output = streams.map do |stream|
     participations = pull_requests_participation(repos: repos)
     prs_by_week = participations.select do |part|
@@ -71,6 +77,8 @@ def weekly_pr_counts(streams:, repos:)
     end.group_by do |part|
       part[:week_of_year]
     end
+
+    add_missing_weeks!(prs_by_week, since: since)
 
     prs_by_week.map do |week, parts|
       logins = parts.map { |c| c[:participants].uniq }.flatten.map { |u| usernames[u] }
@@ -88,6 +96,6 @@ def weekly_pr_counts(streams:, repos:)
 end
 
 if $PROGRAM_NAME == __FILE__
-  report = weekly_pr_counts(streams: target_streams, repos: target_repos)
+  report = weekly_pr_counts(since: target_since, streams: target_streams, repos: target_repos)
   puts report.map { |c| c.join("\t") }
 end
