@@ -52,8 +52,9 @@ def scrape_pull_requests(repos:, since:)
   end
 end
 
+# rubocop:disable Metrics/LineLength
 def scrape_pull_request_activity(repos:)
-  repos_query = 'AND pull_requests.repo IN (' + repos.map {|r| "'#{r}'"}.join(',') + ')'
+  repos_query = 'AND pull_requests.repo IN (' + repos.map { |r| "'#{r}'" }.join(',') + ')'
   prs = ScraperWiki.select("pull_requests.id AS id,pull_requests.repo AS repo FROM pull_requests LEFT JOIN comments ON pull_requests.id = comments.pr_id WHERE comments.pr_id IS NULL #{repos_query} ORDER BY pull_requests.repo,pull_requests.id")
   prs.each do |pr|
     number = pr['id']
@@ -64,6 +65,7 @@ def scrape_pull_request_activity(repos:)
     scrape_pull_request_reviews(number: number, repo: repo)
   end
 end
+# rubocop:enable Metrics/LineLength
 
 def scrape_issue_comments(number:, repo:)
   comments = client.issue_comments(repo, number)
