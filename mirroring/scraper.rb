@@ -102,8 +102,8 @@ def scrape_pull_request_reviews(number:, repo:)
 end
 
 def main
-  # scrape_pull_requests(repos: target_repos, since: target_since)
-  scrape_pull_request_activity
+  scrape_pull_requests(repos: target_repos, since: target_since)
+  scrape_pull_request_activity(repos: target_repos)
 end
 
 main if $PROGRAM_NAME == __FILE__
