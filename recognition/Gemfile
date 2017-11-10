@@ -1,0 +1,10 @@
+# frozen_string_literal: true
+
+ruby '2.4.2'
+source 'https://rubygems.org'
+
+gem 'dotenv'
+gem 'pry'
+gem 'slack-ruby-client'
+gem 'picky'
+gem 'scraperwiki', git: 'https://github.com/openaustralia/scraperwiki-ruby.git', branch: 'morph_defaults'

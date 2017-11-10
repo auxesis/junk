@@ -1,0 +1,5 @@
+.env
+data.sqlite
+people.txt
+avatars/
+montage.sh
