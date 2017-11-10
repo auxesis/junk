@@ -40,7 +40,7 @@ def usernames
 end
 
 def pull_requests_participation(repos:)
-  repos_query = '(' + repos.map {|r| "'#{r}'"}.join(',') + ')'
+  repos_query = '(' + repos.map { |r| "'#{r}'" }.join(',') + ')'
   pull_requests = ScraperWiki.select("* FROM pull_requests WHERE repo IN #{repos_query}")
   pull_requests.map do |record|
     pr = JSON.parse(record['json'])
@@ -72,19 +72,16 @@ end
 def weekly_pr_counts(streams:, repos:, since:)
   output = streams.map do |stream|
     participations = pull_requests_participation(repos: repos)
-    prs_by_week = participations.select do |part|
-      usernames[part[:owner]] == stream
-    end.group_by do |part|
-      part[:week_of_year]
-    end
+    stream_participations = participations.select { |part| usernames[part[:owner]] == stream }
+    prs_by_week = stream_participations.group_by { |part| part[:week_of_year] }
 
     add_missing_weeks!(prs_by_week, since: since)
 
     prs_by_week.map do |week, parts|
       logins = parts.map { |c| c[:participants].uniq }.flatten.map { |u| usernames[u] }
 
-      counts = logins.inject(0 => 0, 1 => 0, -1 => 0) do |summary, stream|
-        summary[stream] += 1
+      counts = logins.each_with_object(0 => 0, 1 => 0, -1 => 0) do |summary, stream_|
+        summary[stream_] += 1
         summary
       end.values
 
@@ -97,5 +94,5 @@ end
 
 if $PROGRAM_NAME == __FILE__
   report = weekly_pr_counts(since: target_since, streams: target_streams, repos: target_repos)
-  puts report.map { |c| c.join("\t") }
+  puts(report.map { |c| c.join("\t") })
 end
