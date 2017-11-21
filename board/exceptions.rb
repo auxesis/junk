@@ -86,7 +86,7 @@ def notify_problems!
     post(message)
   end
 
-  cards = no_labels(lists)
+  cards = no_labels(target_lists)
   if cards.size > 0 then
     puts "[info] There are #{cards.size} cards with no labels"
     header = ':warning::label: *Cards with no labels*'
@@ -94,7 +94,7 @@ def notify_problems!
     post(message)
   end
 
-  cards = blocked(lists)
+  cards = blocked(target_lists)
   if cards.size > 0 then
     puts "[info] There are #{cards.size} cards that are blocked"
     header = ':no_entry_sign::construction: *Cards that are blocked*'
