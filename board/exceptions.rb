@@ -103,14 +103,28 @@ def notify_problems!
   end
 end
 
+def notify_outstanding_eng_lead_actions
+  cards = Trello::Board.find('VIqkY9a0').lists.find { |l| l.name =~ /next actions/i }&.cards
+  header = ':tophat: *Outstanding Elements engineering leads actions*'
+  message = format_cards(cards: cards, header: header)
+  message += "There are no outstanding cards!\n" if cards.empty?
+  post(message, channel: '#elements-eng-leads')
+end
+
 ENV['TZ'] = 'Australia/Sydney'
 
 def main
   scheduler = Rufus::Scheduler.new
-  #scheduler.cron '* * * * 1-5 Australia/Sydney' do
   scheduler.cron '0 10,13,15 * * 1-5 Australia/Sydney' do
     begin
       notify_problems!
+    rescue => e
+      p e
+    end
+  end
+  scheduler.cron('15 9 * * 1,3,5 Australia/Sydney') do
+    begin
+      notify_outstanding_eng_lead_actions
     rescue => e
       p e
     end
