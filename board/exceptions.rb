@@ -34,9 +34,7 @@ def no_estimates(lists)
     }.reject { |c|
       c.name =~ /💥/ # Boom gates
     }.reject { |c|
-      c.id == '58dc42fb4f07f4ca4059f807' # SLAB O' CHANGE
-    }.reject { |c|
-      c.id == '5934a926c6f8b682ebcceb5f' # Line of public 1% launch
+      c.id == '5a0b965bc73bbac3e4862a5e' # SLAB O' CHANGE
     }.reject { |c|
       c.name =~ /^\[\?\]/ && c.list.name =~ /ready/i
     }
