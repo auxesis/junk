@@ -13,6 +13,7 @@ end
 board_ids = {
   backlog: 'NwUJAqdJ',
   wip: 'pwRFfOZj',
+  history: 'JmHJwCF0',
 }
 
 Pry.config.prompt_name = 'trello'
@@ -22,8 +23,9 @@ Pry.config.history.should_load = true
 
 backlog = Trello::Board.find(board_ids[:backlog])
 wip = Trello::Board.find(board_ids[:wip])
+_history = Trello::Board.find(board_ids[:history])
 
-puts "Two boards available: backlog + wip"
+puts "Available boards: backlog, wip, _history"
 
 binding.pry quiet: true
 
