@@ -64,13 +64,21 @@ def format_cards(cards:, header:)
   message.join("\n")
 end
 
-def notify_problems!
+def target_board
   board_id = 'pwRFfOZj'
-  board = Trello::Board.find(board_id)
+  @board ||= Trello::Board.find(board_id)
+end
 
-  lists = board.lists[0..3]
+def target_lists
+  @lists ||= target_board.lists.select { |l|
+    %w[ready doing review ^done$].any? do |name|
+      l.name =~ /#{name}/i
+    end
+  }
+end
 
-  cards = no_estimates(lists)
+def notify_problems!
+  cards = no_estimates(target_lists)
   if cards.size > 0 then
     puts "[info] There are #{cards.size} cards with no estimates"
     header = ':warning::clock4: *Cards with no estimates*'
