@@ -145,10 +145,43 @@ module Lateral
 
       def run(client, data)
         name = data.text.match(matcher)['name']
+
+        case
+        when OrgChart.directory[name]
+          id = name
+        when OrgChart.lookup(name).any?
+          id = OrgChart.lookup(name).first[:name]
+          message = [
+            "Couldn't find exact match for _#{name}_.",
+            "Going with closest match: _#{id}_.",
+          ].join(' ')
+          client.message(channel: data.channel, text: message)
+        when name =~ /\<@.+\>/
+          user = client.web_client.users_info(user: name[2..-2])['user']
+
+          if user['real_name'] == user['name']
+            normalised_name = user['real_name'].split('.').join(' ')
+          else
+            normalised_name = user['real_name']
+          end
+
+          if OrgChart.lookup(normalised_name).any?
+            id = OrgChart.lookup(normalised_name).first[:name]
+          else
+            message = ":frowning: Sorry, couldn't find anyone with a name matching _#{name}_."
+            client.message(channel: data.channel, text: message)
+            return
+          end
+        else
+          message = ":frowning: Sorry, couldn't find anyone with a name matching _#{name}_."
+          client.message(channel: data.channel, text: message)
+          return
+        end
+
         text = []
-        text << OrgChart.bosses(name).map { |person| ':arrow_up: ' + OrgChart.format(person: person) }
-        text << ':star: ' + OrgChart.format(person: OrgChart.directory[name].merge(name: name))
-        text << OrgChart.reports(name).map { |person| ':arrow_right_hook: ' + OrgChart.format(person: person) }
+        text << OrgChart.bosses(id).map { |person| ':arrow_up: ' + OrgChart.format(person: person) }
+        text << ':star: ' + OrgChart.format(person: OrgChart.directory[id].merge(name: id))
+        text << OrgChart.reports(id).map { |person| ':arrow_right_hook: ' + OrgChart.format(person: person) }
         client.message(channel: data.channel, text: text.join("\n"))
       end
 
@@ -198,7 +231,7 @@ module Lateral
         if command
           command.run(client, data)
         else
-          client.message(channel: data.channel, text: "Sorry, I don't understand. Try typing `help`")
+          client.message(channel: data.channel, text: ":sweat_smile: Sorry, I don't understand. Try typing `help`")
         end
       end
 

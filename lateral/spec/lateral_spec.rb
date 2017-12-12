@@ -41,11 +41,28 @@ describe Lateral do
 
   describe Lateral::ChartCommand do
     let(:target) { OrgChart.directory.keys.last }
-    let(:data) { OpenStruct.new(text: "chart #{target}", channel: 'test') }
+    let(:data) { OpenStruct.new(text: "chart #{target}#{target[-1]}", channel: 'test') }
 
-    it 'returns a list of matching names' do
-      Lateral::Bot.handle_message(client, data)
-      expect(client.messages.first[:text]).to include(target)
+    before(:each) { Lateral::Bot.handle_message(client, data) }
+
+    it 'returns a list of bosses and reports' do
+      expect(client.messages.last[:text]).to include(target)
+      expect(client.messages.last[:text]).to include('arrow_up')
+    end
+
+    context "when an exact name match isn't found" do
+      it 'shows a list for the next best match' do
+        expect(client.messages.first[:text]).to include(target)
+        expect(client.messages.first[:text]).to match(/closest match/)
+      end
+    end
+
+    context 'when a slack handle is provided' do
+      let(:data) { OpenStruct.new(text: "chart <@U43EQGRQB>", channel: 'test') }
+
+      it 'looks up the username' do
+        expect(client.messages.last[:text]).to include(target)
+      end
     end
   end
 
