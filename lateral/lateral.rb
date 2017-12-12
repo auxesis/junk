@@ -21,15 +21,15 @@ class OrgChart
     attr_accessor :tree
 
     def bosses(id)
-      find_in_tree(id)&.parentage&.map(&:name)&.reverse.map { |n|
-        [n, directory[n]]
-      }
+      find_in_tree(id)&.parentage&.map(&:name)&.reverse.map do |name|
+        directory[name].merge(name: name)
+      end
     end
 
     def reports(id)
-      find_in_tree(id).children&.map(&:name).map { |n|
-        [n, directory[n]]
-      }
+      find_in_tree(id).children&.map(&:name).map do |name|
+        directory[name].merge(name: name)
+      end
     end
 
     def lookup(name, threshold: 0.5)
@@ -87,37 +87,135 @@ class OrgChart
   end
 end
 
+module Lateral
+  class BaseCommand
+    class << self
+      def usage
+        raise NotImplementedError
+      end
+
+      def matcher
+        raise NotImplementedError
+      end
+
+      def run(client,data)
+        raise NotImplementedError
+      end
+
+      def commands
+        descendants
+      end
+    end
+  end
+
+  class FindCommand < BaseCommand
+    class << self
+      def matcher
+        /^find (?<name>.+)$/i
+      end
+
+      def run(client, data)
+        name = data.text.match(matcher)['name']
+        results = OrgChart.lookup(name)
+        if results.any?
+          text = OrgChart.lookup(name).map { |person|
+            OrgChart.format(person: person)
+          }.join("\n")
+        else
+          text = "Sorry, I couldn't find anyone matching _#{name}_ in the org chart"
+        end
+        client.message(channel: data.channel, text: text)
+      end
+
+      def usage
+        "`find <name>` – List all people in the org chart whose names match"
+      end
+    end
+  end
+
+  class ChartCommand < BaseCommand
+    class << self
+      def matcher
+        /^chart (?<name>.+)$/i
+      end
+
+      def run(client, data)
+        name = data.text.match(matcher)['name']
+        text = []
+        text << OrgChart.bosses(name).map { |person| ':arrow_up: ' + OrgChart.format(person: person) }
+        text << ':star: ' + OrgChart.format(person: OrgChart.directory[name].merge(name: name))
+        text << OrgChart.reports(name).map { |person| ':arrow_right_hook: ' + OrgChart.format(person: person) }
+        client.message(channel: data.channel, text: text.join("\n"))
+      end
+
+      def usage
+        "`chart <name>` – Show a person's reporting lines all the way to the top"
+      end
+    end
+  end
+
+  class DebugCommand < BaseCommand
+    class << self
+      def matcher
+        /^debug.*/i
+      end
+
+      def run(client, data)
+        client.message(channel: data.channel, text: data.inspect)
+      end
+
+      def usage
+        "`debug` – Echos internal representation of the message back"
+      end
+    end
+  end
+
+  class HelpCommand < BaseCommand
+    class << self
+      def matcher
+        /^help.*$/i
+      end
+
+      def run(client, data)
+        text = BaseCommand.commands.map(&:usage).sort.join("\n")
+        client.message(channel: data.channel, text: text)
+      end
+
+      def usage
+        "`help` – How to use Lateral (this message)"
+      end
+    end
+  end
+
+  class Bot
+    class << self
+      def handle_message(client, data)
+        command = BaseCommand.commands.detect { |command| data.text =~ command.matcher }
+        if command
+          command.run(client, data)
+        else
+          client.message(channel: data.channel, text: "Sorry, I don't understand. Try typing `help`")
+        end
+      end
+
+      def client
+        @client ||= Slack::RealTime::Client.new
+      end
+
+      def run
+        client.on :message do |data|
+          client.typing channel: data.channel
+          Lateral::Bot.handle_message(client, data)
+        end
+
+        client.start!
+      end
+    end
+  end
+end
+
 Slack.configure do |config|
   config.token = ENV['SLACK_API_TOKEN']
 end
 
-client = Slack::RealTime::Client.new
-
-client.on :message do |data|
-  client.typing channel: data.channel
-  case data.text
-  when /^find (?<name>.+)$/i
-    name = $~[:name]
-    text = lookup(name).map { |name, attrs|
-      [ name, attrs[:job_title] ].join(' – ')
-    }.join("\n")
-    client.message(channel: data.channel, text: text)
-  when /^chart (?<name>.+)$/i
-    name = lookup($~[:name]).first.first
-    text = []
-    text << OrgChart.bosses(name).map { |person| ':arrow_up: ' + OrgChart.format_name(person) }
-    text << ':star: ' + OrgChart.format_name(directory[name])
-    text << OrgChart.reports(name).map { |person| ':arrow_right_hook: ' + OrgChart.format_name(person) }
-    client.message(channel: data.channel, text: text.join("\n"))
-  when /^debug.+/i
-    p data
-    client.message(channel: data.channel, text: data.inspect)
-  end
-end
-
-def main
-  client.start!
-end
-
-main if $PROGRAM_NAME == __FILE__
-
+Lateral::Bot.run if $PROGRAM_NAME == __FILE__

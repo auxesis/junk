@@ -16,6 +16,34 @@ RSpec.configure do |config|
   config.tty = true
 end
 
+RSpec.shared_context 'orgchart' do
+  def person
+    {
+      'id' => 1,
+      'name' => Faker::Name.name,
+      'data' => {
+        'img' => Faker::Internet.url,
+        'jInfo' => { 'job_title' => Faker::Name.title },
+        'directReports' => 1
+      },
+      'children' => []
+    }
+  end
+
+  let(:hash) {
+    root = person
+    root['children'] += [ person, person, person]
+    root['children'].each do |child|
+      child['children'] += [ person, person, person, person ]
+    end
+    root
+  }
+
+  before(:each) do
+    OrgChart.build_tree_from_hash(hash)
+  end
+end
+
 def all_requests
   WebMock::RequestRegistry.instance.requested_signatures.hash.keys
 end

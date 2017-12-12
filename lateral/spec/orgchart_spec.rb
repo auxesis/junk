@@ -3,37 +3,20 @@
 require 'spec_helper'
 require 'faker'
 
-def person
-  {
-    'id' => 1,
-    'name' => Faker::Name.name,
-    'data' => {
-      'img' => Faker::Internet.url,
-      'jInfo' => { 'job_title' => Faker::Name.title },
-      'directReports' => 1
-    },
-    'children' => []
-  }
-end
-
 describe OrgChart do
-  let(:hash) {
-    root = person
-    root['children'] += [ person, person, person]
-    root['children'].each do |child|
-      child['children'] += [ person, person, person, person ]
-    end
-    root
-  }
-
-  before(:each) do
-    OrgChart.build_tree_from_hash(hash)
-  end
+  include_context 'orgchart'
 
   describe '#lookup' do
     context 'single term' do
       it 'returns a list of matching users' do
         expect(OrgChart.lookup(hash['name']).any?).to be true
+      end
+
+      it 'returns an array of hashes' do
+        results = OrgChart.lookup(hash['name'])
+        results.each do |result|
+          expect(result.is_a?(Hash)).to be true
+        end
       end
     end
 
@@ -54,16 +37,32 @@ describe OrgChart do
   end
 
   describe '#bosses' do
+    let(:target) { OrgChart.directory.keys.last }
+
     it 'provides a list of bosses up the chain' do
-      target = OrgChart.directory.keys.last
       expect(OrgChart.bosses(target).size > 0).to be true
+    end
+
+    it 'returns an array of hashes' do
+      results = OrgChart.bosses(target)
+      results.each do |result|
+        expect(result.is_a?(Hash)).to be true
+      end
     end
   end
 
   describe '#reports' do
+    let(:target) { OrgChart.directory.keys[-5] }
+
     it 'provides a list of direct reports' do
-      target = OrgChart.directory.keys[-5]
       expect(OrgChart.reports(target).size > 0).to be true
+    end
+
+    it 'returns an array of hashes' do
+      results = OrgChart.reports(target)
+      results.each do |result|
+        expect(result.is_a?(Hash)).to be true
+      end
     end
   end
 
