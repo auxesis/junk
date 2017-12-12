@@ -234,4 +234,9 @@ Slack.configure do |config|
   config.token = ENV['SLACK_API_TOKEN']
 end
 
-Lateral::Bot.run if $PROGRAM_NAME == __FILE__
+def main
+  OrgChart.build_tree_from_hash(JSON.parse(ENV['ORGCHART']))
+  Lateral::Bot.run
+end
+
+main if $PROGRAM_NAME == __FILE__
