@@ -1,0 +1,18 @@
+ruby '2.4.2'
+
+source 'https://rubygems.org'
+
+gem 'bamboozled'
+gem 'configatron'
+gem 'dotenv'
+gem 'fuzzy_match'
+gem 'rubytree'
+gem 'slack-ruby-client'
+gem 'celluloid-io'
+
+group :development, :test do
+  gem 'pry'
+  gem 'rake'
+  gem 'rspec'
+  gem 'rubocop'
+end
