@@ -30,7 +30,7 @@ describe OrgChart do
     OrgChart.build_tree_from_hash(hash)
   end
 
-  describe '.lookup' do
+  describe '#lookup' do
     context 'single term' do
       it 'returns a list of matching users' do
         expect(OrgChart.lookup(hash['name']).any?).to be true
@@ -53,21 +53,21 @@ describe OrgChart do
     end
   end
 
-  describe '.bosses' do
+  describe '#bosses' do
     it 'provides a list of bosses up the chain' do
       target = OrgChart.directory.keys.last
       expect(OrgChart.bosses(target).size > 0).to be true
     end
   end
 
-  describe '.reports' do
+  describe '#reports' do
     it 'provides a list of direct reports' do
       target = OrgChart.directory.keys[-5]
       expect(OrgChart.reports(target).size > 0).to be true
     end
   end
 
-  describe '.directory' do
+  describe '#directory' do
     let(:keys) { %i[id job_title direct_reports] }
     it 'provides a hash of people and attributes', :aggregate_failures do
       OrgChart.directory.each do |name, attrs|
@@ -76,7 +76,7 @@ describe OrgChart do
     end
   end
 
-  describe '.format' do
+  describe '#format' do
     let(:name) { 'John Doe' }
     let(:job_title) { 'Mortician' }
     let(:report) { { name: name, job_title: job_title, direct_reports: false } }
