@@ -11,8 +11,11 @@ gem 'slack-ruby-client'
 gem 'celluloid-io'
 
 group :development, :test do
+  gem 'faker'
   gem 'pry'
   gem 'rake'
   gem 'rspec'
   gem 'rubocop'
+  gem 'webmock'
+  gem 'vcr'
 end

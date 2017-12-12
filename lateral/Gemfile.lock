@@ -6,6 +6,8 @@ GEM
       i18n (~> 0.7)
       minitest (~> 5.1)
       tzinfo (~> 1.1)
+    addressable (2.5.2)
+      public_suffix (>= 2.0.2, < 4.0)
     ast (2.3.0)
     bamboozled (0.1.0)
       activesupport
@@ -35,14 +37,19 @@ GEM
     coderay (1.1.2)
     concurrent-ruby (1.0.5)
     configatron (4.5.1)
+    crack (0.4.3)
+      safe_yaml (~> 1.0.0)
     diff-lcs (1.3)
     dotenv (2.2.1)
+    faker (1.8.5)
+      i18n (~> 0.9.1)
     faraday (0.13.1)
       multipart-post (>= 1.2, < 3)
     faraday_middleware (0.12.2)
       faraday (>= 0.7.4, < 1.0)
     fuzzy_match (2.1.0)
     gli (2.17.1)
+    hashdiff (0.3.7)
     hashie (3.5.6)
     hitimes (1.2.6)
     httparty (0.15.6)
@@ -62,6 +69,7 @@ GEM
     pry (0.11.3)
       coderay (~> 1.1.0)
       method_source (~> 0.9.0)
+    public_suffix (3.0.1)
     rainbow (2.2.2)
       rake
     rake (12.3.0)
@@ -89,6 +97,7 @@ GEM
     rubytree (0.9.7)
       json (~> 1.8)
       structured_warnings (~> 0.2)
+    safe_yaml (1.0.4)
     slack-ruby-client (0.11.0)
       activesupport
       faraday (>= 0.9)
@@ -103,6 +112,11 @@ GEM
     tzinfo (1.2.4)
       thread_safe (~> 0.1)
     unicode-display_width (1.3.0)
+    vcr (4.0.0)
+    webmock (3.1.1)
+      addressable (>= 2.3.6)
+      crack (>= 0.3.2)
+      hashdiff
     websocket-driver (0.7.0)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.3)
@@ -115,6 +129,7 @@ DEPENDENCIES
   celluloid-io
   configatron
   dotenv
+  faker
   fuzzy_match
   pry
   rake
@@ -122,6 +137,8 @@ DEPENDENCIES
   rubocop
   rubytree
   slack-ruby-client
+  vcr
+  webmock
 
 RUBY VERSION
    ruby 2.4.2p198
