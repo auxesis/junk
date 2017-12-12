@@ -21,7 +21,9 @@ class OrgChart
     attr_accessor :tree
 
     def bosses(id)
-      find_in_tree(id)&.parentage&.map(&:name)&.reverse.map do |name|
+      results = find_in_tree(id)&.parentage
+      return [] unless results
+      results.map(&:name).reverse.map do |name|
         directory[name].merge(name: name)
       end
     end
@@ -29,6 +31,8 @@ class OrgChart
     def reports(id)
       find_in_tree(id).children&.map(&:name).map do |name|
         directory[name].merge(name: name)
+      end.sort_by do |person|
+        person[:name]
       end
     end
 

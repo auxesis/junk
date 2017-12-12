@@ -49,6 +49,14 @@ describe OrgChart do
         expect(result.is_a?(Hash)).to be true
       end
     end
+
+    context 'when querying the top of the tree' do
+      let(:target) { OrgChart.directory.keys.first }
+
+      it 'returns nothing' do
+        expect(OrgChart.bosses(target).empty?).to be true
+      end
+    end
   end
 
   describe '#reports' do
