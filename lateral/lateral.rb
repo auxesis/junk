@@ -207,9 +207,21 @@ module Lateral
       end
 
       def run
+        client.on :hello do
+          puts "Successfully connected, welcome '#{client.self.name}' to the '#{client.team.name}' team at https://#{client.team.domain}.slack.com."
+        end
+
         client.on :message do |data|
           client.typing channel: data.channel
           Lateral::Bot.handle_message(client, data)
+        end
+
+        client.on :close do |_data|
+          puts 'Connection closing, exiting.'
+        end
+
+        client.on :closed do |_data|
+          puts 'Connection has been disconnected.'
         end
 
         client.start!
