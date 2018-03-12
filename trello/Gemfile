@@ -7,9 +7,14 @@ gem 'slack-notifier'
 gem 'rufus-scheduler'
 gem 'scraperwiki', git: 'https://github.com/openaustralia/scraperwiki-ruby.git', branch: 'morph_defaults'
 gem 'dotenv'
+gem 'bamboozled'
 
 group :development do
   gem 'pry'
   gem 'pry-byebug'
   gem 'rubocop'
+end
+
+group :test do
+  gem 'rspec'
 end

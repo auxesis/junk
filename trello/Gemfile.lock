@@ -20,9 +20,14 @@ GEM
     addressable (2.5.2)
       public_suffix (>= 2.0.2, < 4.0)
     ast (2.3.0)
+    bamboozled (0.0.7)
+      activesupport
+      httparty
+      json
     byebug (9.1.0)
     coderay (1.1.2)
     concurrent-ruby (1.0.5)
+    diff-lcs (1.3)
     domain_name (0.5.20170404)
       unf (>= 0.0.5, < 1.0.0)
     dotenv (2.2.1)
@@ -30,6 +35,8 @@ GEM
       tzinfo
     http-cookie (1.0.3)
       domain_name (~> 0.5)
+    httparty (0.16.0)
+      multi_xml (>= 0.5.2)
     httpclient (2.8.3)
     i18n (0.9.1)
       concurrent-ruby (~> 1.0)
@@ -41,6 +48,7 @@ GEM
       mime-types-data (~> 3.2015)
     mime-types-data (3.2016.0521)
     minitest (5.10.3)
+    multi_xml (0.6.0)
     netrc (0.11.0)
     oauth (0.5.3)
     parallel (1.12.0)
@@ -61,6 +69,19 @@ GEM
       http-cookie (>= 1.0.2, < 2.0)
       mime-types (>= 1.16, < 4.0)
       netrc (~> 0.8)
+    rspec (3.7.0)
+      rspec-core (~> 3.7.0)
+      rspec-expectations (~> 3.7.0)
+      rspec-mocks (~> 3.7.0)
+    rspec-core (3.7.0)
+      rspec-support (~> 3.7.0)
+    rspec-expectations (3.7.0)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.7.0)
+    rspec-mocks (3.7.0)
+      diff-lcs (>= 1.2.0, < 2.0)
+      rspec-support (~> 3.7.0)
+    rspec-support (3.7.0)
     rubocop (0.51.0)
       parallel (~> 1.10)
       parser (>= 2.3.3.1, < 3.0)
@@ -93,10 +114,12 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  bamboozled
   dotenv
   launchy
   pry
   pry-byebug
+  rspec
   rubocop
   ruby-trello
   rufus-scheduler
