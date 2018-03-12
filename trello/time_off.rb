@@ -54,12 +54,18 @@ class Sprint
 
   def self.[](number)
     boundaries = sprints[number]
-    Sprint.new(start: boundaries[:start], finish: boundaries[:finish])
+    attrs = {
+      number: number,
+      start: boundaries[:start],
+      finish: boundaries[:finish],
+    }
+    Sprint.new(attrs)
   end
 
-  attr_reader :start, :finish
+  attr_reader :number, :start, :finish
 
-  def initialize(start:,finish:)
+  def initialize(number:,start:,finish:)
+    @number = number
     @start = start
     @finish = finish
   end
@@ -74,9 +80,24 @@ def main
 
   client = Bamboozled.client(params)
   sprint = Sprint[options[:sprint_number]]
+  puts [ "### Sprint #{sprint.number}", sprint.start.to_date, sprint.finish.to_date ].join("\t")
   time_off = client.time_off.whos_out(sprint.start, sprint.finish)
-  time_off.sort_by { |e| e['name'] }.each do |entry|
-    puts [ entry['name'], entry['start'], entry['end'] ].join("\t")
+
+  sprint_range = (sprint.start.to_date..sprint.finish.to_date).to_a
+  leave_totals = {}
+  time_off.each do |entry|
+    # set the leave balance for the person to zero
+    leave_totals[entry['name']] ||= 0
+    # calculate the number of work days the person has been off
+    leave_range = (Date.parse(entry['start'])..Date.parse(entry['end'])).to_a
+    days_off = leave_range & sprint_range
+    work_days_off = days_off.reject {|d| d.saturday? || d.sunday? }
+    # increment the total
+    leave_totals[entry['name']] += work_days_off.size
+  end
+
+  leave_totals.sort_by { |name,total| name }.each do |name,total|
+    puts [ name, total ].join("\t")
   end
 end
 
