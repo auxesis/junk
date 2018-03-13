@@ -8,12 +8,16 @@ require 'dotenv'
 Dotenv.load
 
 def parse!
-  options = {}
+  options = { epoch: 2017 }
   OptionParser.new do |opts|
     opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
 
     opts.on('-s', '--sprint NUMBER', 'Sprint number to fetch leave for') do |n|
       options[:sprint_number] = n.to_i
+    end
+
+    opts.on('-e', '--epoch YEAR', 'Year the sprints started in') do |y|
+      options[:epoch] = y.to_i
     end
   end.parse!
 
@@ -104,6 +108,7 @@ def main
   }
 
   client = Bamboozled.client(params)
+  Sprint.year = options[:epoch]
   sprint = Sprint[options[:sprint_number]]
   puts "### Sprint #{sprint.number} (#{sprint.start.to_date} to #{sprint.finish.to_date})"
   time_off = client.time_off.whos_out(sprint.start, sprint.finish)
