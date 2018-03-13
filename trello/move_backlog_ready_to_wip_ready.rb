@@ -18,7 +18,7 @@ board = Trello::Board.find(board_ids[:backlog])
 readies = board.lists.select {|list| list.name =~ /Ready$/}
 
 wip_board = Trello::Board.find(board_ids[:wip])
-wip_target = wip_board.lists.find {|list| list.name == 'Ready'}
+wip_target = wip_board.lists.find {|list| list.name =~ /Ready/}
 
 readies.each do |list|
   list.cards.each_with_index do |card, index|
