@@ -105,7 +105,7 @@ def main
 
   client = Bamboozled.client(params)
   sprint = Sprint[options[:sprint_number]]
-  puts "### Sprint #{sprint.number} (#{sprint.start.to_date}-#{sprint.finish.to_date})"
+  puts "### Sprint #{sprint.number} (#{sprint.start.to_date} to #{sprint.finish.to_date})"
   time_off = client.time_off.whos_out(sprint.start, sprint.finish)
 
   sprint_range = (sprint.start.to_date..sprint.finish.to_date).to_a
