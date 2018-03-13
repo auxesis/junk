@@ -33,11 +33,8 @@ class Array
 end
 
 class Sprint
+  # Build up a list of sprints for the current epoch
   def self.sprints
-    return @sprints if @sprints
-
-    first_day_of_first_sprint = (epoch.to_date.end_of_week + 1)
-
     @sprints = {}
     (1..26).each do |i|
       @sprints[i] = {
@@ -48,10 +45,38 @@ class Sprint
     @sprints
   end
 
-  def self.epoch(year: '2017')
+  # Returns the date Sprint 1 starts
+  def self.first_day_of_first_sprint
+    epoch.to_date.monday? ? epoch.to_date : epoch.to_date.end_of_week + 1
+  end
+
+  # The period of time we are working with sprints.
+  def self.epoch
     Date.parse("#{year}-07-01").to_time.beginning_of_day
   end
 
+  # Return the year we are working with sprints.
+  def self.year
+    @year || default_year
+  end
+
+  # Set the year we are working with sprints.
+  def self.year=(n)
+    @year = n
+  end
+
+  # The default year used for sprint calculations.
+  #
+  # Sprint 1 starts on the first Monday in July of each year.
+  #
+  # If we are in the first half of the fear, the default year is last year
+  #
+  # If we are in the second half of the year, the default year is the current year.
+  def self.default_year
+    Date.today.month >= 7 ? Date.today.year : Date.today.year - 1
+  end
+
+  # Look up a sprint number for the current epoch.
   def self.[](number)
     boundaries = sprints[number]
     attrs = {
