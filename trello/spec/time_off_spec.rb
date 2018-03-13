@@ -10,9 +10,14 @@ describe Sprint do
   end
 
   describe 'first sprint' do
+    let(:years) { 2015..2030 }
+
     it 'starts on the first Monday' do
-      sprint = Sprint[1]
-      expect((sprint.start.to_date - Sprint.epoch.to_date).to_i).to be <= 6
+      years.each do |year|
+        Sprint.year = year
+        sprint = Sprint[1]
+        expect((sprint.start.to_date - Sprint.epoch.to_date).to_i).to be <= 6
+      end
     end
   end
 
@@ -51,8 +56,4 @@ describe Sprint do
       end
     end
   end
-
-  # binding.pry
-  # expect(sprint.start).to eq(Time.parse('2018-02-11 00:00:00 +1100'))
-  # expect(sprint.finish).to eq(Time.parse('2018-02-25 23:59:59.999999999 +1100'))
 end
