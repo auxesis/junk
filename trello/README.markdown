@@ -106,3 +106,11 @@ Expects a list of Trello board ids as an argument:
 ``` bash
 bundle exec setup_board_labels.rb GmHJwCF1 ywIFf2Zg
 ```
+
+## `move_done_to_history.rb`
+
+⚠️ **This script DOES modify the board.**
+
+Move lists from the WIP board to the history board.
+
+Operates on lists with `sprint` in their name.
