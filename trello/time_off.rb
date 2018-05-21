@@ -73,7 +73,7 @@ class Sprint
   #
   # Sprint 1 starts on the first Monday in July of each year.
   #
-  # If we are in the first half of the fear, the default year is last year
+  # If we are in the first half of the year, the default year is last year
   #
   # If we are in the second half of the year, the default year is the current year.
   def self.default_year
