@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'nokogiri'
 require 'json'
 require 'cgi'
 
@@ -15,5 +16,6 @@ json = CGI.unescape(escaped_json)
 data = JSON.parse(json)
 
 data['Action'].each do |action|
-  puts "#{action['who']} to #{action['what']}"
+  what = Nokogiri::HTML(action['what']).text.downcase
+  puts "#{action['who']} to #{what}"
 end

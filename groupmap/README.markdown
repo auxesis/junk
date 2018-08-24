@@ -11,7 +11,7 @@ Steps:
 Run with no arguments to read from stdin:
 
 ```
-pbpaste | ruby extract_actions_from_groupmap_page_source.rb
+pbpaste | bundle exec ruby extract_actions_from_groupmap_page_source.rb
 ```
 
 Run with filename argument:
