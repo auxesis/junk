@@ -10,7 +10,7 @@ require 'optparse'
 require 'dotenv'
 Dotenv.load
 
-# rubocop:disable Metrics/MethodLength
+# rubocop:disable Metrics/MethodLength,Metrics/AbcSize
 def parse!
   options = {}
   OptionParser.new do |opts|
@@ -35,7 +35,7 @@ def parse!
 
   options
 end
-# rubocop:enable Metrics/MethodLength
+# rubocop:enable Metrics/MethodLength,Metrics/AbcSize
 
 # Monkey patch bug in Skookum/bamboozled
 class Array
@@ -56,6 +56,44 @@ def responsible_for?(reports:, person:)
   reports.any? { |r| r[:id] == person['employeeId'] }
 end
 
+# rubocop:disable Metrics/MethodLength,Metrics/AbcSize
+def calculate_work_days(people:, leave:, timeframe:)
+  work_days = {}
+  timeframe_range = (timeframe.start..timeframe.finish).to_a
+
+  people.each do |person|
+    work_days[person[:name]] = 5
+    time_off = leave.select { |e| e['employeeId'] == person[:id] }
+
+    time_off.each do |entry|
+      leave_range = (Date.parse(entry['start'])..Date.parse(entry['end'])).to_a
+      days_off = leave_range & timeframe_range
+      work_days_off = days_off.reject { |d| d.saturday? || d.sunday? }
+      work_days[person[:name]] -= work_days_off.size
+    end
+  end
+
+  work_days
+end
+# rubocop:enable Metrics/MethodLength,Metrics/AbcSize
+
+def deduct_holidays(work_days:, leave:)
+  holidays = leave.select { |l| l['type'] == 'holiday' }
+  holidays.each do
+    work_days.each do |name, count|
+      work_days[name] -= 1 unless count <= 0
+    end
+  end
+  work_days
+end
+
+def print_report(work_days)
+  work_days.sort_by { |name, _| name }.each do |name, count|
+    puts [name, count].join("\t")
+  end
+end
+
+# rubocop:disable Metrics/MethodLength,Metrics/AbcSize
 def main
   # setup
   options = parse!
@@ -74,36 +112,17 @@ def main
   timeframe = OpenStruct.new(start: options[:start_date], finish: options[:finish_date])
   all_leave = client.time_off.whos_out(timeframe.start, timeframe.finish)
 
-  puts "\t#{timeframe.finish}"
+  puts "\t#{timeframe.start}"
 
-  timeframe_range = (timeframe.start..timeframe.finish).to_a
-  work_days = {}
-
-  # deduct leave
-  people.each do |person|
-    work_days[person[:name]] = 5
-    time_off = all_leave.select { |e| e['employeeId'] == person[:id] }
-
-    time_off.each do |entry|
-      leave_range = (Date.parse(entry['start'])..Date.parse(entry['end'])).to_a
-      days_off = leave_range & timeframe_range
-      work_days_off = days_off.reject { |d| d.saturday? || d.sunday? }
-      work_days[person[:name]] -= work_days_off.size
-    end
-  end
+  # calculate work days from leave
+  work_days = calculate_work_days(people: people, leave: all_leave, timeframe: timeframe)
 
   # deduct holidays
-  holidays = all_leave.select { |l| l['type'] == 'holiday' }
-  holidays.each do
-    work_days.each do |name, count|
-      work_days[name] -= 1 unless count <= 0
-    end
-  end
+  work_days = deduct_holidays(work_days: work_days, leave: all_leave)
 
   # print the totals
-  work_days.sort_by { |name, _| name }.each do |name, count|
-    puts [name, count].join("\t")
-  end
+  print_report(work_days)
 end
+# rubocop:enable Metrics/MethodLength,Metrics/AbcSize
 
 main if $PROGRAM_NAME == __FILE__
