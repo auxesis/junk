@@ -23,10 +23,15 @@ def parse!
     opts.on('-s', '--start-date DATE', 'Start date of the week to report on') do |d|
       options[:start_date] = Date.parse(d).beginning_of_week
     end
+
+    opts.on('-w', '--weeks NUMBER', 'Number of weeks to report on') do |n|
+      options[:weeks] = n.to_i
+    end
   end.parse!
 
   options[:start_date] ||= Date.today.beginning_of_week
   options[:finish_date] = options[:start_date] + 4
+  options[:weeks] ||= 1
 
   unless options[:under_user]
     puts 'Missing argument --under-user'
@@ -87,9 +92,15 @@ def deduct_holidays(work_days:, leave:)
   work_days
 end
 
-def print_report(work_days)
-  work_days.sort_by { |name, _| name }.each do |name, count|
-    puts [name, count].join("\t")
+def print_totals(reports)
+  header = ([''] + reports.map { |t, r| t.start.to_s })
+  puts header.join("\t")
+
+  totals = Hash[reports.first.last.keys.sort.map { |n| [ n, [] ] }]
+  reports.map(&:last).each { |r| r.each { |name, count| totals[name] << count } }
+
+  totals.each do |name, counts|
+    puts ([ name ] + counts).join("\t")
   end
 end
 
@@ -109,19 +120,23 @@ def main
   # get the people we need to produce a report for
   people = reports(options[:under_user])
 
-  timeframe = OpenStruct.new(start: options[:start_date], finish: options[:finish_date])
-  all_leave = client.time_off.whos_out(timeframe.start, timeframe.finish)
+  reports = []
+  0.upto(options[:weeks] - 1) do |i|
+    timeframe = OpenStruct.new(start: options[:start_date] + (i * 7), finish: options[:start_date] + (i * 7) + 4)
 
-  puts "\t#{timeframe.start}"
+    all_leave = client.time_off.whos_out(timeframe.start, timeframe.finish)
 
-  # calculate work days from leave
-  work_days = calculate_work_days(people: people, leave: all_leave, timeframe: timeframe)
+    # calculate work days from leave
+    work_days = calculate_work_days(people: people, leave: all_leave, timeframe: timeframe)
 
-  # deduct holidays
-  work_days = deduct_holidays(work_days: work_days, leave: all_leave)
+    # deduct holidays
+    work_days = deduct_holidays(work_days: work_days, leave: all_leave)
+
+    reports << [ timeframe, work_days ]
+  end
 
   # print the totals
-  print_report(work_days)
+  print_totals(reports)
 end
 # rubocop:enable Metrics/MethodLength,Metrics/AbcSize
 
