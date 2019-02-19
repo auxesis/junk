@@ -1,0 +1,9 @@
+AllCops:
+  TargetRubyVersion: 2.5
+  Exclude:
+    - bin/**/*
+    - vendor/**/*
+Metrics/LineLength:
+  Max: 100
+  Exclude:
+    - spec/**/*
