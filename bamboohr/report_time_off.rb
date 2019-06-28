@@ -20,6 +20,10 @@ def parse!
       options[:under_user] = u
     end
 
+    opts.on('-i', '--ignore NAME', 'People to ignore in the report') do |u|
+      options[:ignore] = u.split(',')
+    end
+
     opts.on('-s', '--start-date DATE', 'Start date of the week to report on') do |d|
       options[:start_date] = Date.parse(d).beginning_of_week
     end
@@ -49,9 +53,11 @@ class Array
   end
 end
 
-def reports(name)
-  memo = [OrgChart.lookup(name).first]
-  OrgChart.reports(name).each do |report|
+def reports(name, ignore: [])
+  person = OrgChart.lookup(name).first
+  memo = [ person ]
+  OrgChart.reports(person).each do |report|
+    next if ignore.include?(report[:name])
     memo << reports(report[:name])
   end
   memo.flatten.uniq
@@ -114,11 +120,22 @@ def main
   }
   client = Bamboozled.client(params)
 
-  hash = JSON.parse(File.read('employees.json'))
-  OrgChart.build_tree_from_hash(hash)
+  case
+  when File.exist?('employees.json')
+    OrgChart.engine = OrgChartEngine::JSON
+    hash = JSON.parse(File.read('employees.json'))
+  when File.exist?('employees.csv')
+    OrgChart.engine = OrgChartEngine::CSV
+    hash = CSV.read('employees.csv', headers: true).map(&:to_hash)
+  else
+    puts 'Unable to find org chart to read'
+    exit(1)
+  end
+
+  OrgChart.from(hash)
 
   # get the people we need to produce a report for
-  people = reports(options[:under_user])
+  people = reports(options[:under_user], ignore: options[:ignore])
 
   reports = []
   0.upto(options[:weeks] - 1) do |i|

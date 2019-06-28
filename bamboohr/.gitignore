@@ -1,2 +1,10 @@
 .env
+
+# deprecated BambooHR json org chart
 employees.json
+
+# intermediary output from the report
+leave.tsv
+
+# BambooHR org chart csv export
+employees.csv
