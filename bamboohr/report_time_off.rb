@@ -74,7 +74,7 @@ def calculate_work_days(people:, leave:, timeframe:)
 
   people.each do |person|
     work_days[person[:name]] = 5
-    time_off = leave.select { |e| e['employeeId'] == person[:id] }
+    time_off = leave.select { |e| e['employeeId'].to_s == person[:id] }
 
     time_off.each do |entry|
       leave_range = (Date.parse(entry['start'])..Date.parse(entry['end'])).to_a
