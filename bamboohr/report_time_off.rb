@@ -57,7 +57,7 @@ def reports(name, ignore: [])
   person = OrgChart.lookup(name).first
   memo = [ person ]
   OrgChart.reports(person).each do |report|
-    next if ignore.include?(report[:name])
+    next if !ignore.nil? && ignore.include?(report[:name])
     memo << reports(report[:name])
   end
   memo.flatten.uniq
