@@ -106,7 +106,7 @@ def print_totals(reports)
   reports.map(&:last).each { |r| r.each { |name, count| totals[name] << count } }
 
   totals.each do |name, counts|
-    puts ([ name ] + counts).join("\t")
+    puts ([ name ] + counts).join(",")
   end
 end
 
