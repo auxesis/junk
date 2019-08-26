@@ -9,5 +9,8 @@ leave.tsv
 # BambooHR org chart csv export
 employees.csv
 
+# File with people to be removed
+remove_people.csv
+
 # .DS_Store
 .DS_Store
