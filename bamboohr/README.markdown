@@ -37,7 +37,7 @@ Takes into account public holidays too.
 You can specify a week to query:
 
 ``` bash
-ruby report_time_off.rb --under-user 'Ray Grasso' --start-date 2019-01-14
+ruby report_time_off.rb --under-user 'Ray Grasso' --start-date 2019-01-14 --weeks 10
 ```
 
 For dates in the past, this will report leave taken.
