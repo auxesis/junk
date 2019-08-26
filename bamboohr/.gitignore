@@ -8,3 +8,6 @@ leave.tsv
 
 # BambooHR org chart csv export
 employees.csv
+
+# .DS_Store
+.DS_Store
