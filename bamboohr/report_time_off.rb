@@ -137,6 +137,17 @@ def main
   # get the people we need to produce a report for
   people = reports(options[:under_user], ignore: options[:ignore])
 
+  # get the people we don't want in the report
+  temp = open("remove_people.csv").read
+  people_to_remove = temp.split(",")
+  
+  # remove the people we don't want in the report
+  loop do
+    person_to_remove = people_to_remove.shift
+    people.each {|p| people.delete(p) if p[:name] == person_to_remove }
+    break if people_to_remove.length==0
+  end
+
   reports = []
   0.upto(options[:weeks] - 1) do |i|
     timeframe = OpenStruct.new(start: options[:start_date] + (i * 7), finish: options[:start_date] + (i * 7) + 4)
