@@ -99,8 +99,8 @@ def deduct_holidays(work_days:, leave:)
 end
 
 def print_totals(reports)
-  header = ([''] + reports.map { |t, r| t.start.to_s })
-  puts header.join("\t")
+  header = (['date'] + reports.map { |t, r| t.start.to_s })
+  puts header.join(",")
 
   totals = Hash[reports.first.last.keys.sort.map { |n| [ n, [] ] }]
   reports.map(&:last).each { |r| r.each { |name, count| totals[name] << count } }
