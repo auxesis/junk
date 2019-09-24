@@ -1,0 +1,10 @@
+ruby '2.5.6'
+source 'https://rubygems.org'
+
+gem 'netrc'
+gem 'octokit'
+
+group :development do
+  gem 'pry'
+  gem 'pry-byebug'
+end
