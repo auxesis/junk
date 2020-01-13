@@ -1,0 +1,11 @@
+source 'https://rubygems.org'
+
+gem 'httparty'
+gem 'pagerduty'
+gem 'ejson'
+gem 'ejson_wrapper'
+gem 'dotenv'
+
+group :development do
+  gem 'pry'
+end
