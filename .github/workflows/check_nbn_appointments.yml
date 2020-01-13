@@ -5,7 +5,7 @@ on:
     - cron:  '*/15 * * * *'
 
 jobs:
-  check_nbn_appointments:
+  check_and_notify:
 
     runs-on: ubuntu-latest
     env:
