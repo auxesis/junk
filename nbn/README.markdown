@@ -2,8 +2,32 @@
 
 Checks available nbn provisioning appointments via Aussie Broadband.
 
-Runs as [a GitHub action](https://github.com/auxesis/junk/blob/1d492de75c5dcb7e62147917dde1ae111aa9e8f7/.github/workflows/check_nbn_appointments.yml).
+## Running
 
+Ensure you have Docker installed, then run
+
+``` bash
+git clone https://github.com/auxesis/junk
+cd junk/nbn
+```
+
+Add a `.env` file containing the private key to decrypt the ejson:
+
+```
+CHECK_APPOINTMENTS_PRIVATE_KEY=b1946ac92492d2347c6235b4d2611184b1946ac92492d2347c6235b4d2611184
+```
+
+Build the image:
+
+```
+make image
+```
+
+Add to your crontab:
+
+```
+*/5 * * * * docker run nbn:latest
+```
 
 ## Developing
 
