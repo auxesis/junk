@@ -1,5 +1,7 @@
 require "pry"
-require "httparty"
+require "faraday"
+require "faraday-cookie_jar"
+require "faraday_middleware"
 require "pagerduty"
 require "ejson_wrapper"
 require "dotenv"
@@ -16,20 +18,31 @@ def config
   })
 end
 
+def conn
+  @conn ||= Faraday.new(:url => "https://www.aussiebroadband.com.au") do |builder|
+    builder.use :cookie_jar
+    builder.response :json, :content_type => /\bjson$/
+    builder.adapter Faraday.default_adapter
+  end
+end
+
 def appointments
-  query = {
+  url = "https://www.aussiebroadband.com.au/__process.php"
+  query = URI.encode_www_form({
     "mode" => "NBNApptSchedulerValidate",
     "mobileNumber" => config[:nbn][:mobileNumber],
     "uniqueCode" => config[:nbn][:uniqueCode],
+  })
+  headers = {
+    "Content-Type" => "application/x-www-form-urlencoded",
+    "Accept" => "application/json",
   }
-  url = "https://www.aussiebroadband.com.au/__process.php"
-  response = HTTParty.post(url, body: query)
+  response = conn.post(url, query, headers)
 
-  if not response["appointments"]
-    puts response.parsed_response
-    raise RuntimeError
+  if not response.body["appointments"]
+    raise RuntimeError, "unexpected response: #{response.body}"
   end
-  normalized = response["appointments"].map { |k, v| v.merge("unix_time" => k.to_i) }
+  normalized = response.body["appointments"].map { |k, v| v.merge("unix_time" => k.to_i) }
   normalized.sort_by { |v| v["unix_time"] }
 end
 
@@ -64,6 +77,7 @@ end
 begin
   main if __FILE__ == $PROGRAM_NAME
 rescue => e
+  raise e if ENV["DEV"]
   incident = pagerduty.trigger(
     "check_appointments.rb error",
     incident_key: "check_appointments.rb error",

@@ -1,6 +1,8 @@
 source 'https://rubygems.org'
 
-gem 'httparty'
+gem 'faraday'
+gem 'faraday-cookie_jar'
+gem 'faraday_middleware'
 gem 'pagerduty'
 gem 'ejson'
 gem 'ejson_wrapper'
