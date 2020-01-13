@@ -26,7 +26,7 @@ def appointments
   response = HTTParty.post(url, body: query)
 
   if not response["appointments"]
-    p response
+    puts response.parsed_response
     raise RuntimeError
   end
   normalized = response["appointments"].map { |k, v| v.merge("unix_time" => k.to_i) }
