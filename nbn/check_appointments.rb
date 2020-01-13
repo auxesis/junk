@@ -74,4 +74,5 @@ rescue => e
     },
   )
   puts "Incident created for unhandled error"
+  exit(1)
 end
