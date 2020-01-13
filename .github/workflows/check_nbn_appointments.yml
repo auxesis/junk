@@ -30,4 +30,6 @@ jobs:
       working-directory: ${{env.working-directory}}
     - name: Run the appointment checker
       run: bundle exec ruby check_appointments.rb
+      env:
+        CHECK_APPOINTMENTS_PRIVATE_KEY: ${{ secrets.CHECK_APPOINTMENTS_PRIVATE_KEY }}
       working-directory: ${{env.working-directory}}
