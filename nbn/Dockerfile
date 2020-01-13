@@ -1,4 +1,5 @@
 # ejson
+# build an ejson binary, so the docker image works on arm
 FROM golang:1.13.6-stretch as go
 RUN mkdir -p /go/src/github.com/Shopify/
 ADD https://github.com/Shopify/ejson/archive/v1.2.1.tar.gz /go/src/github.com/Shopify/
