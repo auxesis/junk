@@ -25,6 +25,10 @@ def appointments
   url = "https://www.aussiebroadband.com.au/__process.php"
   response = HTTParty.post(url, body: query)
 
+  if not response["appointments"]
+    p response
+    raise RuntimeError
+  end
   normalized = response["appointments"].map { |k, v| v.merge("unix_time" => k.to_i) }
   normalized.sort_by { |v| v["unix_time"] }
 end
