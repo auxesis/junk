@@ -1,0 +1,25 @@
+{
+  "name": "boost",
+  "version": "1.0.0",
+  "description": "LEGO Boost hacking",
+  "main": "index.js",
+  "dependencies": {
+    "node-gyp": "^6.1.0",
+    "node-poweredup": "^6.2.0",
+    "pryjs": "^1.0.3"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/auxesis/junk.git"
+  },
+  "author": "Lindsay Holmwood",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/auxesis/junk/issues"
+  },
+  "homepage": "https://github.com/auxesis/junk#readme"
+}
