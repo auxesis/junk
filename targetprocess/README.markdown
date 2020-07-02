@@ -25,8 +25,9 @@ You can get the TP session cookie by:
 1. Popping the web inspector
 1. Going to the Network tab
 1. Toggling filtering to XHR
-1. Copying the cookie with a triple click:
+1. Selecting the cookie with a triple click:
    ![TP web inspector](https://user-images.githubusercontent.com/12306/86315825-9b879580-bc6e-11ea-8c18-7cac29c3cdb4.gif)
+1. Copy-pasting the cookie into `.env`
 
 ## Run
 
