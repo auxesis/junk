@@ -4,7 +4,19 @@ require "dotenv"
 
 Dotenv.load
 
-tp = TargetProcess.new(token: ENV["TP_TOKEN"])
+config = {
+  subdomain: ENV["TP_SUBDOMAIN"],
+  token: ENV["TP_TOKEN"],
+  session_cookie: ENV["TP_SESSION_COOKIE"],
+}
+
+if config.map { |k, v| v.nil? ? k : nil }.any?
+  print "Invalid configuration. Missing keys: "
+  puts config.map { |k, v| v.nil? ? k : nil }.compact
+  exit 1
+end
+
+tp = TargetProcess.new(config)
 
 mod_squad_user_stories = tp.user_stories(where: "Project.Id eq 6429", take: 1000)
 

@@ -6,11 +6,13 @@ class TargetProcess
   include HTTParty
   include Aruba::Api
 
-  base_uri "https://section.tpondemand.com/api/v1"
   #debug_output $stdout
 
-  def initialize(token:)
+  def initialize(subdomain:, token:, session_cookie:)
+    @session_cookie = session_cookie.gsub(/^cookie: /, "")
     @access_token = token
+    @subdomain = subdomain
+    self.class.base_uri "https://#{@subdomain}.tpondemand.com/api/v1"
     setup_aruba
   end
 
@@ -60,7 +62,7 @@ class TargetProcess
       -H 'Sec-Fetch-Dest: empty' \
       -H 'Referer: https://section.tpondemand.com/restui/board.aspx?' \
       -H 'Accept-Language: en-US,en;q=0.9' \
-      -H '***REMOVED***
+      -H 'cookie: #{@session_cookie}' \
       --data-binary '#{body}' \
       --compressed
     GOODBYE
