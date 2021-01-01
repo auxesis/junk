@@ -2,6 +2,8 @@
 
 roumon shows what devices are connected to what access points.
 
+roumon works with [RouterOS](https://en.wikipedia.org/wiki/MikroTik#RouterOS)-based wifi networks managed by [CAPsMAN](https://wiki.mikrotik.com/wiki/Manual:CAPsMAN).
+
 Run it with:
 
 ```
