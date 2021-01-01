@@ -1,7 +1,6 @@
 # roumon
 
-roumon is a simple utility to show what devices on a RouterOS-based wifi
-network managed by CAPsMAN are connected to what access points.
+roumon shows what devices are connected to what access points.
 
 Run it with:
 
