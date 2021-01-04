@@ -36,11 +36,18 @@ func Draw(nodes chan Nodes) {
 	}
 	defer ui.Close()
 
+	p := widgets.NewParagraph()
+	p.Text = "roumon"
+	p.TextStyle.Fg = ui.ColorWhite
+	p.SetRect(0, 0, 70, 3)
+
 	table1 := widgets.NewTable()
 	table1.TextStyle = ui.NewStyle(ui.ColorWhite)
 	table1.RowStyles[0] = ui.NewStyle(ui.ColorBlack, ui.ColorWhite, ui.ModifierBold)
-	table1.SetRect(0, 0, 70, 30)
+	table1.SetRect(0, 3, 70, 20)
 	table1.BorderStyle = ui.NewStyle(ui.ColorYellow)
+	table1.RowSeparator = false
+	table1.ColumnWidths = []int{40, 10, 20}
 
 	bc := widgets.NewBarChart()
 	bc.Title = "Wifi Client Count"
@@ -50,11 +57,12 @@ func Draw(nodes chan Nodes) {
 	bc.NumStyles = []ui.Style{ui.NewStyle(ui.ColorBlack)}
 
 	draw := func(ns *Nodes) {
+		p.Text = fmt.Sprintf("roumon (last update %s)\n", time.Now())
 		table1.Rows = ns.renderTableRowData()
 		labels, values := ns.renderBarChartData()
 		bc.Labels = labels
 		bc.Data = values
-		ui.Render(table1, bc)
+		ui.Render(p, table1, bc)
 	}
 
 	uiEvents := ui.PollEvents()
