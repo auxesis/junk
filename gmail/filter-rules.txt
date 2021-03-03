@@ -1,0 +1,37 @@
+# GitHub
+
+Matches: from:(github.com)
+Do this: Apply label "GitHub"
+
+Matches: from:(github.com) -{"@auxesis"}
+Do this: Skip Inbox
+
+# Calendar
+
+Matches: to:(lindsay@section.io) (invite.ics OR invite.vcs) has:attachment
+Do this: Apply label "Calendar"
+
+Matches: from:(calendar-notification@google.com)
+Do this: Skip Inbox, Apply label "Calendar"
+
+# Productivity
+
+Matches: from:(zoom.us)
+Do this: Skip Inbox, Apply label "Zoom"
+
+Matches: from:(miro.com)
+Do this: Apply label "Miro"
+
+# Newsletters
+
+Matches: from:(membership@stratechery.com)
+Do this: Apply label "TO READ/Newsletters"
+
+Matches: list:(a04b7dc3f187a3b6f52e8de49.151113.list-id.mcsv.net)
+Do this: Apply label "TO READ/Newsletters"
+
+Matches: list:(<srslyriskybiz.substack.com>)
+Do this: Apply label "TO READ/Newsletters"
+
+Matches: from:(corey@lastweekinaws.com)
+Do this: Apply label "TO READ/Newsletters"
