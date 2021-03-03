@@ -44,7 +44,7 @@ func Draw(nodes chan Nodes) {
 	table1 := widgets.NewTable()
 	table1.TextStyle = ui.NewStyle(ui.ColorWhite)
 	table1.RowStyles[0] = ui.NewStyle(ui.ColorBlack, ui.ColorWhite, ui.ModifierBold)
-	table1.SetRect(0, 3, 70, 20)
+	table1.SetRect(0, 3, 70, 25)
 	table1.BorderStyle = ui.NewStyle(ui.ColorYellow)
 	table1.RowSeparator = false
 	table1.ColumnWidths = []int{40, 10, 20}
@@ -56,13 +56,13 @@ func Draw(nodes chan Nodes) {
 	bc.LabelStyles = []ui.Style{ui.NewStyle(ui.ColorWhite)}
 	bc.NumStyles = []ui.Style{ui.NewStyle(ui.ColorBlack)}
 
-	draw := func(ns *Nodes) {
+	draw := func(ns Nodes) {
 		p.Text = fmt.Sprintf("roumon (last update %s)\n", time.Now())
 		table1.Rows = ns.renderTableRowData()
 		labels, values := ns.renderBarChartData()
 		bc.Labels = labels
 		bc.Data = values
-		ui.Render(p, table1, bc)
+		//ui.Render(p, table1, bc)
 	}
 
 	uiEvents := ui.PollEvents()
@@ -74,7 +74,9 @@ func Draw(nodes chan Nodes) {
 				return
 			}
 		case ns := <-nodes:
-			draw(&ns)
+			v, _ := ns.Get("8C:85:90:27:6D:3D")
+			fmt.Printf("select: %p\n", &v)
+			draw(ns)
 		}
 	}
 }
@@ -188,6 +190,7 @@ func (n *Nodes) renderTableRowData() (rs [][]string) {
 }
 
 func (n *Nodes) renderBarChartData() (labels []string, values []float64) {
+	return labels, values
 	c := make(map[string]float64)
 	n.mapping.Range(func(k, v interface{}) bool {
 		no := v.(Node)
@@ -235,6 +238,8 @@ func CompileMapping(nodes chan Nodes, names, regos chan Node) {
 				ns.Update(n.MacAddress, n)
 			}
 		}
+		v, _ := ns.Get("8C:85:90:27:6D:3D")
+		fmt.Printf("compile: %p\n", &v)
 		nodes <- ns
 	}
 }
