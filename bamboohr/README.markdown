@@ -14,7 +14,7 @@ Add a `.env` with your BambooHR API key:
 
 ``` bash
 BAMBOOHR_SUBDOMAIN=mycorp
-BAMBOOHR_API_KEY=aa85a19f9450a9a4f90062c3f127612e5011abc7ea
+BAMBOOHR_API_KEY=
 ```
 
 Scrape the org chart from BambooHR:
