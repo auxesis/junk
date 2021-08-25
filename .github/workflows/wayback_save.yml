@@ -13,6 +13,7 @@ jobs:
   save-urls:
     name: 💾 
     runs-on: ubuntu-latest
-      - name: "Save Redcliffe Magistrates Court Daily Law List"
+    steps:
+    - name: "Save Redcliffe Magistrates Court Daily Law List"
       run: |
         wget https://web.archive.org/save/https://www.courts.qld.gov.au/__external/CourtsLawList/Redcliffe_DailyLawList.pdf
