@@ -21,7 +21,7 @@ Scrape the org chart from BambooHR:
 
 1. Go to https://mycorp.bamboohr.com/employees/orgchart.php
 1. Click on Export \  `Unformatted.csv`
-1. Rename the file to `employees.json`, and leave it under the  `bamboohr` directory
+1. Rename the file to `employees.csv`, and leave it under the  `bamboohr` directory
 
 
 ## `report_time_off.rb`
