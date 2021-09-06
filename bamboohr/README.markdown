@@ -16,6 +16,9 @@ Add a `.env` with your BambooHR API key:
 BAMBOOHR_SUBDOMAIN=mycorp
 BAMBOOHR_API_KEY=
 ```
+To get your BambooHR API Key, go to your home interface on Bamboo:
+* Click on your avatar on the top right side of the screen
+* Click on My Devices & API Keys
 
 Scrape the org chart from BambooHR:
 
