@@ -10,10 +10,16 @@ defaults:
     shell: bash -l {0}
 
 jobs:
+  strategy:
+    matrix:
+      url:
+        - https://www.courts.qld.gov.au/__external/CourtsLawList/Redcliffe_DailyLawList.pdf
+      fail-fast: false
+      continue-on-error: true
   save-urls:
-    name: 💾 
+    name: 💾
     runs-on: ubuntu-latest
     steps:
-    - name: "Save Redcliffe Magistrates Court Daily Law List"
+    - name: "Save URL"
       run: |
-        wget https://web.archive.org/save/https://www.courts.qld.gov.au/__external/CourtsLawList/Redcliffe_DailyLawList.pdf
+        wget https://web.archive.org/save/${{ matrix.url }}
