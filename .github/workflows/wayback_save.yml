@@ -10,15 +10,15 @@ defaults:
     shell: bash -l {0}
 
 jobs:
-  strategy:
-    matrix:
-      url:
-        - https://www.courts.qld.gov.au/__external/CourtsLawList/Redcliffe_DailyLawList.pdf
+  save-urls:
+    runs-on: ubuntu-latest
+    name: 💾
+    strategy:
       fail-fast: false
       continue-on-error: true
-  save-urls:
-    name: 💾
-    runs-on: ubuntu-latest
+      matrix:
+        url:
+          - https://www.courts.qld.gov.au/__external/CourtsLawList/Redcliffe_DailyLawList.pdf
     steps:
     - name: "Save URL"
       run: |
