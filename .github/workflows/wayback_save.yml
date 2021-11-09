@@ -15,7 +15,6 @@ jobs:
     name: 💾
     strategy:
       fail-fast: false
-      continue-on-error: true
       matrix:
         url:
           - https://www.courts.qld.gov.au/__external/CourtsLawList/Redcliffe_DailyLawList.pdf
