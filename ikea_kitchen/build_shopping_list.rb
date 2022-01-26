@@ -11,7 +11,7 @@ def items
   items_with_dupes.each do |item|
     sku = item[:sku]
     mapping[sku] ||= { quantity: 0, name: item[:name] }
-    mapping[sku][:quantity] += 1
+    mapping[sku][:quantity] += item[:quantity].to_i
   end
   @items = mapping.map { |k, v| { sku: k }.merge(v) }
 end
