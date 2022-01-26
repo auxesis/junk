@@ -1,0 +1,31 @@
+GIT
+  remote: https://github.com/openaustralia/scraperwiki-ruby.git
+  revision: fc50176812505e463077d5c673d504a6a234aa78
+  branch: morph_defaults
+  specs:
+    scraperwiki (3.0.1)
+      httpclient
+      sqlite_magic
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    faraday (2.1.0)
+      faraday-net_http (~> 2.0)
+      ruby2_keywords (>= 0.0.4)
+    faraday-net_http (2.0.1)
+    httpclient (2.8.3)
+    ruby2_keywords (0.0.5)
+    sqlite3 (1.4.2)
+    sqlite_magic (0.0.6)
+      sqlite3
+
+PLATFORMS
+  x86_64-darwin-20
+
+DEPENDENCIES
+  faraday
+  scraperwiki!
+
+BUNDLED WITH
+   2.2.16
