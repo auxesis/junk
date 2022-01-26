@@ -39,3 +39,16 @@ When building a shopping list, it will:
 - Split items across multiple stores if the required item quantity can't be fulfilled at a single store
 - Print a warning if it's unable to find enough stock of an item
 - Only use store locations for New South Wales
+
+## Find items about to go out of stock
+
+To see what items you want to buy that have low stock, run:
+
+``` bash
+bundle exec ruby find_urgent_items.rb
+```
+
+This will print out:
+
+- Any items with < 5 stock within NSW
+- What stores you can find them at
