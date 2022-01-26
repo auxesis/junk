@@ -48,6 +48,7 @@ def main
       stores[most["store"]] << item
     end
   end
+  puts
 
   stores.each do |name, items|
     puts "### #{name} ###\n\n"
