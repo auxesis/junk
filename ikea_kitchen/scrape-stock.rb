@@ -13,7 +13,16 @@ end
 def items
   return @items if @items
   file = File.read("items.json")
-  @items = JSON.parse(file, symbolize_names: true)
+  items_with_dupes = JSON.parse(file, symbolize_names: true)
+
+  # de-dupe
+  mapping = {}
+  items_with_dupes.each do |item|
+    sku = item[:sku]
+    mapping[sku] ||= { quantity: 0, name: item[:name] }
+    mapping[sku][:quantity] += 1
+  end
+  @items = mapping.map { |k, v| { sku: k }.merge(v) }
 end
 
 def filter_to_stores(json)
@@ -42,7 +51,7 @@ def main
     json = fetch(item[:sku])
     nearby = filter_to_stores(json)
     nearby.each do |store|
-      stocks << extract_store_quantity(store)
+      stocks << extract_store_quantity(store).merge({ name: item[:name] })
     end
   end
 
