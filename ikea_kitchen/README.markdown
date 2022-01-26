@@ -24,3 +24,17 @@ bundle exec ruby scrape-stock.rb
 ```
 
 This scrapes and saves store stock quantities to `data.sqlite`.
+
+## Build a shopping list
+
+To output a shopping list based on stock levels and your desired kitchen design, run:
+
+``` bash
+bundle exec ruby build_shopping_list.rb
+```
+
+When building a shopping list, it will:
+
+- Prefer store locations that have the most of an item in stock
+- Print a warning if it's unable to find enough stock of an item
+- Only use store locations for New South Wales
