@@ -36,5 +36,6 @@ bundle exec ruby build_shopping_list.rb
 When building a shopping list, it will:
 
 - Prefer store locations that have the most of an item in stock
+- Split items across multiple stores if the required item quantity can't be fulfilled at a single store
 - Print a warning if it's unable to find enough stock of an item
 - Only use store locations for New South Wales

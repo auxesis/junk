@@ -21,11 +21,31 @@ def main
   by_sku = ScraperWiki.select("* from data").group_by { |r| r["sku"] }
 
   items.each do |item|
+    total = by_sku[item[:sku]].map { |stock| stock["quantity"] }.sum
     most = by_sku[item[:sku]].sort_by { |stock| stock["quantity"] }.last
+    required = item[:quantity].to_i
     stores[most["store"]] ||= []
-    stores[most["store"]] << item
-    if most["quantity"].to_i < item[:quantity].to_i
-      puts "WARNING: #{most["store"]} does not have enough stock (#{most["quantity"]} / #{item[:quantity]}) for #{item[:sku]} (#{item[:name]})"
+
+    case
+    when total == 0 # No stock at all
+      puts "WARNING: There is no stock available for #{item[:sku]} (#{item[:name]})"
+    when total < required # Insufficient total stock
+      puts "WARNING: There is insufficient stock available (#{total} / #{item[:quantity]}) for #{item[:sku]} (#{item[:name]})"
+    when most["quantity"] < required && total >= required # Stock spread across multiple locations
+      acquired = 0
+      by_sku[item[:sku]].sort_by { |stock| stock["quantity"] }.each { |stock|
+        if acquired + stock["quantity"] > required # So we don't add more than needed at a store
+          sub_quantity = required - acquired
+          stores[stock["store"]] << item.merge({ quantity: sub_quantity })
+          acquired += sub_quantity
+        else # Or just add the exact amount
+          stores[stock["store"]] << item.merge({ quantity: stock["quantity"] })
+          acquired += stock["quantity"]
+        end
+        break if acquired >= required
+      }
+    else # All required stock available at single store
+      stores[most["store"]] << item
     end
   end
 
