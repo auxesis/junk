@@ -25,7 +25,7 @@ def main
     stores[most["store"]] ||= []
     stores[most["store"]] << item
     if most["quantity"].to_i < item[:quantity].to_i
-      puts "WARNING: #{most["store"]} does not have enough stock (#{most["quantity"]} / #{item[:quantity]}) for #{item[:sku]}"
+      puts "WARNING: #{most["store"]} does not have enough stock (#{most["quantity"]} / #{item[:quantity]}) for #{item[:sku]} (#{item[:name]})"
     end
   end
 
