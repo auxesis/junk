@@ -8,8 +8,9 @@
    ``` javascript
    var skus = $$('td.table_item_sku').map((td) => { return td.innerHTML })
    var quantities = $$('td.table_item_quantity').map((td) => { return td.innerHTML })
+   var names = $$('td.table_item_longname').map((td) => { return td.innerText.replace(/\n/g, ', ') })
 
-   var items = skus.map((e,i) => { return { sku: e, quantity: quantities[i] } })
+   var items = skus.map((e,i) => { return { sku: e, quantity: quantities[i], name: names[i] } })
    copy(items)
    ```
 1. Then run `pbpaste | tee items.json` to write items to `items.json`
