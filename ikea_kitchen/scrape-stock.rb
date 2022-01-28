@@ -19,15 +19,22 @@ end
 def extract_store_quantity(store)
   {
     sku: store[:itemKey][:itemNo],
-    quantity: store[:availableStocks].find { |s| s[:type] == "CASHCARRY" }[:quantity],
+    quantity: store[:isInCashAndCarryRange] ? store[:availableStocks].find { |s| s[:type] == "CASHCARRY" }[:quantity] : 0,
     store: STORES[store[:classUnitKey][:classUnitCode]],
   }
 end
 
 STORES = {
+  "451" => "Canberra",
+  "919" => "Logan",
+  "556" => "Perth",
+  "557" => "Adelaide",
   "377" => "Marsden Park",
   "385" => "Rhodes",
   "446" => "Tempe",
+  "460" => "North Lakes",
+  "384" => "Richmond",
+  "006" => "Springvale",
 }
 
 def main
