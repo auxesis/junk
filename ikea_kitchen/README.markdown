@@ -83,3 +83,17 @@ This will print out:
 
 - Any items with < 5 stock within NSW
 - What stores you can find them at
+
+## Updating the shopping list after you've made a purchase
+
+Sometimes you need to update the shopping list after you've purchased some of the items.
+
+There's a helper tool for that:
+
+```
+bundle exec subtract_purchased_from_desired_items.rb --from items.json --purchased purchased.json
+```
+
+This will output a new JSON data structure with purchased quantities subtracted from the original items.
+
+Save it by piping it to `items.json`.
