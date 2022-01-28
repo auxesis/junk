@@ -48,13 +48,23 @@ def select_stock(stock:, items:, allow_stores:)
 end
 
 def main
-  options = { allow_stores: ["Marsden Park", "Rhodes", "Tempe"] }
+  options = {
+    allow_stores: ["Marsden Park", "Rhodes", "Tempe"],
+    items_path: "items.json",
+  }
   OptionParser.new do |opt|
     opt.on("--stores COMMA,SEPARATED,STORES") { |o| options[:allow_stores] = o.split(",") }
+    opt.on("--items PATH_TO_ITEMS_JSON") { |o|
+      if !File.exists?(o)
+        puts "File not found: #{o}"
+        exit(1)
+      end
+      options[:items_path] = o
+    }
   end.parse!
 
   stock = ScraperWiki.select("* FROM data")
-  items = read_items("items.json")
+  items = read_items(options[:items_path])
   shopping_list = select_stock(stock: stock, items: items, allow_stores: options[:allow_stores])
 
   shopping_list.each do |store_name, items|
