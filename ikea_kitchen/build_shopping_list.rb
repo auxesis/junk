@@ -1,40 +1,8 @@
+$: << "./"
+require "lib/common"
 require "scraperwiki"
 require "json"
 require "optparse"
-
-def inventory(filename)
-  file = File.read(filename)
-  items_with_dupes = JSON.parse(file, symbolize_names: true)
-
-  # de-dupe
-  mapping = {}
-  items_with_dupes.each do |item|
-    sku = item[:sku]
-    mapping[sku] ||= { quantity: 0, name: item[:name] }
-    mapping[sku][:quantity] += item[:quantity].to_i
-  end
-
-  mapping.map { |k, v| { sku: k }.merge(v) }
-end
-
-def items
-  return @items if @items
-  items = inventory("items.json")
-  purchased = inventory("purchased.json")
-
-  purchased.each do |purchase|
-    index = items.find_index { |item| item[:sku] == purchase[:sku] }
-    items[index][:quantity] -= purchase[:quantity]
-  end
-
-  items.reject! { |item| item[:quantity] <= 0 }
-
-  @items = items
-end
-
-def ikeaify_sku(sku)
-  "#{sku[0..2]}.#{sku[3..5]}.#{sku[6..7]}"
-end
 
 def select_stock(stock:, items:, allow_stores:)
   stores = {}
@@ -86,6 +54,7 @@ def main
   end.parse!
 
   stock = ScraperWiki.select("* FROM data")
+  items = read_items("items.json")
   shopping_list = select_stock(stock: stock, items: items, allow_stores: options[:allow_stores])
 
   shopping_list.each do |store_name, items|

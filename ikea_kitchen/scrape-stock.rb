@@ -1,3 +1,5 @@
+$: << "./"
+require "lib/common"
 require "scraperwiki"
 require "faraday"
 require "json"
@@ -8,21 +10,6 @@ def fetch(sku)
   headers = { "x-client-id" => "b6c117e5-ae61-4ef5-b4cc-e0b1e37f0631" }
   response = Faraday.get(url, params, headers)
   return JSON.parse(response.body, symbolize_names: true)
-end
-
-def items
-  return @items if @items
-  file = File.read("items.json")
-  items_with_dupes = JSON.parse(file, symbolize_names: true)
-
-  # de-dupe
-  mapping = {}
-  items_with_dupes.each do |item|
-    sku = item[:sku]
-    mapping[sku] ||= { quantity: 0, name: item[:name] }
-    mapping[sku][:quantity] += item[:quantity].to_i
-  end
-  @items = mapping.map { |k, v| { sku: k }.merge(v) }
 end
 
 def filter_to_stores(json)
@@ -45,6 +32,8 @@ STORES = {
 
 def main
   stocks = []
+
+  items = read_items("items.json")
 
   items.each_with_index do |item, index|
     puts "Scraping #{item[:sku]}..."
