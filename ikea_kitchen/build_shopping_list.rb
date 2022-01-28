@@ -80,9 +80,9 @@ def select_stock(stock:, items:, allow_stores:)
 end
 
 def main
-  options = { allow_stores: [] }
+  options = { allow_stores: ["Marsden Park", "Rhodes", "Tempe"] }
   OptionParser.new do |opt|
-    opt.on("--allow-stores COMMA,SEPARATED,STORES") { |o| options[:allow_stores] = o.split(",") }
+    opt.on("--stores COMMA,SEPARATED,STORES") { |o| options[:allow_stores] = o.split(",") }
   end.parse!
 
   stock = ScraperWiki.select("* FROM data")

@@ -1,4 +1,10 @@
-# IKEA Kitchen stock scraper
+# IKEA Kitchen stock scraper and shopping list builder
+
+You want to buy an IKEA kitchen, but you can't buy all the parts from a single store?
+
+Don't spend your nights trying to build a shopping list based on opaque stock levels on the IKEA website.
+
+Use these tools to build a shopping list for all the IKEA stores in your area, based on available stock levels.
 
 ## Build a list of items to purchase
 
@@ -14,6 +20,24 @@
    copy(items)
    ```
 1. Then run `pbpaste | tee items.json` to write items to `items.json`
+
+The JSON should look like this:
+
+```
+[
+    {
+        "sku": "10270893",
+        "quantity": "1",
+        "name": "METOD base cabinet frame, white, 80x60x80 cm"
+    },
+    {
+        "sku": "50397574",
+        "quantity": "2",
+        "name": "VOXTORP drawer front, high-gloss white, 80x10 cm"
+    },
+    ...
+]
+```
 
 ## Scrape stock quantities
 
@@ -38,7 +62,14 @@ When building a shopping list, it will:
 - Prefer store locations that have the most of an item in stock
 - Split items across multiple stores if the required item quantity can't be fulfilled at a single store
 - Print a warning if it's unable to find enough stock of an item
-- Only use store locations for New South Wales
+
+You can specify stores to shop at with the `--allow-stores` option:
+
+``` bash
+bundle exec ruby build_shopping_list.rb --stores="Marsden Park,Tempe"
+```
+
+By default, it will build a shopping list for all stores in Sydney.
 
 ## Find items about to go out of stock
 
