@@ -1,9 +1,9 @@
 require "scraperwiki"
 require "json"
+require "optparse"
 
-def items
-  return @items if @items
-  file = File.read("items.json")
+def inventory(filename)
+  file = File.read(filename)
   items_with_dupes = JSON.parse(file, symbolize_names: true)
 
   # de-dupe
@@ -13,12 +13,38 @@ def items
     mapping[sku] ||= { quantity: 0, name: item[:name] }
     mapping[sku][:quantity] += item[:quantity].to_i
   end
-  @items = mapping.map { |k, v| { sku: k }.merge(v) }
+
+  mapping.map { |k, v| { sku: k }.merge(v) }
 end
 
-def main
+def items
+  return @items if @items
+  items = inventory("items.json")
+  purchased = inventory("purchased.json")
+
+  purchased.each do |purchase|
+    index = items.find_index { |item| item[:sku] == purchase[:sku] }
+    items[index][:quantity] -= purchase[:quantity]
+  end
+
+  items.reject! { |item| item[:quantity] <= 0 }
+
+  @items = items
+end
+
+def ikeaify_sku(sku)
+  "#{sku[0..2]}.#{sku[3..5]}.#{sku[6..7]}"
+end
+
+def select_stock(stock:, items:, allow_stores:)
   stores = {}
-  by_sku = ScraperWiki.select("* from data").group_by { |r| r["sku"] }
+  stock.select! { |stock| allow_stores.include?(stock["store"]) }
+  by_sku = stock.group_by { |r| r["sku"] }
+
+  if by_sku.size.zero?
+    puts "No available stock at #{allow_stores.size} stores"
+    exit(1)
+  end
 
   items.each do |item|
     total = by_sku[item[:sku]].map { |stock| stock["quantity"] }.sum
@@ -50,12 +76,26 @@ def main
   end
   puts
 
-  stores.each do |name, items|
-    puts "### #{name} ###\n\n"
+  return stores
+end
+
+def main
+  options = { allow_stores: [] }
+  OptionParser.new do |opt|
+    opt.on("--allow-stores COMMA,SEPARATED,STORES") { |o| options[:allow_stores] = o.split(",") }
+  end.parse!
+
+  stock = ScraperWiki.select("* FROM data")
+  shopping_list = select_stock(stock: stock, items: items, allow_stores: options[:allow_stores])
+
+  shopping_list.each do |store_name, items|
+    puts "### #{store_name} ###\n\n"
     items.sort_by { |item| item[:quantity] }.reverse.each do |item|
-      puts "#{item[:quantity]}x #{item[:sku][0..2]}.#{item[:sku][3..5]}.#{item[:sku][6..7]} — #{item[:name]}"
+      puts ikeaify_sku(item[:sku])
+      puts item[:name]
+      puts "Need #{item[:quantity]}"
+      puts
     end
-    puts
   end
 end
 
