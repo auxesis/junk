@@ -1,10 +1,13 @@
-ruby '2.5.6'
+ruby '3.0.0'
 source 'https://rubygems.org'
 
 gem 'netrc'
 gem 'octokit'
+gem 'faraday-retry'
+gem 'scraperwiki', git: 'https://github.com/openaustralia/scraperwiki-ruby.git', branch: 'morph_defaults'
 
 group :development do
   gem 'pry'
   gem 'pry-byebug'
+  gem 'rufo'
 end
