@@ -18,16 +18,7 @@ jobs:
       matrix:
         url:
           - https://www.courts.qld.gov.au/__external/CourtsLawList/Redcliffe_DailyLawList.pdf
-          - https://www.vaultree.com/
-          - https://www.vaultree.com/about-us/
-          - https://www.vaultree.com/jobs/
-          - https://www.strongsalt.com/
-          - https://www.strongsalt.com/platform/
-          - https://api.strongsalt.com/
-          - https://www.verygoodsecurity.com/
-          - https://www.verygoodsecurity.com/pricing
-          - https://piiano.com/
-          - https://piiano.com/product/
+          
     steps:
     - name: "Save URL"
       run: |
