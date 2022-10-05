@@ -18,6 +18,9 @@ end
 
 user_results = client.search_users(search)
 
+puts "Found #{user_results.items.size} results"
+sleep(2)
+
 user_results.items.each_with_index do |result, index|
   puts "Scraping metadata for: #{result.login}"
   user = client.user(result.login).to_hash
