@@ -9,7 +9,7 @@ Octokit.auto_paginate = true
 client = Octokit::Client.new(netrc: true)
 client.login
 
-search = "language:ruby location:australia type:user"
+search = ARGV.first # "language:ruby location:australia type:user"
 
 unless search
   puts "Usage: #{$PROGRAM_NAME} '<user search query>'"
