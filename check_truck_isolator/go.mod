@@ -2,14 +2,18 @@ module github.com/auxesis/junk/check_truck_isolator
 
 go 1.19
 
-require github.com/alecthomas/kong v0.6.1
+require (
+	github.com/alecthomas/kong v0.6.1
+	tinygo.org/x/bluetooth v0.6.0
+)
 
 require (
-	github.com/BurntSushi/toml v1.2.0 // indirect
-	github.com/kisielk/errcheck v1.6.2 // indirect
-	golang.org/x/exp/typeparams v0.0.0-20220930202632-ec3f01382ef9 // indirect
-	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
+	github.com/fatih/structs v1.1.0 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/godbus/dbus/v5 v5.0.3 // indirect
+	github.com/muka/go-bluetooth v0.0.0-20220830075246-0746e3a1ea53 // indirect
+	github.com/saltosystems/winrt-go v0.0.0-20220826130236-ddc8202da421 // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
+	github.com/tinygo-org/cbgo v0.0.4 // indirect
 	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec // indirect
-	golang.org/x/tools v0.1.12 // indirect
-	honnef.co/go/tools v0.3.3 // indirect
 )
