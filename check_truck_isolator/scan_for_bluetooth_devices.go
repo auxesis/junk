@@ -45,7 +45,7 @@ func prepareDB(path string) (db *sqlx.DB, err error) {
 	}
 
 	schema := `
-		CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY AUTOINCREMENT, address STRING, name TEXT, time INTEGER, rssi INTEGER);
+		CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY AUTOINCREMENT, address STRING, name TEXT, time DATETIME, rssi INTEGER);
 		`
 	_, err = db.Exec(schema)
 	return db, err

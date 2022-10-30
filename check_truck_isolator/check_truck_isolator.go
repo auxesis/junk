@@ -1,104 +1,64 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/alecthomas/kong"
-	"io"
-	"log"
-	"net/http"
-	"net/url"
+	"github.com/jmoiron/sqlx"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-// KismetClient is an abstract client for the Kismet API
-type KismetClient struct {
-	HTTPClient *http.Client
-	BaseURL    *url.URL
-	APIKey     string
+type Device struct {
+	ID      int
+	Address string
+	Name    string
+	RSSI    int16
+	Time    time.Time
 }
 
-// NewKismetClient sets up a new KismetClient
-func NewKismetClient(b *url.URL, t string) (k KismetClient) {
-	k.HTTPClient = &http.Client{}
-	k.BaseURL = b
-	k.APIKey = t
-	return k
+// prepareDB sets up a database for reading and writing
+func prepareDB(path string) (db *sqlx.DB, err error) {
+	db, err = sqlx.Open("sqlite3", path)
+	if err != nil {
+		return db, err
+	}
+
+	schema := `
+        CREATE TABLE IF NOT EXISTS devices (id INTEGER PRIMARY KEY AUTOINCREMENT, address STRING, name TEXT, time DATETIME, rssi INTEGER);
+        `
+	_, err = db.Exec(schema)
+	return db, err
 }
 
-// KismetDevice represents a device detected by Kismet
-type KismetDevice struct {
-	Name     string `json:"kismet.device.base.name"`
-	LastTime int    `json:"kismet.device.base.last_time"`
-	MacAddr  string `json:"kismet.device.base.macaddr"`
-}
+// GetDeviceByMAC fetches information about a device by its MAC address
+func GetDeviceByMAC(db *sqlx.DB, mac string) (d Device, err error) {
+	b := time.Now().Add(-3 * time.Hour)
 
-// GetKismetDeviceByMAC fetches information from Kismet about a device by its MAC address
-func (k KismetClient) GetKismetDeviceByMAC(mac string) (d []KismetDevice) {
-	client := k.HTTPClient
-
-	fieldsRequest := map[string][]string{
-		"fields": []string{"kismet.device.base.macaddr", "kismet.device.base.name", "kismet.device.base.last_time"},
-	}
-
-	byt, err := json.Marshal(fieldsRequest)
+	err = db.Get(&d, "SELECT * FROM devices WHERE address = ? AND time > ? ORDER BY time DESC LIMIT 1", mac, b.Format("2006-01-02 15:04:05"))
 	if err != nil {
-		log.Fatalln("error: json marshal:", err)
+		return d, err
 	}
-
-	buf := bytes.NewBufferString("json=")
-	_, err = buf.Write(byt)
-	if err != nil {
-		log.Fatalln("error: write buffer:", err)
-	}
-
-	u := k.BaseURL.JoinPath("/devices/by-mac").JoinPath(mac).JoinPath("devices.json")
-
-	req, err := http.NewRequest("POST", u.String(), buf)
-	if err != nil {
-		log.Fatalln("error: new request:", err)
-	}
-	c := http.Cookie{Name: "KISMET", Value: k.APIKey}
-	req.AddCookie(&c)
-	// if we don't set this, the requested fields get ignored
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatalln("error: client do:", err)
-	}
-	if resp.StatusCode >= 400 {
-		log.Printf("error: bad HTTP response: %d\n", resp.StatusCode)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalln("error: read body:", err)
-	}
-
-	if resp.StatusCode >= 400 {
-		log.Fatalf("error: response body: %s\n", body)
-	}
-
-	err = json.Unmarshal(body, &d)
-	if err != nil {
-		log.Printf("error: json unmarshal body: %s", body)
-		log.Fatalln("error: json unmarshal:", err)
-	}
-
-	return d
+	return d, err
 }
 
 var cli struct {
-	KismetAPIBase *url.URL `help:"Base URL of Kismet API" default:"http://192.168.88.60:2501/"`
-	KismetAPIKey  string   `help:"API key to authenticate with"`
-	MACAddress    string   `help:"MAC of device to check" arg`
+	MACAddress string `help:"MAC of device to check" arg`
+	SqlitePath string `help:"Path to SQLite DB" default:"./devices.sqlite3"`
 }
 
 func main() {
 	kong.Parse(&cli)
-	k := NewKismetClient(cli.KismetAPIBase, cli.KismetAPIKey)
-
-	d := k.GetKismetDeviceByMAC(cli.MACAddress)
+	db, err := prepareDB(cli.SqlitePath)
+	if err != nil {
+		fmt.Printf("error: unable to access db: %s\n", err)
+		os.Exit(1)
+	}
+	d, err := GetDeviceByMAC(db, cli.MACAddress)
+	if err != nil {
+		fmt.Printf("error: unable to get device information: %s\n", err)
+		os.Exit(1)
+	}
 	fmt.Printf("%+v\n", d)
 }
