@@ -5,28 +5,22 @@ import (
 	"os"
 	"time"
 
+	"github.com/auxesis/junk/check_truck_isolator/db"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 	"tinygo.org/x/bluetooth"
 )
 
-type Device struct {
-	Address string
-	Name    string
-	RSSI    int16
-	Time    time.Time
-}
-
 var adapter = bluetooth.DefaultAdapter
 
 // scan looks for Bluetooth devices, and emits them over a channel
-func scan(ds chan Device) {
+func scan(ds chan db.Device) {
 	// Enable BLE interface.
 	must("enable BLE stack", adapter.Enable())
 
 	// Start scanning.
 	err := adapter.Scan(func(adapter *bluetooth.Adapter, device bluetooth.ScanResult) {
-		ds <- Device{Address: device.Address.String(), Name: device.LocalName(), RSSI: device.RSSI, Time: time.Now()}
+		ds <- db.Device{Address: device.Address.String(), Name: device.LocalName(), RSSI: device.RSSI, Time: time.Now()}
 	})
 	must("start scan", err)
 }
@@ -52,7 +46,7 @@ func prepareDB(path string) (db *sqlx.DB, err error) {
 }
 
 // logDevice stores devices seen
-func logDevice(ds chan Device, db *sqlx.DB) {
+func logDevice(ds chan db.Device, db *sqlx.DB) {
 	for d := range ds {
 		_, err := db.NamedExec(`INSERT INTO devices (address,name,time,rssi) VALUES (:address,:name,:time,:rssi)`, d)
 		if err != nil {
@@ -103,16 +97,16 @@ func truncateHistory(db *sqlx.DB) {
 
 func main() {
 	path := "./devices.sqlite3"
-	db, err := prepareDB(path)
+	d, err := db.PrepareDB(path)
 	if err != nil {
 		fmt.Print("error: unable to access db: %s", err)
 		os.Exit(1)
 	}
 
-	devices := make(chan Device)
+	devices := make(chan db.Device)
 	go scan(devices)
-	go printStatus(db)
-	go truncateHistory(db)
+	go printStatus(d)
+	go truncateHistory(d)
 
-	logDevice(devices, db)
+	logDevice(devices, d)
 }
