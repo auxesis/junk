@@ -78,7 +78,7 @@ func printStatus(db *sqlx.DB) {
 // truncateHistory deletes device records older than 2 weeks, and runs hourly
 func truncateHistory(db *sqlx.DB) {
 	truncate := `DELETE FROM devices WHERE time < ?`
-	b := time.Now().Add(-15 * 24 * time.Hour)
+	b := time.Now().Add(-15 * 24 * time.Hour) // 15 days ago
 	c := time.Tick(1 * time.Hour)
 	for range c {
 		result, err := db.Exec(truncate, b.Format("2006-01-02 15:04:05"))
