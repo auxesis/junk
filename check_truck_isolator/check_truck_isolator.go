@@ -55,6 +55,6 @@ func main() {
 		os.Exit(1)
 	}
 	for _, s := range ds {
-		fmt.Printf("%s: %d\n", s.Hour, s.Count)
+		fmt.Printf("Last hour: %s, Count: %d\n", s.Hour, s.Count)
 	}
 }
