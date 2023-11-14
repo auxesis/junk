@@ -3,10 +3,10 @@
 require "csv"
 
 lines = if ARGV.first.nil? || ARGV.first == "-"
-          STDIN.readlines
-        else
-          File.readlines(ARGV.first)
-        end
+    STDIN.readlines
+  else
+    File.readlines(ARGV.first)
+  end
 
 # first four lines are header :-/
 contents = lines[4..-1].join
@@ -23,6 +23,6 @@ else
   puts ":motorway: Here are the actions from the retro:\n\n"
 
   rows.sort_by { |row| row["Who"].strip }.each do |action|
-    puts ":rocket: *#{action["Who"].strip}* to _#{action["What"].strip.downcase}_"
+    puts "#{action["Who"].strip} to #{action["What"].strip.downcase}, #{action["When"].strip}"
   end
 end
