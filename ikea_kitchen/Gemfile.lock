@@ -37,6 +37,7 @@ GEM
 
 PLATFORMS
   x86_64-darwin-20
+  x86_64-darwin-21
 
 DEPENDENCIES
   faraday
@@ -45,4 +46,4 @@ DEPENDENCIES
   scraperwiki!
 
 BUNDLED WITH
-   2.2.16
+   2.3.15
