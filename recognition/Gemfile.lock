@@ -53,7 +53,7 @@ GEM
     sqlite_magic (0.0.6)
       sqlite3
     thread_safe (0.3.6)
-    tzinfo (1.2.4)
+    tzinfo (1.2.10)
       thread_safe (~> 0.1)
     url_escape (2009.06.24)
     websocket-driver (0.7.0)
