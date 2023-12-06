@@ -6,6 +6,7 @@ require "optparse"
 def subtract(purchased:, current:)
   purchased.each do |purchase|
     index = current.find_index { |item| item[:sku] == purchase[:sku] }
+    next unless index
     current[index][:quantity] -= purchase[:quantity]
   end
 
