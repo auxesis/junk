@@ -4,6 +4,7 @@ gem 'faraday'
 gem 'scraperwiki', git: 'https://github.com/openaustralia/scraperwiki-ruby.git', branch: 'morph_defaults'
 
 group :development do
+  gem 'pry'
   gem 'pry-byebug'
   gem 'pry-coolline'
 end
