@@ -16,14 +16,14 @@ def main
   options = {}
   OptionParser.new do |opt|
     opt.on("--from PATH_TO_ITEMS_JSON") { |o|
-      if !File.exists?(o)
+      if !File.exist?(o)
         puts "--from file not found: #{o}"
         exit(1)
       end
       options[:from_path] = o
     }
     opt.on("--purchased PATH_TO_ITEMS_JSON") { |o|
-      if !File.exists?(o)
+      if !File.exist?(o)
         puts "--purchased file not found: #{o}"
         exit(1)
       end
