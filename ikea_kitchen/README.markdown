@@ -12,9 +12,9 @@ Use these tools to build a shopping list for all the IKEA stores in your area, b
 1. Click "view item list" in bottom right corner.
 1. Open up console, and run this:
    ``` javascript
-   var skus = $$('td.table_item_sku').map((td) => { return td.innerHTML })
-   var quantities = $$('td.table_item_quantity').map((td) => { return td.innerHTML })
-   var names = $$('td.table_item_longname').map((td) => { return td.innerText.replace(/\n/g, ', ') })
+   var skus = $$('div.selenium-itemList-articleNumber-value').map((div) => { return div.innerHTML.replaceAll(".", "") })
+   var quantities = $$('div.selenium-itemList-quantity-value').map((div) => { return parseInt(div.innerText) })
+   var names = $$('div.selenium-item-info').map((div) => { return div.innerText })
 
    var items = skus.map((e,i) => { return { sku: e, quantity: quantities[i], name: names[i] } })
    copy(items)
