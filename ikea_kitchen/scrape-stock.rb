@@ -40,7 +40,9 @@ STORES = {
 def main
   stocks = []
 
-  items = read_items("items.json")
+  items_path = ARGV.first || "items.json"
+
+  items = read_items(items_path)
 
   items.each_with_index do |item, index|
     puts "Scraping #{item[:sku]}..."
