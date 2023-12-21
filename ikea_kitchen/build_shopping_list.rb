@@ -55,7 +55,7 @@ def main
   OptionParser.new do |opt|
     opt.on("--stores COMMA,SEPARATED,STORES") { |o| options[:allow_stores] = o.split(",") }
     opt.on("--items PATH_TO_ITEMS_JSON") { |o|
-      if !File.exists?(o)
+      if !File.exist?(o)
         puts "File not found: #{o}"
         exit(1)
       end
