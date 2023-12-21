@@ -14,9 +14,10 @@ Use these tools to build a shopping list for all the IKEA stores in your area, b
    ``` javascript
    var skus = $$('div.selenium-itemList-articleNumber-value').map((div) => { return div.innerHTML.replaceAll(".", "") })
    var quantities = $$('div.selenium-itemList-quantity-value').map((div) => { return parseInt(div.innerText) })
+   var prices = $$('div.selenium-itemList-listPrice-value').map((div) => { return div.innerText })
    var names = $$('div.selenium-item-info').map((div) => { return div.innerText })
 
-   var items = skus.map((e,i) => { return { sku: e, quantity: quantities[i], name: names[i] } })
+   var items = skus.map((e,i) => { return { sku: e, quantity: quantities[i], name: names[i], price: prices[i] } })
    copy(items)
    ```
 1. Then run `pbpaste | tee items.json` to write items to `items.json`
