@@ -52,7 +52,7 @@ class ClaudeReviewer(Reviewer):
                 *extra_flags,
             ]
             subprocess.run(cmd, cwd=workdir, input=prompt, text=True, check=True)
-            with open(payload_path) as f:
+            with open(payload_path, encoding="utf-8") as f:
                 raw = f.read()
             if not raw.strip():
                 raise RuntimeError("claude produced an empty payload")

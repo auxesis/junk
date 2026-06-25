@@ -32,12 +32,17 @@ def run_reviews(
     collator = collator or DeterministicMergeCollator()
 
     def _one(job: ReviewJob) -> Job:
-        payload = job.reviewer.review(
-            workdir=workdir, base=base, owner=owner, repo=repo, number=number,
-            review_type=job.review_type, model=model, extra_flags=extra_flags,
-        )
+        try:
+            payload = job.reviewer.review(
+                workdir=workdir, base=base, owner=owner, repo=repo, number=number,
+                review_type=job.review_type, model=model, extra_flags=extra_flags,
+            )
+        except Exception as e:
+            raise RuntimeError(
+                f"{job.reviewer.name}/{job.review_type.name} review failed: {e}"
+            ) from e
         return (job.reviewer.name, job.review_type.name, payload)
 
-    with ThreadPoolExecutor(max_workers=max_workers or len(jobs)) as ex:
+    with ThreadPoolExecutor(max_workers=max_workers or len(jobs) or 1) as ex:
         results = list(ex.map(_one, jobs))
     return collator.collate(results)

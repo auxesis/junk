@@ -10,7 +10,7 @@ def test_parse_pr_url():
 
 def test_parse_pr_url_trailing_slash():
     t = parse_target("https://github.com/org/repo/pull/214/")
-    assert t.number == 214
+    assert t == Target("org", "repo", 214)
 
 
 def test_parse_short_form():

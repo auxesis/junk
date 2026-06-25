@@ -48,7 +48,7 @@ def _run(cmd: Sequence[str], **kw) -> subprocess.CompletedProcess:
 def post_review(target: Target, payload: Payload, *, runner=_run) -> None:
     fd, path = tempfile.mkstemp(prefix="pr-review-post.", suffix=".json")
     try:
-        with os.fdopen(fd, "w") as f:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(payload.to_json())
         runner(
             ["gh", "api", f"repos/{target.slug}/pulls/{target.number}/reviews",

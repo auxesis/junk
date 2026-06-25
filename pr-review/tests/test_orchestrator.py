@@ -1,3 +1,5 @@
+import pytest
+
 from pr_review.orchestrator import ReviewJob, run_reviews
 from pr_review.payload import Comment, Payload
 
@@ -44,3 +46,19 @@ def test_run_reviews_two_jobs_merge():
     assert "## test-gap — claude" in out.body
     assert "## test-gap — codex" in out.body
     assert len(out.comments) == 2
+
+
+class BoomReviewer:
+    name = "boom"
+
+    def review(self, **kwargs):
+        raise RuntimeError("kaboom")
+
+
+def test_run_reviews_attributes_failing_job():
+    jobs = [ReviewJob(BoomReviewer(), FakeType("test-gap"))]
+    with pytest.raises(RuntimeError, match="boom/test-gap"):
+        run_reviews(
+            jobs=jobs, workdir="/wd", base="main", owner="o", repo="r",
+            number=1, model="m", extra_flags=[],
+        )
