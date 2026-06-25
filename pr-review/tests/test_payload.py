@@ -49,3 +49,13 @@ def test_cap_splits_at_limit():
     kept, overflow = cap_comments(comments)
     assert len(kept) == MAX_INLINE_COMMENTS
     assert len(overflow) == 2
+
+
+def test_parse_rejects_comment_non_string_body():
+    with pytest.raises(ValueError):
+        parse_payload('{"body":"b","comments":[{"path":"x.py","line":1,"body":42}]}')
+
+
+def test_parse_rejects_comment_non_integer_line():
+    with pytest.raises(ValueError):
+        parse_payload('{"body":"b","comments":[{"path":"x.py","line":"abc","body":"g"}]}')

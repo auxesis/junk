@@ -52,12 +52,23 @@ def parse_payload(text: str) -> Payload:
         if not isinstance(c, dict):
             raise ValueError(f"comment {i} must be an object")
         try:
-            comments.append(
-                Comment(path=c["path"], line=int(c["line"]), body=c["body"],
-                        side=c.get("side", "RIGHT"))
-            )
+            path = c["path"]
+            line = c["line"]
+            body = c["body"]
         except KeyError as e:
             raise ValueError(f"comment {i} missing field {e}") from e
+        if not isinstance(path, str):
+            raise ValueError(f"comment {i} 'path' must be a string")
+        if not isinstance(body, str):
+            raise ValueError(f"comment {i} 'body' must be a string")
+        side = c.get("side", "RIGHT")
+        if not isinstance(side, str):
+            raise ValueError(f"comment {i} 'side' must be a string")
+        try:
+            line_int = int(line)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"comment {i} 'line' must be an integer: {e}") from e
+        comments.append(Comment(path=path, line=line_int, body=body, side=side))
     return Payload(body=data["body"], comments=comments, event=data.get("event", "COMMENT"))
 
 
