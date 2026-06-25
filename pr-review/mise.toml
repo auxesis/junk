@@ -5,3 +5,12 @@ uv = "latest"
 [tasks.test]
 description = "Run the test suite"
 run = "uv run pytest"
+
+[tasks.install]
+description = "Sync deps and symlink pr-review (+ test-gap-review alias) into ~/bin"
+run = """
+uv sync
+mkdir -p "$HOME/bin"
+ln -sf "$MISE_PROJECT_ROOT/bin/pr-review"       "$HOME/bin/pr-review"
+ln -sf "$MISE_PROJECT_ROOT/bin/test-gap-review" "$HOME/bin/test-gap-review"
+"""

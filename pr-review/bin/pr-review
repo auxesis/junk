@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Resolve this script's real path (it is symlinked into ~/bin).
+source="${BASH_SOURCE[0]}"
+while [ -L "$source" ]; do
+  dir=$(cd -P "$(dirname "$source")" >/dev/null 2>&1 && pwd)
+  source=$(readlink "$source")
+  [[ $source != /* ]] && source="$dir/$source"
+done
+repo=$(cd -P "$(dirname "$source")/.." >/dev/null 2>&1 && pwd)
+exec uv run --project "$repo" pr-review "$@"
