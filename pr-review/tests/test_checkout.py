@@ -26,9 +26,11 @@ def test_clone_pr_builds_expected_commands(tmp_path):
     assert cmds[0] == ["git", "clone", "--filter=blob:none",
                        "https://github.com/org/repo", workdir]
     assert cmds[1] == ["gh", "pr", "checkout", "42"]
-    assert cmds[2][:3] == ["gh", "pr", "view"]
+    assert cmds[2] == ["gh", "pr", "view", "42", "--repo", "org/repo",
+                       "--json", "baseRefName", "-q", ".baseRefName"]
     # gh commands run inside the clone
     assert runner.calls[1][1].get("cwd") == workdir
+    assert runner.calls[2][1].get("cwd") == workdir
 
 
 def test_cleanup_removes_workdir():
