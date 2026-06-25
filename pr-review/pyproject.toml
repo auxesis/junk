@@ -1,0 +1,22 @@
+[project]
+name = "pr-review"
+version = "0.1.0"
+description = "Multi-LLM, multi-type GitHub PR reviewer"
+requires-python = ">=3.14"
+dependencies = []
+
+[project.scripts]
+pr-review = "pr_review.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pr_review"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
