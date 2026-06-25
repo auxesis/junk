@@ -1043,9 +1043,9 @@ git commit -m "feat(pr-review): add isolated blobless PR checkout"
   - `PostMode` enum: `POST`, `PROMPT`, `REVIEW_ONLY`
   - `decide_mode(*, yes: bool, no_post: bool, has_tty: bool) -> PostMode`
   - `render(payload: Payload) -> str`
-  - `post_review(target: Target, payload: Payload, *, runner: Runner = ...) -> None` — `gh api repos/<slug>/pulls/<n>/reviews --method POST --input <file>`
+  - `post_review(target: Target, payload: Payload, *, runner=_run) -> None` — `gh api repos/<slug>/pulls/<n>/reviews --method POST --input <file>`
   - `tty_available() -> bool`
-  - `dispatch(mode: PostMode, target: Target, payload: Payload, *, runner: Runner = ...) -> None`
+  - `dispatch(mode: PostMode, target: Target, payload: Payload, *, runner=_run) -> None`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1120,8 +1120,6 @@ from enum import Enum
 
 from pr_review.payload import Payload
 from pr_review.target import Target
-
-Runner = "subprocess.CompletedProcess"
 
 
 class PostMode(Enum):
