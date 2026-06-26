@@ -5,7 +5,7 @@ import sys
 from collections.abc import Callable
 
 from pr_review.collate import Collator, DeterministicMergeCollator, Job
-from pr_review.payload import Payload
+from pr_review.payload import Payload, cap_comments
 from pr_review.reviewers._run import run_cli_payload
 
 _INSTRUCTIONS = r"""# Synthesis Review
@@ -77,6 +77,18 @@ def serialize_findings(jobs: list[Job]) -> str:
     return "\n\n".join(blocks)
 
 
+def _cap_payload(payload: Payload) -> Payload:
+    """Enforce the inline-comment cap on a synthesised payload (defensive)."""
+    kept, overflow = cap_comments(payload.comments)
+    if overflow:
+        payload.comments = kept
+        payload.body += (
+            "\n\n---\n\n## Additional findings not posted inline\n\n"
+            + "\n".join(f"- `{c.path}:{c.line}`" for c in overflow)
+        )
+    return payload
+
+
 def build_synthesis_prompt(
     *, owner: str, repo: str, number: int, base: str, payload_path: str, findings: str,
 ) -> str:
@@ -124,7 +136,7 @@ class LLMSynthesisCollator(Collator):
             )
 
         try:
-            return self._runner(self._command, build, workdir=self._workdir)
+            payload = self._runner(self._command, build, workdir=self._workdir)
         except Exception as e:
             print(
                 f"pr-review: synthesis failed ({self._command[0]}: {e}); "
@@ -132,3 +144,4 @@ class LLMSynthesisCollator(Collator):
                 file=sys.stderr,
             )
             return DeterministicMergeCollator().collate(jobs)
+        return _cap_payload(payload)

@@ -18,6 +18,7 @@ def test_serialize_findings_labels_sources_with_counts():
     assert "codex [infracode] — 1 finding(s)" in text
     assert "a.py:3 — gap one" in text
     assert "infra.tf:5 — iam bloat" in text
+    assert "Summary: b1" in text
 
 
 def test_build_synthesis_prompt_has_context_findings_and_instructions():
@@ -83,3 +84,14 @@ def test_synthesis_falls_back_to_merge_on_failure(capsys):
     assert "## test-gap — codex" in out.body
     assert len(out.comments) == 2
     assert "synthesis failed" in capsys.readouterr().err
+
+
+def test_synthesis_caps_judge_output_to_eight():
+    def runner(command, build_prompt, *, workdir):
+        return Payload(body="SYNTH",
+                       comments=[Comment("f.py", i, f"c{i}") for i in range(11)])
+
+    jobs = [_job("claude (opus)", "test-gap", 2), _job("codex", "test-gap", 2)]
+    out = _collator(runner).collate(jobs)
+    assert len(out.comments) == 8
+    assert "## Additional findings not posted inline" in out.body
