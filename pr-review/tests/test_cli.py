@@ -1,6 +1,6 @@
 import pytest
 
-from pr_review.cli import build_jobs, config_from_args
+from pr_review.cli import build_jobs, config_from_args, resolve_review_types
 from pr_review.target import Target
 
 
@@ -71,3 +71,27 @@ def test_build_jobs_full_matrix_and_per_agent_flags():
     codex_job = next(j for j in jobs if j.reviewer.name == "codex")
     assert claude_job.extra_flags == ["--foo"]
     assert codex_job.extra_flags == []
+
+
+def test_resolve_review_types_explicit_passthrough():
+    assert resolve_review_types(
+        ["test-gap"], has_tty=True, prompt_fn=lambda avail: ["unused"]
+    ) == ["test-gap"]
+
+
+def test_resolve_review_types_prompts_when_tty():
+    seen = {}
+
+    def fake_prompt(available):
+        seen["available"] = available
+        return ["infracode"]
+
+    assert resolve_review_types(None, has_tty=True, prompt_fn=fake_prompt) == ["infracode"]
+    assert "test-gap" in seen["available"]
+
+
+def test_resolve_review_types_errors_without_tty(capsys):
+    with pytest.raises(SystemExit) as exc:
+        resolve_review_types(None, has_tty=False, prompt_fn=lambda avail: ["x"])
+    assert exc.value.code == 2
+    assert "--review-type" in capsys.readouterr().err
