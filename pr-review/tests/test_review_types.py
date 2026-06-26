@@ -18,6 +18,18 @@ def test_instructions_contain_schema_and_cap():
     assert "HARD CAP: 8 inline comments" in text
 
 
+def test_infracode_is_registered():
+    assert "infracode" in available()
+    assert get_review_type("infracode").name == "infracode"
+
+
+def test_infracode_instructions_contain_domain_and_contract():
+    text = get_review_type("infracode").instructions()
+    assert "Infrastructure-as-Code Review" in text
+    assert "## Output (REQUIRED)" in text
+    assert "HARD CAP: 8 inline comments" in text
+
+
 def test_unknown_type_raises():
     with pytest.raises(ValueError):
         get_review_type("does-not-exist")
