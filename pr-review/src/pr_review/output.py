@@ -46,11 +46,17 @@ def _run(cmd: Sequence[str], **kw) -> subprocess.CompletedProcess:
     return subprocess.run(list(cmd), check=True, text=True, **kw)
 
 
+def _write_payload_file(payload: Payload) -> str:
+    """Write the review payload to a temp JSON file and return its path."""
+    fd, path = tempfile.mkstemp(prefix="pr-review-payload.", suffix=".json")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(payload.to_json())
+    return path
+
+
 def post_review(target: Target, payload: Payload, *, runner=_run) -> None:
-    fd, path = tempfile.mkstemp(prefix="pr-review-post.", suffix=".json")
+    path = _write_payload_file(payload)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(payload.to_json())
         runner(
             ["gh", "api", f"repos/{target.slug}/pulls/{target.number}/reviews",
              "--method", "POST", "--input", path]
@@ -62,11 +68,13 @@ def post_review(target: Target, payload: Payload, *, runner=_run) -> None:
             pass
 
 
-def _manual_hint(target: Target) -> str:
+def _not_posted_hint(target: Target, payload: Payload) -> str:
+    # Keep the payload on disk so the user can post it manually.
+    path = _write_payload_file(payload)
     return (
-        f"pr-review: not posted. To post manually:\n"
-        f"  gh api repos/{target.slug}/pulls/{target.number}/reviews "
-        f"--method POST --input <payload.json>"
+        f"pr-review: not posted. Payload written to:\n  {path}\n"
+        f"  to post it: gh api repos/{target.slug}/pulls/{target.number}/reviews "
+        f"--method POST --input {path}"
     )
 
 
@@ -94,4 +102,4 @@ def dispatch(mode: PostMode, target: Target, payload: Payload, *, runner=_run) -
         post_review(target, payload, runner=runner)
         print(f"pr-review: posted review to {target.slug}#{target.number}.", file=sys.stderr)
     else:
-        print(_manual_hint(target), file=sys.stderr)
+        print(_not_posted_hint(target, payload), file=sys.stderr)

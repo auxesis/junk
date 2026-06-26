@@ -1,5 +1,8 @@
+import json
+import os
 import subprocess
 
+from pr_review import output
 from pr_review.output import PostMode, decide_mode, post_review, render
 from pr_review.payload import Comment, Payload
 from pr_review.target import Target
@@ -42,3 +45,25 @@ def test_post_review_builds_gh_api_command(tmp_path):
     assert cmd[:2] == ["gh", "api"]
     assert cmd[2] == "repos/org/repo/pulls/5/reviews"
     assert "--method" in cmd and "POST" in cmd and "--input" in cmd
+
+
+def test_write_payload_file_creates_valid_json():
+    path = output._write_payload_file(Payload(body="b", comments=[Comment("a.py", 1, "g")]))
+    try:
+        with open(path) as f:
+            data = json.load(f)
+        assert data["body"] == "b"
+        assert data["comments"][0]["path"] == "a.py"
+    finally:
+        os.unlink(path)
+
+
+def test_not_posted_hint_writes_payload_and_includes_path():
+    hint = output._not_posted_hint(Target("org", "repo", 5), Payload(body="b"))
+    # the hint must name a real file (not a placeholder) that holds the payload
+    input_path = hint.split("--input ", 1)[1].strip()
+    try:
+        assert os.path.exists(input_path)
+        assert json.load(open(input_path))["body"] == "b"
+    finally:
+        os.unlink(input_path)
