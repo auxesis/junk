@@ -1,0 +1,218 @@
+# pr-review
+
+Review a GitHub pull request with one or more LLMs, in an **isolated clone**.
+
+`pr-review` clones the target PR into a throwaway temp directory, fans out to one
+or more `(reviewer × review-type)` jobs **in parallel**, collates their findings
+into a single review, and prints it — prompting before it posts anything to the
+PR. Because every run works in its own clone, you can review multiple PRs at once
+without touching your working tree or colliding with another run.
+
+Today it ships one reviewer (**Claude**, headless) and one review type
+(**test-gap**: test-coverage gap analysis). The multi-LLM, multi-type, and
+collation machinery is already built and tested, so new backends and review types
+are additive — see [Developing](#developing).
+
+---
+
+## Requirements
+
+- [`mise`](https://mise.jdx.dev/) — provisions Python 3.14 and `uv` for the project.
+- [`git`](https://git-scm.com/)
+- [`gh`](https://cli.github.com/) — authenticated (`gh auth status` must pass).
+- [`claude`](https://docs.claude.com/en/docs/claude-code) — the Claude Code CLI, on your `PATH`.
+- `~/bin` on your `PATH` (the install step symlinks the commands there).
+
+---
+
+## Install
+
+From the project directory:
+
+```bash
+mise run install
+```
+
+This runs `uv sync` (creates the project venv from the lockfile) and symlinks the
+`pr-review` command into `~/bin`.
+
+The symlink points at a small launcher shim in `bin/`. It resolves its own real
+path and runs the project through `uv run`, so the installed command **always
+executes the current source with the current, lockfile-synced dependencies** — edit
+the code and the next invocation picks it up; no reinstall needed.
+
+> Prefer not to install? Run it straight from the project directory with
+> `uv run pr-review <target>`.
+
+---
+
+## Run
+
+```bash
+pr-review <pr-url | owner/repo#N>
+```
+
+The target is **explicit** — a full PR URL or the compact `owner/repo#N` form.
+There is no inference from the current directory or branch.
+
+```bash
+pr-review https://github.com/org/repo/pull/214
+pr-review org/repo#214
+```
+
+`test-gap` is the default review type, so a plain `pr-review <target>` runs the
+test-coverage gap review.
+
+### Selecting reviewers and types
+
+`--reviewer` and `--type` accept comma-separated lists; the run is their
+cross-product. Both default to a single value, so a plain run is one job.
+
+```bash
+pr-review --type test-gap --reviewer claude org/repo#214
+```
+
+(Only `claude` and `test-gap` are registered today; an unknown name fails fast,
+before any clone, and lists what is available.)
+
+### Posting behaviour
+
+By default `pr-review` **reviews and prints, then asks** before posting to the PR:
+
+| Mode | Trigger |
+|------|---------|
+| Prompt `[y/N]`, then post if confirmed | default (interactive terminal) |
+| Post without prompting | `YES=1` |
+| Review only — never post, never prompt | `NO_POST=1` |
+| Review only (falls back automatically) | no terminal available and `YES` unset |
+
+### Environment knobs
+
+| Variable | Effect | Default |
+|----------|--------|---------|
+| `MODEL` | Claude model id | `claude-opus-4-8` |
+| `YES=1` | Post without prompting | unset |
+| `NO_POST=1` | Review and print only | unset |
+| `CLAUDE_FLAGS` | Extra flags appended to the `claude` invocation | empty |
+| `KEEP=1` | Keep the temp clone on exit (prints its path) instead of deleting it | unset |
+
+```bash
+NO_POST=1 pr-review org/repo#214               # dry run, prints the review only
+YES=1 MODEL=claude-opus-4-8 pr-review org/repo#214   # non-interactive, auto-post
+KEEP=1 pr-review org/repo#214                  # leave the clone behind for inspection
+```
+
+### What happens during a run
+
+```
+target → clone (blobless) into a temp dir → gh pr checkout
+       → fan out (reviewer × type) jobs in parallel → collate into one review
+       → print, then post / prompt / review-only per the rules above
+       → delete the temp clone (unless KEEP=1)
+```
+
+The clone uses `git clone --filter=blob:none`: it is fast and light but keeps the
+full history graph, so the reviewer's `git diff origin/<base>...HEAD` always has
+its merge-base.
+
+---
+
+## Developing
+
+### Layout
+
+```
+pr-review/
+├── pyproject.toml          # project + entry point (pr-review = pr_review.cli:main)
+├── mise.toml               # tasks: test, install
+├── bin/                    # uv-run launcher shim (symlinked into ~/bin)
+├── src/pr_review/
+│   ├── cli.py              # arg/env parsing → RunConfig → orchestrate → output
+│   ├── target.py           # parse PR URL / owner/repo#N
+│   ├── checkout.py         # blobless clone + gh pr checkout into a temp dir
+│   ├── orchestrator.py     # parallel fan-out (ThreadPoolExecutor) + collate
+│   ├── payload.py          # review payload model, JSON validation, comment cap
+│   ├── collate.py          # Collator + DeterministicMergeCollator
+│   ├── output.py           # posting-mode decision, render, gh-api post
+│   ├── reviewers/          # Reviewer ABC + registry; claude.py
+│   └── review_types/       # ReviewType ABC + registry; test_gap.py
+├── tests/                  # pytest suite
+└── docs/superpowers/       # design spec + implementation plan
+```
+
+### Run the tests
+
+```bash
+mise run test          # == uv run pytest
+```
+
+The suite covers the **pure logic** — target parsing, payload validation and the
+comment cap, collation, the posting-mode decision, prompt building, and command
+construction (with injected fake runners). The side-effecting shells (`git clone`,
+the `claude` call, the `gh api` post) are thin wrappers verified by a manual
+end-to-end run, not by the unit suite.
+
+### Extending: add a reviewer (LLM backend)
+
+Reviewers are looked up by name from a registry, so a new backend is a new file
+plus one registration line — no change to the core.
+
+```python
+# src/pr_review/reviewers/codex.py
+from pr_review.payload import Payload
+from pr_review.reviewers.base import Reviewer, register
+
+
+class CodexReviewer(Reviewer):
+    name = "codex"
+
+    def review(self, *, workdir, base, owner, repo, number,
+               review_type, model, extra_flags) -> Payload:
+        # run your backend over `workdir`, parse its output into a Payload
+        ...
+
+
+register(CodexReviewer())
+```
+
+Then import it for its registration side-effect in
+`src/pr_review/reviewers/__init__.py` (alongside the existing `claude` import).
+After that, `--reviewer codex` (and `--reviewer claude,codex`, which runs both)
+just works.
+
+### Extending: add a review type
+
+Same pattern in `review_types/`:
+
+```python
+# src/pr_review/review_types/infracode.py
+from pr_review.review_types.base import ReviewType, register
+
+
+class InfracodeType(ReviewType):
+    name = "infracode"
+
+    def instructions(self) -> str:
+        return "..."   # the instruction block handed to a reviewer
+
+
+register(InfracodeType())
+```
+
+Import it in `src/pr_review/review_types/__init__.py`, and `--type infracode`
+becomes available.
+
+### Collation
+
+`DeterministicMergeCollator` merges multiple jobs' payloads into one: bodies under
+per-job headers, comments concatenated with the 8-comment cap re-applied, and any
+overflow listed in the body. A smarter LLM-synthesis collator can be added as
+another `Collator` subclass.
+
+### Design docs
+
+The full design rationale and the task-by-task build plan live under
+`docs/superpowers/`:
+
+- `docs/superpowers/specs/2026-06-26-pr-review-multi-llm-rewrite-design.md`
+- `docs/superpowers/plans/2026-06-26-pr-review-multi-llm-rewrite.md`
