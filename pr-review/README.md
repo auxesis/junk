@@ -61,7 +61,8 @@ pr-review org/repo#214
 ```
 
 `test-gap` is the default review type, so a plain `pr-review <target>` runs the
-test-coverage gap review.
+test-coverage gap review. Run `pr-review help` (or `pr-review --help`) to see all
+options.
 
 ### Selecting reviewers and types
 
@@ -82,24 +83,28 @@ By default `pr-review` **reviews and prints, then asks** before posting to the P
 | Mode | Trigger |
 |------|---------|
 | Prompt `[y/N]`, then post if confirmed | default (interactive terminal) |
-| Post without prompting | `YES=1` |
-| Review only — never post, never prompt | `NO_POST=1` |
-| Review only (falls back automatically) | no terminal available and `YES` unset |
+| Post without prompting | `--post-without-prompting` |
+| Review only — never post, never prompt | `--print-only` |
+| Review only (falls back automatically) | no terminal available and `--post-without-prompting` not set |
 
-### Environment knobs
+### Options
 
-| Variable | Effect | Default |
-|----------|--------|---------|
-| `MODEL` | Claude model id | `claude-opus-4-8` |
-| `YES=1` | Post without prompting | unset |
-| `NO_POST=1` | Review and print only | unset |
-| `CLAUDE_FLAGS` | Extra flags appended to the `claude` invocation | empty |
-| `KEEP=1` | Keep the temp clone on exit (prints its path) instead of deleting it | unset |
+| Option | Effect | Default |
+|--------|--------|---------|
+| `--model <id>` | Claude model id | `claude-opus-4-8` |
+| `--post-without-prompting` | Post without prompting | off |
+| `--print-only` | Review and print only; never post | off |
+| `--claude-flags="<flags>"` | Extra flags appended to the `claude` invocation | empty |
+| `--keep-clone` | Keep the temp clone on exit (prints its path) instead of deleting it | off |
+
+(`--reviewer` and `--type` are described above. Use the `--claude-flags="..."`
+form with the `=` so the leading dashes aren't read as `pr-review` options.)
 
 ```bash
-NO_POST=1 pr-review org/repo#214               # dry run, prints the review only
-YES=1 MODEL=claude-opus-4-8 pr-review org/repo#214   # non-interactive, auto-post
-KEEP=1 pr-review org/repo#214                  # leave the clone behind for inspection
+pr-review --print-only org/repo#214                   # dry run, prints the review only
+pr-review --post-without-prompting org/repo#214       # non-interactive, auto-post
+pr-review --keep-clone org/repo#214                   # leave the clone behind for inspection
+pr-review --model claude-opus-4-8 --claude-flags="--debug" org/repo#214
 ```
 
 ### What happens during a run
@@ -108,7 +113,7 @@ KEEP=1 pr-review org/repo#214                  # leave the clone behind for insp
 target → clone (blobless) into a temp dir → gh pr checkout
        → fan out (reviewer × type) jobs in parallel → collate into one review
        → print, then post / prompt / review-only per the rules above
-       → delete the temp clone (unless KEEP=1)
+       → delete the temp clone (unless --keep-clone)
 ```
 
 The clone uses `git clone --filter=blob:none`: it is fast and light but keeps the
