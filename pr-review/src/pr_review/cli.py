@@ -19,7 +19,7 @@ DEFAULT_MODEL = "claude-opus-4-8"
 @dataclass
 class RunConfig:
     target: Target
-    agent_models: list[tuple[str, str]]
+    agent_models: list[tuple[str, str]] | None
     type_names: list[str] | None
     flags_by_agent: dict[str, list[str]]
     yes: bool
@@ -93,9 +93,7 @@ def config_from_args(argv: list[str]) -> RunConfig:
         argv = ["--help", *argv[1:]]
     args = build_parser().parse_args(argv)
 
-    agent_models = (
-        _parse_agent_models(args.model) if args.model else [("claude", DEFAULT_MODEL)]
-    )
+    agent_models = _parse_agent_models(args.model) if args.model else None
     flags_by_agent: dict[str, list[str]] = {}
     if args.claude_flags:
         flags_by_agent["claude"] = shlex.split(args.claude_flags)
@@ -122,6 +120,24 @@ def build_jobs(cfg: RunConfig) -> list[ReviewJob]:
     ]
 
 
+def resolve_agent_models(
+    agent_models: list[tuple[str, str]] | None,
+    *,
+    has_tty: bool,
+    prompt_fn=prompts.prompt_agent_models_via_tty,
+) -> list[tuple[str, str]]:
+    if agent_models is not None:
+        return agent_models
+    if not has_tty:
+        print(
+            "pr-review: no terminal to prompt for --model.\n"
+            f"  pass one, e.g. --model claude={DEFAULT_MODEL}",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    return prompt_fn(reviewers_available(), lambda a: get_reviewer(a).default_model)
+
+
 def resolve_review_types(
     type_names: list[str] | None,
     *,
@@ -142,7 +158,12 @@ def resolve_review_types(
 
 def main(argv: list[str] | None = None) -> int:
     cfg = config_from_args(sys.argv[1:] if argv is None else argv)
-    cfg.type_names = resolve_review_types(cfg.type_names, has_tty=output.tty_available())
+    cfg.agent_models = resolve_agent_models(
+        cfg.agent_models, has_tty=output.tty_available()
+    )
+    cfg.type_names = resolve_review_types(
+        cfg.type_names, has_tty=output.tty_available()
+    )
     jobs = build_jobs(cfg)  # validates agent/type names before any clone
 
     checkout = clone_pr(cfg.target.owner, cfg.target.repo, cfg.target.number)

@@ -1,13 +1,13 @@
 import pytest
 
-from pr_review.cli import build_jobs, config_from_args, resolve_review_types
+from pr_review.cli import build_jobs, config_from_args, resolve_agent_models, resolve_review_types
 from pr_review.target import Target
 
 
 def test_config_defaults():
     cfg = config_from_args(["org/repo#3"])
     assert cfg.target == Target("org", "repo", 3)
-    assert cfg.agent_models == [("claude", "claude-opus-4-8")]
+    assert cfg.agent_models is None
     assert cfg.type_names is None
     assert cfg.flags_by_agent == {}
     assert cfg.yes is False and cfg.no_post is False and cfg.keep is False
@@ -95,3 +95,28 @@ def test_resolve_review_types_errors_without_tty(capsys):
         resolve_review_types(None, has_tty=False, prompt_fn=lambda avail: ["x"])
     assert exc.value.code == 2
     assert "--review-type" in capsys.readouterr().err
+
+
+def test_resolve_agent_models_explicit_passthrough():
+    pairs = [("claude", "claude-opus-4-8")]
+    assert resolve_agent_models(pairs, has_tty=True, prompt_fn=lambda a, d: []) == pairs
+
+
+def test_resolve_agent_models_prompts_when_tty():
+    seen = {}
+
+    def fake_prompt(agents, default_model):
+        seen["agents"] = agents
+        seen["claude_default"] = default_model("claude")
+        return [("codex", "gpt-5")]
+
+    assert resolve_agent_models(None, has_tty=True, prompt_fn=fake_prompt) == [("codex", "gpt-5")]
+    assert "claude" in seen["agents"]
+    assert seen["claude_default"] == "claude-opus-4-8"
+
+
+def test_resolve_agent_models_errors_without_tty(capsys):
+    with pytest.raises(SystemExit) as exc:
+        resolve_agent_models(None, has_tty=False, prompt_fn=lambda a, d: [])
+    assert exc.value.code == 2
+    assert "--model" in capsys.readouterr().err
