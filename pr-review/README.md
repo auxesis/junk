@@ -8,10 +8,10 @@ into a single review, and prints it — prompting before it posts anything to th
 PR. Because every run works in its own clone, you can review multiple PRs at once
 without touching your working tree or colliding with another run.
 
-Today it ships one reviewer (**Claude**, headless) and one review type
-(**test-gap**: test-coverage gap analysis). The multi-LLM, multi-type, and
-collation machinery is already built and tested, so new backends and review types
-are additive — see [Developing](#developing).
+Today it ships one agent (**Claude**, headless) and two review types
+(**test-gap**: test-coverage gap analysis; **infracode**: infrastructure-as-code
+review). The multi-LLM, multi-type, and collation machinery is already built and
+tested, so new agents and review types are additive — see [Developing](#developing).
 
 ---
 
@@ -60,21 +60,24 @@ pr-review https://github.com/org/repo/pull/214
 pr-review org/repo#214
 ```
 
-`test-gap` is the default review type, so a plain `pr-review <target>` runs the
-test-coverage gap review. Run `pr-review help` (or `pr-review --help`) to see all
-options.
+Run `pr-review help` (or `pr-review --help`) to see all options.
 
-### Selecting agents and types
+### Selecting agents and review types
 
-`--agent` and `--type` accept comma-separated lists; the run is their
-cross-product. Both default to a single value, so a plain run is one job.
+`--agent` and `--review-type` accept comma-separated lists; the run is their
+cross-product (each agent runs each review type).
 
 ```bash
-pr-review --type test-gap --agent claude org/repo#214
+pr-review --agent claude --review-type test-gap,infracode org/repo#214
 ```
 
-(Only `claude` and `test-gap` are registered today; an unknown name fails fast,
-before any clone, and lists what is available.)
+Registered agents: `claude`. Registered review types: `test-gap` (test-coverage
+gaps), `infracode` (infrastructure-as-code). An unknown name fails fast, before
+any clone, and lists what is available.
+
+If you omit `--review-type`, pr-review prompts you to pick one or more from a
+menu. With no interactive terminal (CI, piped stdin) it errors instead — pass
+`--review-type` explicitly there.
 
 ### Posting behaviour
 
@@ -97,7 +100,7 @@ By default `pr-review` **reviews and prints, then asks** before posting to the P
 | `--claude-flags="<flags>"` | Extra flags appended to the `claude` invocation | empty |
 | `--keep-clone` | Keep the temp clone on exit (prints its path) instead of deleting it | off |
 
-(`--agent` and `--type` are described above. Use the `--claude-flags="..."`
+(`--agent` and `--review-type` are described above. Use the `--claude-flags="..."`
 form with the `=` so the leading dashes aren't read as `pr-review` options.)
 
 ```bash
@@ -187,24 +190,27 @@ just works.
 
 ### Extending: add a review type
 
-Same pattern in `review_types/`:
+Same pattern in `review_types/` (`test_gap.py` and `infracode.py` are worked
+examples). A review type's `instructions()` must include the JSON-payload output
+contract (write the payload file, don't post, anchor comments at `path:line`,
+8-comment cap) — copy the `## Output (REQUIRED)` section from an existing type:
 
 ```python
-# src/pr_review/review_types/infracode.py
+# src/pr_review/review_types/security.py
 from pr_review.review_types.base import ReviewType, register
 
 
-class InfracodeType(ReviewType):
-    name = "infracode"
+class SecurityType(ReviewType):
+    name = "security"
 
     def instructions(self) -> str:
-        return "..."   # the instruction block handed to a reviewer
+        return "..."   # domain guidance + the shared output contract
 
 
-register(InfracodeType())
+register(SecurityType())
 ```
 
-Import it in `src/pr_review/review_types/__init__.py`, and `--type infracode`
+Import it in `src/pr_review/review_types/__init__.py`, and `--review-type security`
 becomes available.
 
 ### Collation

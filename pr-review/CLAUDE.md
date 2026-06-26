@@ -25,7 +25,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 9 files, one per `src/pr_review/` module (43 tests total):
+`tests/` holds 10 files, one per `src/pr_review/` module (60 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -34,9 +34,10 @@ fake, not the real subprocess.
   path and the `comments`-default; its validation rejections (invalid JSON,
   missing/non-string body, comment missing `path`, non-string body, non-integer
   `line`); and `cap_comments` splitting at the 8-comment cap.
-- **test_review_types.py** — the `ReviewType` registry: `test-gap` is registered,
-  `get_review_type` returns the named instance, its instructions contain the
-  required schema/cap markers, and an unknown name raises `ValueError`.
+- **test_review_types.py** — the `ReviewType` registry: `test-gap` and `infracode`
+  are registered, `get_review_type` returns the named instance, each type's
+  instructions carry the required output-contract/cap markers, and an unknown
+  name raises `ValueError`.
 - **test_reviewers.py** — the `Reviewer` registry (`claude` registered, unknown
   raises) and the pure `ClaudeReviewer.build_prompt` (carries run context + the
   type's instructions). `review()` shells out to `claude` and is not unit-tested.
@@ -54,8 +55,13 @@ fake, not the real subprocess.
 - **test_orchestrator.py** — `run_reviews` with in-process `FakeReviewer`/`FakeType`
   (no subprocess): single-job passthrough, two-job merge, and failure attribution
   (a raising reviewer surfaces a `RuntimeError` naming the `reviewer/type`).
-- **test_cli.py** — `config_from_args` option parsing (`--agent`/`--type` lists,
-  `--model`, `--post-without-prompting`, `--print-only`, `--keep-clone`,
+- **test_cli.py** — `config_from_args` option parsing (`--agent`/`--review-type`
+  lists, `--model`, `--post-without-prompting`, `--print-only`, `--keep-clone`,
   `--claude-flags=` shlex-split), the `help` word aliasing to `--help`, that
-  `--help` advertises each option's default, and `build_jobs` (agent × type
-  cross-product; unknown name raises).
+  `--help` advertises each option's default, `resolve_review_types` (explicit
+  passthrough / prompt on a TTY / exit-2 error without one), and `build_jobs`
+  (agent × type cross-product, incl. multi-type; unknown name raises).
+- **test_prompts.py** — `choose_review_types`: selection by number, by name, and
+  mixed; empty input uses the default; de-dup preserving order; rejects unknown
+  names and out-of-range numbers; renders a numbered menu. (The `/dev/tty`
+  wrapper `prompt_review_types_via_tty` is the thin shell, verified manually.)
