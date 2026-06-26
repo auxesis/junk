@@ -25,7 +25,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 11 files, one per `src/pr_review/` module (80 tests total):
+`tests/` holds 12 files, one per `src/pr_review/` module (95 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -39,10 +39,10 @@ fake, not the real subprocess.
   instructions carry the required output-contract/cap markers, and an unknown
   name raises `ValueError`.
 - **test_reviewers.py** — the `Reviewer` registry (`claude` and `codex` registered,
-  each with a `default_model`, unknown raises), the shared `build_review_prompt`
-  (carries run context + the type's instructions), and `_review_env` (trusts the
-  clone's `mise.toml` via `MISE_TRUSTED_CONFIG_PATHS`). The `review()` methods
-  shell out to `claude`/`codex` and are not unit-tested.
+  each with a `default_model`, unknown raises), `Reviewer.command` argv for both
+  agents (codex omits `--model` when empty), the shared `build_review_prompt`, and
+  `_review_env` (trusts the clone's `mise.toml`). The `review()` calls shell out to
+  `claude`/`codex` and are not unit-tested.
 - **test_collate.py** — `DeterministicMergeCollator`: single-job identity
   passthrough, empty-jobs placeholder, two-job merge (sorted provenance headers +
   concatenated comments), and cap re-application with an overflow section across
@@ -65,7 +65,7 @@ fake, not the real subprocess.
   `--claude-flags`/`--codex-flags`, the booleans), `build_jobs` (the
   `(agent,model) × review_type` matrix with per-agent flags), `resolve_agent_models`
   and `resolve_review_types` (explicit / prompt on TTY / exit-2 without one), and
-  the `help` word aliasing to `--help`.
+  the `help` word aliasing to `--help`, plus --synthesis-model / --no-synthesis parsing and build_collator (synthesis vs deterministic, judge command).
 - **test_prompts.py** — `select_from_menu` (numbers / names / empty-default /
   dedupe / invalid), `choose_review_types` (wraps it), and `choose_agent_models`
   (pick agents, then per-agent models with defaults). The `/dev/tty` wrappers are
@@ -74,3 +74,8 @@ fake, not the real subprocess.
   prefers `/dev/tty` but falls back to stdin/stderr when `/dev/tty` can't be
   opened (screen / detached sessions), and reports no-terminal only when neither
   works.
+- **test_synthesis.py** — `serialize_findings` (sources labelled `<agent> (<model>)
+  [<type>]` with counts), `build_synthesis_prompt` (context + findings + dedupe/
+  verify/stats instructions), and `LLMSynthesisCollator.collate` with an injected
+  fake runner (single-job passthrough, judge runs for >1 job, and fall-back to the
+  deterministic merge when the judge raises).

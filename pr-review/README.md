@@ -90,6 +90,22 @@ pr-review <target> --review-type test-gap,infracode \
   (CI, piped stdin) the tool errors and asks you to pass the flag.
 - `--claude-flags="…"` / `--codex-flags="…"` pass extra flags to that agent's CLI.
 
+### Collating multiple models
+
+When a run produces more than one job, pr-review runs a **synthesis pass** before
+posting: a judge LLM is handed every finding (tagged by model and review-type)
+plus the diff, and it de-dupes findings that overlap across models, verifies each
+against the code (dropping ones it can't substantiate), and emits one review —
+each comment labelled by confidence (`[2 models: claude, codex]` /
+`[single-source: codex]`), with a `## Review stats` section showing per-model
+counts and cross-model overlap.
+
+- `--synthesis-model AGENT[=MODEL]` — the judge (default `claude=claude-opus-4-8`;
+  e.g. `--synthesis-model codex=gpt-5`).
+- `--no-synthesis` — skip it and raw-merge the jobs (today's behaviour).
+- A single job skips synthesis; if the judge run fails, pr-review falls back to
+  the raw merge so you always get a review.
+
 ### Posting behaviour
 
 By default `pr-review` **reviews and prints, then asks** before posting to the PR:
@@ -107,6 +123,8 @@ By default `pr-review` **reviews and prints, then asks** before posting to the P
 |--------|--------|---------|
 | `--model agent[=models]` | Per-agent models (repeatable) | `claude=claude-opus-4-8` |
 | `--codex-flags="<flags>"` | Extra flags appended to the `codex` invocation | empty |
+| `--synthesis-model agent[=model]` | Judge that de-dupes/verifies findings across jobs | `claude=claude-opus-4-8` |
+| `--no-synthesis` | Skip synthesis; raw-merge multi-job results | off |
 | `--post-without-prompting` | Post without prompting | off |
 | `--print-only` | Review and print only; never post | off |
 | `--claude-flags="<flags>"` | Extra flags appended to the `claude` invocation | empty |
