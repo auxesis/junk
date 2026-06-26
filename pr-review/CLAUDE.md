@@ -25,7 +25,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 11 files, one per `src/pr_review/` module (78 tests total):
+`tests/` holds 11 files, one per `src/pr_review/` module (80 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -39,9 +39,10 @@ fake, not the real subprocess.
   instructions carry the required output-contract/cap markers, and an unknown
   name raises `ValueError`.
 - **test_reviewers.py** — the `Reviewer` registry (`claude` and `codex` registered,
-  each with a `default_model`, unknown raises) and the shared
-  `build_review_prompt` (carries run context + the type's instructions). The
-  `review()` methods shell out to `claude`/`codex` and are not unit-tested.
+  each with a `default_model`, unknown raises), the shared `build_review_prompt`
+  (carries run context + the type's instructions), and `_review_env` (trusts the
+  clone's `mise.toml` via `MISE_TRUSTED_CONFIG_PATHS`). The `review()` methods
+  shell out to `claude`/`codex` and are not unit-tested.
 - **test_collate.py** — `DeterministicMergeCollator`: single-job identity
   passthrough, empty-jobs placeholder, two-job merge (sorted provenance headers +
   concatenated comments), and cap re-application with an overflow section across

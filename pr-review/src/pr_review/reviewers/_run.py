@@ -31,6 +31,21 @@ def build_review_prompt(
     return context + "\n" + review_type.instructions()
 
 
+def _review_env(workdir: str) -> dict[str, str]:
+    """Environment for the reviewer subprocess.
+
+    Trust any `mise.toml` in the fresh clone so the agent's `mise` commands run.
+    A freshly cloned repo's config is never in mise's trust store, so without this
+    every `mise exec` the agent runs fails with "not trusted". We grant trust only
+    for this clone (no global trust-store mutation); the agent already runs with
+    full access to the clone, so this is no extra exposure.
+    """
+    env = dict(os.environ)
+    existing = env.get("MISE_TRUSTED_CONFIG_PATHS")
+    env["MISE_TRUSTED_CONFIG_PATHS"] = f"{workdir}:{existing}" if existing else workdir
+    return env
+
+
 def run_cli_reviewer(
     cmd_prefix: Sequence[str],
     *,
@@ -48,7 +63,10 @@ def run_cli_reviewer(
             owner=owner, repo=repo, number=number, base=base,
             payload_path=payload_path, review_type=review_type,
         )
-        subprocess.run(list(cmd_prefix), cwd=workdir, input=prompt, text=True, check=True)
+        subprocess.run(
+            list(cmd_prefix), cwd=workdir, input=prompt, text=True, check=True,
+            env=_review_env(workdir),
+        )
         with open(payload_path, encoding="utf-8") as f:
             raw = f.read()
         if not raw.strip():

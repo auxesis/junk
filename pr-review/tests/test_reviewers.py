@@ -1,7 +1,7 @@
 import pytest
 
 from pr_review.reviewers import available, get_reviewer
-from pr_review.reviewers._run import build_review_prompt
+from pr_review.reviewers._run import _review_env, build_review_prompt
 from pr_review.review_types import get_review_type
 
 
@@ -39,3 +39,15 @@ def test_codex_is_registered():
 def test_codex_default_model():
     # Empty = defer to codex's own configured default model.
     assert get_reviewer("codex").default_model == ""
+
+
+def test_review_env_trusts_the_clone_for_mise(monkeypatch):
+    monkeypatch.delenv("MISE_TRUSTED_CONFIG_PATHS", raising=False)
+    env = _review_env("/tmp/clone")
+    assert env["MISE_TRUSTED_CONFIG_PATHS"] == "/tmp/clone"
+
+
+def test_review_env_prepends_to_existing_trusted_paths(monkeypatch):
+    monkeypatch.setenv("MISE_TRUSTED_CONFIG_PATHS", "/already/trusted")
+    env = _review_env("/tmp/clone")
+    assert env["MISE_TRUSTED_CONFIG_PATHS"] == "/tmp/clone:/already/trusted"
