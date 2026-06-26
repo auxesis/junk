@@ -1,6 +1,6 @@
 import pytest
 
-from pr_review.prompts import choose_review_types
+from pr_review.prompts import choose_agent_models, choose_review_types, select_from_menu
 
 AVAIL = ["infracode", "test-gap"]
 
@@ -56,9 +56,6 @@ def test_choose_writes_numbered_menu():
     choose_review_types(AVAIL, _reader("1\n"), w)
     text = "".join(out)
     assert "1) infracode" in text and "2) test-gap" in text
-
-
-from pr_review.prompts import choose_agent_models, select_from_menu
 
 
 def _scripted(lines):
