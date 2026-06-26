@@ -11,18 +11,17 @@ from pr_review.orchestrator import ReviewJob, run_reviews
 from pr_review.reviewers import available as reviewers_available, get_reviewer
 from pr_review.review_types import available as types_available, get_review_type
 from pr_review.target import Target, parse_target
-from pr_review import output
+from pr_review import output, prompts
 
 DEFAULT_MODEL = "claude-opus-4-8"
 DEFAULT_AGENT = "claude"
-DEFAULT_TYPE = "test-gap"
 
 
 @dataclass
 class RunConfig:
     target: Target
     agent_names: list[str]
-    type_names: list[str]
+    type_names: list[str] | None  # None = --review-type omitted (resolve later)
     model: str
     extra_flags: list[str]
     yes: bool
@@ -48,10 +47,10 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     p.add_argument(
-        "--type", dest="types", default=DEFAULT_TYPE,
+        "--review-type", dest="types", default=None,
         help=(
             "comma-separated review types "
-            f"(available: {', '.join(types_available())}, default: {DEFAULT_TYPE})"
+            f"(available: {', '.join(types_available())}; omit to choose interactively)"
         ),
     )
     p.add_argument(
@@ -85,7 +84,7 @@ def config_from_args(argv: list[str]) -> RunConfig:
     return RunConfig(
         target=parse_target(args.target),
         agent_names=_split(args.agent),
-        type_names=_split(args.types),
+        type_names=_split(args.types) if args.types is not None else None,
         model=args.model,
         extra_flags=shlex.split(args.claude_flags),
         yes=args.post_without_prompting,
@@ -94,16 +93,42 @@ def config_from_args(argv: list[str]) -> RunConfig:
     )
 
 
+def resolve_review_types(
+    type_names: list[str] | None,
+    *,
+    has_tty: bool,
+    prompt_fn=prompts.prompt_review_types_via_tty,
+) -> list[str]:
+    """Return the review types to run, prompting interactively if unspecified.
+
+    If `--review-type` was given, use it. Otherwise prompt on an interactive
+    terminal; with no terminal, error (exit 2) rather than guessing.
+    """
+    if type_names is not None:
+        return type_names
+    if not has_tty:
+        print(
+            "pr-review: no terminal to prompt for --review-type.\n"
+            f"  pass one, e.g. --review-type {','.join(types_available())}",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    return prompt_fn(types_available())
+
+
 def build_jobs(cfg: RunConfig) -> list[ReviewJob]:
     return [
         ReviewJob(get_reviewer(a), get_review_type(t))
         for a in cfg.agent_names
-        for t in cfg.type_names
+        for t in cfg.type_names or []
     ]
 
 
 def main(argv: list[str] | None = None) -> int:
     cfg = config_from_args(sys.argv[1:] if argv is None else argv)
+    cfg.type_names = resolve_review_types(
+        cfg.type_names, has_tty=output.tty_available()
+    )
     jobs = build_jobs(cfg)  # validates agent/type names before any clone
 
     checkout = clone_pr(cfg.target.owner, cfg.target.repo, cfg.target.number)
