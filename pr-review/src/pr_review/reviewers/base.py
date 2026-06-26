@@ -11,6 +11,7 @@ _REGISTRY: dict[str, "Reviewer"] = {}
 
 class Reviewer(ABC):
     name: str
+    default_model: str
 
     @abstractmethod
     def review(
