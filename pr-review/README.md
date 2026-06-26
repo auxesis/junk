@@ -8,7 +8,7 @@ into a single review, and prints it — prompting before it posts anything to th
 PR. Because every run works in its own clone, you can review multiple PRs at once
 without touching your working tree or colliding with another run.
 
-Today it ships one agent (**Claude**, headless) and two review types
+Today it ships two agents (**Claude** and **Codex**, headless) and two review types
 (**test-gap**: test-coverage gap analysis; **infracode**: infrastructure-as-code
 review). The multi-LLM, multi-type, and collation machinery is already built and
 tested, so new agents and review types are additive — see [Developing](#developing).
@@ -62,22 +62,27 @@ pr-review org/repo#214
 
 Run `pr-review help` (or `pr-review --help`) to see all options.
 
-### Selecting agents and review types
+### Selecting agents, models, and review types
 
-`--agent` and `--review-type` accept comma-separated lists; the run is their
-cross-product (each agent runs each review type).
+A run is the product of **review types × (agent, model) pairs**. Assign models to
+agents with the repeatable `--model agent[=models]` flag; `--review-type` is a
+comma-separated list.
 
 ```bash
-pr-review --agent claude --review-type test-gap,infracode org/repo#214
+pr-review <target> --review-type test-gap,infracode \
+  --model claude=claude-opus-4-8,claude-fable-5 \
+  --model codex=gpt-5,gpt-5.5
 ```
 
-Registered agents: `claude`. Registered review types: `test-gap` (test-coverage
-gaps), `infracode` (infrastructure-as-code). An unknown name fails fast, before
-any clone, and lists what is available.
-
-If you omit `--review-type`, pr-review prompts you to pick one or more from a
-menu. With no interactive terminal (CI, piped stdin) it errors instead — pass
-`--review-type` explicitly there.
+- `--model claude` (no `=`) uses claude's default model (`claude-opus-4-8`);
+  `codex`'s default is `gpt-5-codex`.
+- Model ids are passed **verbatim** to the agent's CLI — give real ids
+  (`claude-opus-4-8`, not `opus-4.8`).
+- Registered agents: `claude`, `codex`. Registered review types: `test-gap`,
+  `infracode`. Unknown names fail fast, before any clone.
+- Omit `--model` (or `--review-type`) to choose interactively; with no terminal
+  (CI, piped stdin) the tool errors and asks you to pass the flag.
+- `--claude-flags="…"` / `--codex-flags="…"` pass extra flags to that agent's CLI.
 
 ### Posting behaviour
 
@@ -94,20 +99,21 @@ By default `pr-review` **reviews and prints, then asks** before posting to the P
 
 | Option | Effect | Default |
 |--------|--------|---------|
-| `--model <id>` | Claude model id | `claude-opus-4-8` |
+| `--model agent[=models]` | Per-agent models (repeatable) | `claude=claude-opus-4-8` |
+| `--codex-flags="<flags>"` | Extra flags appended to the `codex` invocation | empty |
 | `--post-without-prompting` | Post without prompting | off |
 | `--print-only` | Review and print only; never post | off |
 | `--claude-flags="<flags>"` | Extra flags appended to the `claude` invocation | empty |
 | `--keep-clone` | Keep the temp clone on exit (prints its path) instead of deleting it | off |
 
-(`--agent` and `--review-type` are described above. Use the `--claude-flags="..."`
+(`--model` and `--review-type` are described above. Use the `--claude-flags="..."`
 form with the `=` so the leading dashes aren't read as `pr-review` options.)
 
 ```bash
 pr-review --print-only org/repo#214                   # dry run, prints the review only
 pr-review --post-without-prompting org/repo#214       # non-interactive, auto-post
 pr-review --keep-clone org/repo#214                   # leave the clone behind for inspection
-pr-review --model claude-opus-4-8 --claude-flags="--debug" org/repo#214
+pr-review --model claude=claude-opus-4-8 --claude-flags="--debug" org/repo#214
 ```
 
 ### What happens during a run
@@ -185,7 +191,7 @@ register(CodexReviewer())
 
 Then import it for its registration side-effect in
 `src/pr_review/reviewers/__init__.py` (alongside the existing `claude` import).
-After that, `--agent codex` (and `--agent claude,codex`, which runs both)
+After that, `--model codex` (and `--model claude --model codex`, which runs both)
 just works.
 
 ### Extending: add a review type

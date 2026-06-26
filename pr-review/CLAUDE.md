@@ -25,7 +25,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 10 files, one per `src/pr_review/` module (60 tests total):
+`tests/` holds 10 files, one per `src/pr_review/` module (70 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -38,9 +38,10 @@ fake, not the real subprocess.
   are registered, `get_review_type` returns the named instance, each type's
   instructions carry the required output-contract/cap markers, and an unknown
   name raises `ValueError`.
-- **test_reviewers.py** — the `Reviewer` registry (`claude` registered, unknown
-  raises) and the pure `ClaudeReviewer.build_prompt` (carries run context + the
-  type's instructions). `review()` shells out to `claude` and is not unit-tested.
+- **test_reviewers.py** — the `Reviewer` registry (`claude` and `codex` registered,
+  each with a `default_model`, unknown raises) and the shared
+  `build_review_prompt` (carries run context + the type's instructions). The
+  `review()` methods shell out to `claude`/`codex` and are not unit-tested.
 - **test_collate.py** — `DeterministicMergeCollator`: single-job identity
   passthrough, empty-jobs placeholder, two-job merge (sorted provenance headers +
   concatenated comments), and cap re-application with an overflow section across
@@ -55,13 +56,13 @@ fake, not the real subprocess.
 - **test_orchestrator.py** — `run_reviews` with in-process `FakeReviewer`/`FakeType`
   (no subprocess): single-job passthrough, two-job merge, and failure attribution
   (a raising reviewer surfaces a `RuntimeError` naming the `reviewer/type`).
-- **test_cli.py** — `config_from_args` option parsing (`--agent`/`--review-type`
-  lists, `--model`, `--post-without-prompting`, `--print-only`, `--keep-clone`,
-  `--claude-flags=` shlex-split), the `help` word aliasing to `--help`, that
-  `--help` advertises each option's default, `resolve_review_types` (explicit
-  passthrough / prompt on a TTY / exit-2 error without one), and `build_jobs`
-  (agent × type cross-product, incl. multi-type; unknown name raises).
-- **test_prompts.py** — `choose_review_types`: selection by number, by name, and
-  mixed; empty input uses the default; de-dup preserving order; rejects unknown
-  names and out-of-range numbers; renders a numbered menu. (The `/dev/tty`
-  wrapper `prompt_review_types_via_tty` is the thin shell, verified manually.)
+- **test_cli.py** — `config_from_args` option parsing (`--model agent[=models]`
+  repeatable → `(agent, model)` pairs, `--review-type` lists, per-agent
+  `--claude-flags`/`--codex-flags`, the booleans), `build_jobs` (the
+  `(agent,model) × review_type` matrix with per-agent flags), `resolve_agent_models`
+  and `resolve_review_types` (explicit / prompt on TTY / exit-2 without one), and
+  the `help` word aliasing to `--help`.
+- **test_prompts.py** — `select_from_menu` (numbers / names / empty-default /
+  dedupe / invalid), `choose_review_types` (wraps it), and `choose_agent_models`
+  (pick agents, then per-agent models with defaults). The `/dev/tty` wrappers are
+  the thin shells, verified manually.
