@@ -1,4 +1,4 @@
-"""Test-coverage gap review type (carried over verbatim from test-gap-review)."""
+"""Test-coverage gap review type."""
 from __future__ import annotations
 
 from pr_review.review_types.base import ReviewType, register
