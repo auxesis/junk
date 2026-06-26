@@ -52,7 +52,7 @@ def run_cli_reviewer(
         with open(payload_path, encoding="utf-8") as f:
             raw = f.read()
         if not raw.strip():
-            raise RuntimeError("reviewer produced an empty payload")
+            raise RuntimeError(f"{cmd_prefix[0]} produced an empty payload")
         return parse_payload(raw)
     finally:
         try:
