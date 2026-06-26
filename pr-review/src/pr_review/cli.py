@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import argparse
-import os
 import shlex
 import sys
-from collections.abc import Mapping
 from dataclasses import dataclass
 
 from pr_review.checkout import cleanup, clone_pr
@@ -39,7 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
         prog="pr-review",
         description="Review a GitHub PR in an isolated clone with one or more LLMs.",
     )
-    p.add_argument("target", help="PR URL or owner/repo#N")
+    p.add_argument("target", help="PR URL or owner/repo#N (or 'help' for this message)")
     p.add_argument(
         "--reviewer", default="claude",
         help=f"comma-separated reviewers (available: {', '.join(reviewers_available())})",
@@ -48,20 +46,43 @@ def build_parser() -> argparse.ArgumentParser:
         "--type", dest="types", default="test-gap",
         help=f"comma-separated review types (available: {', '.join(types_available())})",
     )
+    p.add_argument(
+        "--model", default=DEFAULT_MODEL,
+        help=f"Claude model id (default: {DEFAULT_MODEL})",
+    )
+    p.add_argument(
+        "--post-without-prompting", action="store_true",
+        help="Post the review without the confirmation prompt",
+    )
+    p.add_argument(
+        "--print-only", action="store_true",
+        help="Print the review only; never post and never prompt",
+    )
+    p.add_argument(
+        "--claude-flags", default="",
+        help='Extra flags appended to the claude invocation, e.g. --claude-flags="--debug"',
+    )
+    p.add_argument(
+        "--keep-clone", action="store_true",
+        help="Keep the temporary clone on exit instead of deleting it",
+    )
     return p
 
 
-def config_from_args(argv: list[str], env: Mapping[str, str]) -> RunConfig:
+def config_from_args(argv: list[str]) -> RunConfig:
+    # `pr-review help` behaves like `pr-review --help`.
+    if argv and argv[0] == "help":
+        argv = ["--help", *argv[1:]]
     args = build_parser().parse_args(argv)
     return RunConfig(
         target=parse_target(args.target),
         reviewer_names=_split(args.reviewer),
         type_names=_split(args.types),
-        model=env.get("MODEL", DEFAULT_MODEL),
-        extra_flags=shlex.split(env.get("CLAUDE_FLAGS", "")),
-        yes=env.get("YES") == "1",
-        no_post=env.get("NO_POST") == "1",
-        keep=env.get("KEEP") == "1",
+        model=args.model,
+        extra_flags=shlex.split(args.claude_flags),
+        yes=args.post_without_prompting,
+        no_post=args.print_only,
+        keep=args.keep_clone,
     )
 
 
@@ -74,7 +95,7 @@ def build_jobs(cfg: RunConfig) -> list[ReviewJob]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    cfg = config_from_args(sys.argv[1:] if argv is None else argv, os.environ)
+    cfg = config_from_args(sys.argv[1:] if argv is None else argv)
     jobs = build_jobs(cfg)  # validates reviewer/type names before any clone
 
     checkout = clone_pr(cfg.target.owner, cfg.target.repo, cfg.target.number)
