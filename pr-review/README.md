@@ -21,6 +21,7 @@ tested, so new agents and review types are additive — see [Developing](#develo
 - [`git`](https://git-scm.com/)
 - [`gh`](https://cli.github.com/) — authenticated (`gh auth status` must pass).
 - [`claude`](https://docs.claude.com/en/docs/claude-code) — the Claude Code CLI, on your `PATH`.
+- [`codex`](https://github.com/openai/codex) — the OpenAI Codex CLI, on your `PATH` (only needed to run a `--model codex` job).
 - `~/bin` on your `PATH` (the install step symlinks the commands there).
 
 ---
@@ -148,8 +149,8 @@ pr-review/
 │   ├── payload.py          # review payload model, JSON validation, comment cap
 │   ├── collate.py          # Collator + DeterministicMergeCollator
 │   ├── output.py           # posting-mode decision, render, gh-api post
-│   ├── reviewers/          # Reviewer ABC + registry; claude.py
-│   └── review_types/       # ReviewType ABC + registry; test_gap.py
+│   ├── reviewers/          # Reviewer ABC + registry; claude.py, codex.py
+│   └── review_types/       # ReviewType ABC + registry; test_gap.py, infracode.py
 ├── tests/                  # pytest suite
 └── docs/superpowers/       # design spec + implementation plan
 ```

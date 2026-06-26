@@ -16,8 +16,8 @@ accurate map of what is covered.
 
 ## Testing principle
 
-Pure logic is unit-tested directly. The three real side effects — `git clone`,
-the `claude` CLI review, and the `gh api` post — are never executed in the suite:
+Pure logic is unit-tested directly. The four real side effects — `git clone`,
+the `claude` CLI review, the `codex` CLI review, and the `gh api` post — are never executed in the suite:
 the shells around them are tested through injected fake runners, and the true
 end-to-end path (real PR → clone → claude → post) is verified only by a manual
 run. When you touch a side-effecting module, test its command construction with a
