@@ -29,3 +29,12 @@ def test_build_review_prompt_includes_context_and_instructions():
     assert "origin/main" in prompt
     assert "/tmp/p.json" in prompt
     assert "# Test Coverage Review" in prompt
+
+
+def test_codex_is_registered():
+    assert "codex" in available()
+    assert get_reviewer("codex").name == "codex"
+
+
+def test_codex_default_model():
+    assert get_reviewer("codex").default_model == "gpt-5-codex"
