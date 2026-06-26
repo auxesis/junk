@@ -18,33 +18,29 @@ class FakeReviewer:
         self.calls = []
 
     def review(self, *, workdir, base, owner, repo, number, review_type, model, extra_flags):
-        self.calls.append((review_type.name, workdir))
-        return Payload(body=f"{self.name}/{review_type.name}",
-                       comments=[Comment("f.py", 1, "g")])
+        self.calls.append({"type": review_type.name, "model": model, "flags": extra_flags})
+        return Payload(body=f"{self.name}/{review_type.name}", comments=[Comment("f.py", 1, "g")])
 
 
-def test_run_reviews_single_job_passthrough():
+def _run(jobs):
+    return run_reviews(jobs=jobs, workdir="/wd", base="main", owner="o", repo="r", number=1)
+
+
+def test_single_job_passthrough_and_per_job_args():
     r = FakeReviewer("claude")
-    out = run_reviews(
-        jobs=[ReviewJob(r, FakeType("test-gap"))],
-        workdir="/wd", base="main", owner="o", repo="r", number=1,
-        model="m", extra_flags=[],
-    )
+    out = _run([ReviewJob(r, FakeType("test-gap"), "m1", ["--x"])])
     assert out.body == "claude/test-gap"
-    assert r.calls == [("test-gap", "/wd")]
+    assert r.calls == [{"type": "test-gap", "model": "m1", "flags": ["--x"]}]
 
 
-def test_run_reviews_two_jobs_merge():
+def test_two_jobs_merge_label_includes_model():
     jobs = [
-        ReviewJob(FakeReviewer("claude"), FakeType("test-gap")),
-        ReviewJob(FakeReviewer("codex"), FakeType("test-gap")),
+        ReviewJob(FakeReviewer("claude"), FakeType("test-gap"), "m1", []),
+        ReviewJob(FakeReviewer("codex"), FakeType("test-gap"), "m2", []),
     ]
-    out = run_reviews(
-        jobs=jobs, workdir="/wd", base="main", owner="o", repo="r", number=1,
-        model="m", extra_flags=[],
-    )
-    assert "## test-gap — claude" in out.body
-    assert "## test-gap — codex" in out.body
+    out = _run(jobs)
+    assert "## test-gap — claude (m1)" in out.body
+    assert "## test-gap — codex (m2)" in out.body
     assert len(out.comments) == 2
 
 
@@ -56,9 +52,6 @@ class BoomReviewer:
 
 
 def test_run_reviews_attributes_failing_job():
-    jobs = [ReviewJob(BoomReviewer(), FakeType("test-gap"))]
-    with pytest.raises(RuntimeError, match="boom/test-gap"):
-        run_reviews(
-            jobs=jobs, workdir="/wd", base="main", owner="o", repo="r",
-            number=1, model="m", extra_flags=[],
-        )
+    jobs = [ReviewJob(BoomReviewer(), FakeType("test-gap"), "m1", [])]
+    with pytest.raises(RuntimeError, match=r"boom \(m1\)/test-gap"):
+        _run(jobs)

@@ -1,4 +1,4 @@
-"""Fan out (reviewer x review-type) jobs in parallel, then collate."""
+"""Fan out (agent, model) x review-type jobs in parallel, then collate."""
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
@@ -14,6 +14,8 @@ from pr_review.review_types.base import ReviewType
 class ReviewJob:
     reviewer: Reviewer
     review_type: ReviewType
+    model: str
+    extra_flags: list[str]
 
 
 def run_reviews(
@@ -24,24 +26,23 @@ def run_reviews(
     owner: str,
     repo: str,
     number: int,
-    model: str,
-    extra_flags: list[str],
     collator: Collator | None = None,
     max_workers: int | None = None,
 ) -> Payload:
     collator = collator or DeterministicMergeCollator()
 
     def _one(job: ReviewJob) -> Job:
+        label = f"{job.reviewer.name} ({job.model})"
         try:
             payload = job.reviewer.review(
                 workdir=workdir, base=base, owner=owner, repo=repo, number=number,
-                review_type=job.review_type, model=model, extra_flags=extra_flags,
+                review_type=job.review_type, model=job.model, extra_flags=job.extra_flags,
             )
         except Exception as e:
             raise RuntimeError(
-                f"{job.reviewer.name}/{job.review_type.name} review failed: {e}"
+                f"{label}/{job.review_type.name} review failed: {e}"
             ) from e
-        return (job.reviewer.name, job.review_type.name, payload)
+        return (label, job.review_type.name, payload)
 
     with ThreadPoolExecutor(max_workers=max_workers or len(jobs) or 1) as ex:
         results = list(ex.map(_one, jobs))

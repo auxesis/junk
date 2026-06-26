@@ -118,7 +118,7 @@ def resolve_review_types(
 
 def build_jobs(cfg: RunConfig) -> list[ReviewJob]:
     return [
-        ReviewJob(get_reviewer(a), get_review_type(t))
+        ReviewJob(get_reviewer(a), get_review_type(t), cfg.model, cfg.extra_flags)
         for a in cfg.agent_names
         for t in cfg.type_names or []
     ]
@@ -141,7 +141,6 @@ def main(argv: list[str] | None = None) -> int:
         payload = run_reviews(
             jobs=jobs, workdir=checkout.workdir, base=checkout.base,
             owner=cfg.target.owner, repo=cfg.target.repo, number=cfg.target.number,
-            model=cfg.model, extra_flags=cfg.extra_flags,
         )
     finally:
         if cfg.keep:
