@@ -7,7 +7,7 @@ from pr_review.target import Target
 def test_config_defaults():
     cfg = config_from_args(["org/repo#3"])
     assert cfg.target == Target("org", "repo", 3)
-    assert cfg.reviewer_names == ["claude"]
+    assert cfg.agent_names == ["claude"]
     assert cfg.type_names == ["test-gap"]
     assert cfg.model == "claude-opus-4-8"
     assert cfg.extra_flags == []
@@ -16,7 +16,7 @@ def test_config_defaults():
 
 def test_config_reads_options():
     cfg = config_from_args([
-        "--reviewer", "claude,codex",
+        "--agent", "claude,codex",
         "--type", "test-gap",
         "--model", "m",
         "--post-without-prompting",
@@ -24,7 +24,7 @@ def test_config_reads_options():
         "--claude-flags=--foo --bar",
         "org/repo#9",
     ])
-    assert cfg.reviewer_names == ["claude", "codex"]
+    assert cfg.agent_names == ["claude", "codex"]
     assert cfg.model == "m"
     assert cfg.yes is True and cfg.keep is True
     assert cfg.extra_flags == ["--foo", "--bar"]
@@ -42,8 +42,17 @@ def test_help_word_aliases_to_help_flag(capsys):
     assert "usage: pr-review" in capsys.readouterr().out
 
 
+def test_help_shows_default_values(capsys):
+    with pytest.raises(SystemExit):
+        config_from_args(["--help"])
+    out = capsys.readouterr().out
+    # every option carrying a default advertises it, and the model default is visible
+    assert out.count("default:") >= 6
+    assert "claude-opus-4-8" in out
+
+
 def test_build_jobs_cross_product():
-    cfg = config_from_args(["--reviewer", "claude", "--type", "test-gap", "org/repo#1"])
+    cfg = config_from_args(["--agent", "claude", "--type", "test-gap", "org/repo#1"])
     jobs = build_jobs(cfg)
     assert len(jobs) == 1
     assert jobs[0].reviewer.name == "claude"
@@ -51,6 +60,6 @@ def test_build_jobs_cross_product():
 
 
 def test_build_jobs_unknown_name_raises():
-    cfg = config_from_args(["--reviewer", "ghost", "org/repo#1"])
+    cfg = config_from_args(["--agent", "ghost", "org/repo#1"])
     with pytest.raises(ValueError):
         build_jobs(cfg)

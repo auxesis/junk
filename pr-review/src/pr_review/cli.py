@@ -14,12 +14,14 @@ from pr_review.target import Target, parse_target
 from pr_review import output
 
 DEFAULT_MODEL = "claude-opus-4-8"
+DEFAULT_AGENT = "claude"
+DEFAULT_TYPE = "test-gap"
 
 
 @dataclass
 class RunConfig:
     target: Target
-    reviewer_names: list[str]
+    agent_names: list[str]
     type_names: list[str]
     model: str
     extra_flags: list[str]
@@ -39,12 +41,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("target", help="PR URL or owner/repo#N (or 'help' for this message)")
     p.add_argument(
-        "--reviewer", default="claude",
-        help=f"comma-separated reviewers (available: {', '.join(reviewers_available())})",
+        "--agent", default=DEFAULT_AGENT,
+        help=(
+            "comma-separated agents "
+            f"(available: {', '.join(reviewers_available())}, default: {DEFAULT_AGENT})"
+        ),
     )
     p.add_argument(
-        "--type", dest="types", default="test-gap",
-        help=f"comma-separated review types (available: {', '.join(types_available())})",
+        "--type", dest="types", default=DEFAULT_TYPE,
+        help=(
+            "comma-separated review types "
+            f"(available: {', '.join(types_available())}, default: {DEFAULT_TYPE})"
+        ),
     )
     p.add_argument(
         "--model", default=DEFAULT_MODEL,
@@ -52,19 +60,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--post-without-prompting", action="store_true",
-        help="Post the review without the confirmation prompt",
+        help="Post the review without the confirmation prompt (default: false)",
     )
     p.add_argument(
         "--print-only", action="store_true",
-        help="Print the review only; never post and never prompt",
+        help="Print the review only; never post and never prompt (default: false)",
     )
     p.add_argument(
         "--claude-flags", default="",
-        help='Extra flags appended to the claude invocation, e.g. --claude-flags="--debug"',
+        help='Extra flags appended to the claude invocation, e.g. --claude-flags="--debug" (default: "")',
     )
     p.add_argument(
         "--keep-clone", action="store_true",
-        help="Keep the temporary clone on exit instead of deleting it",
+        help="Keep the temporary clone on exit instead of deleting it (default: false)",
     )
     return p
 
@@ -76,7 +84,7 @@ def config_from_args(argv: list[str]) -> RunConfig:
     args = build_parser().parse_args(argv)
     return RunConfig(
         target=parse_target(args.target),
-        reviewer_names=_split(args.reviewer),
+        agent_names=_split(args.agent),
         type_names=_split(args.types),
         model=args.model,
         extra_flags=shlex.split(args.claude_flags),
@@ -88,15 +96,15 @@ def config_from_args(argv: list[str]) -> RunConfig:
 
 def build_jobs(cfg: RunConfig) -> list[ReviewJob]:
     return [
-        ReviewJob(get_reviewer(r), get_review_type(t))
-        for r in cfg.reviewer_names
+        ReviewJob(get_reviewer(a), get_review_type(t))
+        for a in cfg.agent_names
         for t in cfg.type_names
     ]
 
 
 def main(argv: list[str] | None = None) -> int:
     cfg = config_from_args(sys.argv[1:] if argv is None else argv)
-    jobs = build_jobs(cfg)  # validates reviewer/type names before any clone
+    jobs = build_jobs(cfg)  # validates agent/type names before any clone
 
     checkout = clone_pr(cfg.target.owner, cfg.target.repo, cfg.target.number)
     print(

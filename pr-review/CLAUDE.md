@@ -54,7 +54,8 @@ fake, not the real subprocess.
 - **test_orchestrator.py** — `run_reviews` with in-process `FakeReviewer`/`FakeType`
   (no subprocess): single-job passthrough, two-job merge, and failure attribution
   (a raising reviewer surfaces a `RuntimeError` naming the `reviewer/type`).
-- **test_cli.py** — `config_from_args` option parsing (`--reviewer`/`--type`
-  lists, `--model`, `--post-without-prompting`, `--print-only`, `--keep-clone`,
-  `--claude-flags=` shlex-split), the `help` word aliasing to `--help`, and
-  `build_jobs` (reviewer × type cross-product; unknown name raises).
+- **test_cli.py** — `config_from_args` option parsing (`--agent`/`--type` lists,
+  `--model`, `--post-without-prompting`, `--print-only`, `--keep-clone`,
+  `--claude-flags=` shlex-split), the `help` word aliasing to `--help`, that
+  `--help` advertises each option's default, and `build_jobs` (agent × type
+  cross-product; unknown name raises).

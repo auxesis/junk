@@ -64,13 +64,13 @@ pr-review org/repo#214
 test-coverage gap review. Run `pr-review help` (or `pr-review --help`) to see all
 options.
 
-### Selecting reviewers and types
+### Selecting agents and types
 
-`--reviewer` and `--type` accept comma-separated lists; the run is their
+`--agent` and `--type` accept comma-separated lists; the run is their
 cross-product. Both default to a single value, so a plain run is one job.
 
 ```bash
-pr-review --type test-gap --reviewer claude org/repo#214
+pr-review --type test-gap --agent claude org/repo#214
 ```
 
 (Only `claude` and `test-gap` are registered today; an unknown name fails fast,
@@ -97,7 +97,7 @@ By default `pr-review` **reviews and prints, then asks** before posting to the P
 | `--claude-flags="<flags>"` | Extra flags appended to the `claude` invocation | empty |
 | `--keep-clone` | Keep the temp clone on exit (prints its path) instead of deleting it | off |
 
-(`--reviewer` and `--type` are described above. Use the `--claude-flags="..."`
+(`--agent` and `--type` are described above. Use the `--claude-flags="..."`
 form with the `=` so the leading dashes aren't read as `pr-review` options.)
 
 ```bash
@@ -182,7 +182,7 @@ register(CodexReviewer())
 
 Then import it for its registration side-effect in
 `src/pr_review/reviewers/__init__.py` (alongside the existing `claude` import).
-After that, `--reviewer codex` (and `--reviewer claude,codex`, which runs both)
+After that, `--agent codex` (and `--agent claude,codex`, which runs both)
 just works.
 
 ### Extending: add a review type
