@@ -1,7 +1,12 @@
 """LLM synthesis collation: one judge pass de-dupes and verifies findings."""
 from __future__ import annotations
 
-from pr_review.collate import Job
+import sys
+from collections.abc import Callable
+
+from pr_review.collate import Collator, DeterministicMergeCollator, Job
+from pr_review.payload import Payload
+from pr_review.reviewers._run import run_cli_payload
 
 _INSTRUCTIONS = r"""# Synthesis Review
 
@@ -84,3 +89,46 @@ def build_synthesis_prompt(
         f"- Payload file to write: {payload_path}\n"
     )
     return f"{context}\n{_INSTRUCTIONS}\n## Findings to consolidate\n\n{findings}\n"
+
+
+class LLMSynthesisCollator(Collator):
+    def __init__(
+        self,
+        *,
+        command: list[str],
+        workdir: str,
+        owner: str,
+        repo: str,
+        number: int,
+        base: str,
+        runner: Callable[..., Payload] = run_cli_payload,
+    ):
+        self._command = command
+        self._workdir = workdir
+        self._owner = owner
+        self._repo = repo
+        self._number = number
+        self._base = base
+        self._runner = runner
+
+    def collate(self, jobs: list[Job]) -> Payload:
+        if len(jobs) <= 1:
+            return DeterministicMergeCollator().collate(jobs)
+
+        findings = serialize_findings(jobs)
+
+        def build(payload_path: str) -> str:
+            return build_synthesis_prompt(
+                owner=self._owner, repo=self._repo, number=self._number,
+                base=self._base, payload_path=payload_path, findings=findings,
+            )
+
+        try:
+            return self._runner(self._command, build, workdir=self._workdir)
+        except Exception as e:
+            print(
+                f"pr-review: synthesis failed ({self._command[0]}: {e}); "
+                "falling back to the raw merge.",
+                file=sys.stderr,
+            )
+            return DeterministicMergeCollator().collate(jobs)

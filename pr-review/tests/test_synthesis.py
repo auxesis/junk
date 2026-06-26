@@ -27,3 +27,60 @@ def test_build_synthesis_prompt_has_context_findings_and_instructions():
     assert "## Review stats" in prompt
     assert "HARD CAP: 8 inline comments" in prompt
     assert "FINDINGS_HERE" in prompt
+
+
+import pytest
+
+from pr_review.synthesis import LLMSynthesisCollator
+
+
+def _job(label, rtype, n):
+    return (label, rtype, Payload(body=f"{label} body",
+                                  comments=[Comment("f.py", i, f"c{i}") for i in range(n)]))
+
+
+def _collator(runner):
+    return LLMSynthesisCollator(
+        command=["judge", "--print"], workdir="/wd",
+        owner="o", repo="r", number=9, base="main", runner=runner,
+    )
+
+
+def test_synthesis_passthrough_for_single_job():
+    p = Payload(body="solo", comments=[Comment("a", 1, "x")])
+
+    def runner(*a, **k):
+        raise AssertionError("runner must not be called for a single job")
+
+    out = _collator(runner).collate([("claude (opus)", "test-gap", p)])
+    assert out is p
+
+
+def test_synthesis_runs_judge_for_multiple_jobs():
+    captured = {}
+
+    def runner(command, build_prompt, *, workdir):
+        captured["command"] = command
+        captured["workdir"] = workdir
+        captured["prompt"] = build_prompt("/tmp/x.json")
+        return Payload(body="SYNTH", comments=[Comment("a", 1, "merged")])
+
+    jobs = [_job("claude (opus)", "test-gap", 2), _job("codex", "test-gap", 2)]
+    out = _collator(runner).collate(jobs)
+    assert out.body == "SYNTH"
+    assert captured["command"] == ["judge", "--print"]
+    assert captured["workdir"] == "/wd"
+    assert "claude (opus) [test-gap]" in captured["prompt"]
+    assert "/tmp/x.json" in captured["prompt"]
+
+
+def test_synthesis_falls_back_to_merge_on_failure(capsys):
+    def runner(*a, **k):
+        raise RuntimeError("judge died")
+
+    jobs = [_job("claude (opus)", "test-gap", 1), _job("codex", "test-gap", 1)]
+    out = _collator(runner).collate(jobs)
+    assert "## test-gap — claude (opus)" in out.body
+    assert "## test-gap — codex" in out.body
+    assert len(out.comments) == 2
+    assert "synthesis failed" in capsys.readouterr().err
