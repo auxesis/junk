@@ -1,23 +1,24 @@
-"""Interactive selection of review types when --review-type is omitted."""
+"""Interactive selection of review types and agent/model pairs."""
 from __future__ import annotations
 
 import sys
 from collections.abc import Callable
 
 
-def choose_review_types(
+def select_from_menu(
     available: list[str],
     reader: Callable[[], str],
     writer: Callable[[str], None],
     *,
-    default: str = "test-gap",
+    default: str,
+    what: str,
 ) -> list[str]:
-    """Render a numbered menu and parse the reply into review-type names.
+    """Render a numbered menu and parse a comma-separated reply of numbers/names.
 
-    The reply is comma-separated numbers and/or names. Empty input selects the
-    `default`. Unknown names or out-of-range numbers raise `ValueError`.
+    Empty input selects `default`. Unknown names / out-of-range numbers raise
+    `ValueError`. Results are de-duplicated, preserving order.
     """
-    writer("Select review type(s):\n")
+    writer(f"Select {what}(s):\n")
     for i, name in enumerate(available, 1):
         writer(f"  {i}) {name}\n")
     writer(f"Enter numbers or names (comma-separated) [default: {default}]: ")
@@ -38,7 +39,7 @@ def choose_review_types(
         elif tok in available:
             selected.append(tok)
         else:
-            raise ValueError(f"unknown review type: {tok}")
+            raise ValueError(f"unknown {what}: {tok}")
 
     seen: set[str] = set()
     result: list[str] = []
@@ -49,20 +50,52 @@ def choose_review_types(
     return result or [default]
 
 
-def prompt_review_types_via_tty(available: list[str]) -> list[str]:
-    """Prompt on /dev/tty (so it works even when stdin is consumed)."""
+def choose_review_types(
+    available: list[str],
+    reader: Callable[[], str],
+    writer: Callable[[str], None],
+    *,
+    default: str = "test-gap",
+) -> list[str]:
+    return select_from_menu(available, reader, writer, default=default, what="review type")
+
+
+def choose_agent_models(
+    agents: list[str],
+    default_model: Callable[[str], str],
+    reader: Callable[[], str],
+    writer: Callable[[str], None],
+) -> list[tuple[str, str]]:
+    chosen = select_from_menu(agents, reader, writer, default="claude", what="agent")
+    pairs: list[tuple[str, str]] = []
+    for agent in chosen:
+        dm = default_model(agent)
+        writer(f"Models for {agent} (comma-separated) [default: {dm}]: ")
+        reply = reader().strip()
+        models = [m.strip() for m in reply.split(",") if m.strip()] if reply else [dm]
+        for model in models:
+            if (agent, model) not in pairs:
+                pairs.append((agent, model))
+    return pairs
+
+
+def _tty_io():
     try:
         tty = open("/dev/tty", "r+")
     except OSError:
-        # /dev/tty's node may exist but be unusable (e.g. CI) — same outcome as
-        # having no terminal: error rather than guess what to review.
+        return None
+    return tty
+
+
+def prompt_review_types_via_tty(available: list[str]) -> list[str]:
+    tty = _tty_io()
+    if tty is None:
         print(
             "pr-review: no terminal to prompt for --review-type.\n"
             f"  pass one, e.g. --review-type {','.join(available)}",
             file=sys.stderr,
         )
         raise SystemExit(2)
-
     with tty:
         def reader() -> str:
             return tty.readline()
@@ -77,3 +110,30 @@ def prompt_review_types_via_tty(available: list[str]) -> list[str]:
             except ValueError as exc:
                 writer(f"  {exc}\n")
         raise SystemExit("pr-review: no valid review type selected")
+
+
+def prompt_agent_models_via_tty(
+    agents: list[str], default_model: Callable[[str], str]
+) -> list[tuple[str, str]]:
+    tty = _tty_io()
+    if tty is None:
+        print(
+            "pr-review: no terminal to prompt for --model.\n"
+            "  pass one, e.g. --model claude=claude-opus-4-8",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    with tty:
+        def reader() -> str:
+            return tty.readline()
+
+        def writer(text: str) -> None:
+            tty.write(text)
+            tty.flush()
+
+        for _ in range(3):
+            try:
+                return choose_agent_models(agents, default_model, reader, writer)
+            except ValueError as exc:
+                writer(f"  {exc}\n")
+        raise SystemExit("pr-review: no valid agent/model selected")
