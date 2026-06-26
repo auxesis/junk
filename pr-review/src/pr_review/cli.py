@@ -7,9 +7,11 @@ import sys
 from dataclasses import dataclass
 
 from pr_review.checkout import cleanup, clone_pr
+from pr_review.collate import Collator, DeterministicMergeCollator
 from pr_review.orchestrator import ReviewJob, run_reviews
 from pr_review.reviewers import available as reviewers_available, get_reviewer
 from pr_review.review_types import available as types_available, get_review_type
+from pr_review.synthesis import LLMSynthesisCollator
 from pr_review.target import Target, parse_target
 from pr_review import output, prompts
 
@@ -25,10 +27,20 @@ class RunConfig:
     yes: bool
     no_post: bool
     keep: bool
+    synthesis_model: tuple[str, str]
+    no_synthesis: bool
 
 
 def _split(value: str) -> list[str]:
     return [s for s in (part.strip() for part in value.split(",")) if s]
+
+
+def _parse_synthesis_model(value: str) -> tuple[str, str]:
+    agent, sep, model = value.partition("=")
+    agent = agent.strip()
+    reviewer = get_reviewer(agent)  # validates the agent; raises ValueError
+    model = model.strip() if (sep and model.strip()) else reviewer.default_model
+    return (agent, model)
 
 
 def _parse_agent_models(values: list[str]) -> list[tuple[str, str]]:
@@ -84,6 +96,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--keep-clone", action="store_true",
         help="Keep the temporary clone on exit instead of deleting it (default: false)",
     )
+    p.add_argument(
+        "--synthesis-model", metavar="AGENT[=MODEL]", default=None,
+        help=(
+            "judge agent/model that de-dupes and verifies findings across jobs "
+            f"(default: claude={DEFAULT_MODEL})"
+        ),
+    )
+    p.add_argument(
+        "--no-synthesis", action="store_true",
+        help="skip the synthesis pass; raw-merge multi-job results (default: false)",
+    )
     return p
 
 
@@ -108,6 +131,22 @@ def config_from_args(argv: list[str]) -> RunConfig:
         yes=args.post_without_prompting,
         no_post=args.print_only,
         keep=args.keep_clone,
+        synthesis_model=(
+            _parse_synthesis_model(args.synthesis_model)
+            if args.synthesis_model else ("claude", DEFAULT_MODEL)
+        ),
+        no_synthesis=args.no_synthesis,
+    )
+
+
+def build_collator(cfg: RunConfig, *, workdir: str, base: str) -> Collator:
+    if cfg.no_synthesis:
+        return DeterministicMergeCollator()
+    agent, model = cfg.synthesis_model
+    command = get_reviewer(agent).command(model, cfg.flags_by_agent.get(agent, []))
+    return LLMSynthesisCollator(
+        command=command, workdir=workdir,
+        owner=cfg.target.owner, repo=cfg.target.repo, number=cfg.target.number, base=base,
     )
 
 
@@ -172,10 +211,12 @@ def main(argv: list[str] | None = None) -> int:
         f"base=origin/{checkout.base} jobs={len(jobs)}",
         file=sys.stderr,
     )
+    collator = build_collator(cfg, workdir=checkout.workdir, base=checkout.base)
     try:
         result = run_reviews(
             jobs=jobs, workdir=checkout.workdir, base=checkout.base,
             owner=cfg.target.owner, repo=cfg.target.repo, number=cfg.target.number,
+            collator=collator,
         )
     finally:
         if cfg.keep:

@@ -120,3 +120,48 @@ def test_resolve_agent_models_errors_without_tty(capsys):
         resolve_agent_models(None, has_tty=False, prompt_fn=lambda a, d: [])
     assert exc.value.code == 2
     assert "--model" in capsys.readouterr().err
+
+
+def test_config_synthesis_defaults():
+    cfg = config_from_args(["org/repo#1"])
+    assert cfg.synthesis_model == ("claude", "claude-opus-4-8")
+    assert cfg.no_synthesis is False
+
+
+def test_config_synthesis_model_override():
+    cfg = config_from_args(["--synthesis-model", "codex=gpt-5", "org/repo#1"])
+    assert cfg.synthesis_model == ("codex", "gpt-5")
+
+
+def test_config_synthesis_bare_agent_uses_default():
+    cfg = config_from_args(["--synthesis-model", "claude", "org/repo#1"])
+    assert cfg.synthesis_model == ("claude", "claude-opus-4-8")
+
+
+def test_config_no_synthesis_flag():
+    cfg = config_from_args(["--no-synthesis", "org/repo#1"])
+    assert cfg.no_synthesis is True
+
+
+def test_build_collator_returns_synthesis_by_default():
+    from pr_review.cli import build_collator
+    from pr_review.synthesis import LLMSynthesisCollator
+
+    cfg = config_from_args(["org/repo#1"])
+    assert isinstance(build_collator(cfg, workdir="/wd", base="main"), LLMSynthesisCollator)
+
+
+def test_build_collator_no_synthesis_returns_merge():
+    from pr_review.cli import build_collator
+    from pr_review.collate import DeterministicMergeCollator
+
+    cfg = config_from_args(["--no-synthesis", "org/repo#1"])
+    assert isinstance(build_collator(cfg, workdir="/wd", base="main"), DeterministicMergeCollator)
+
+
+def test_build_collator_uses_the_judge_command():
+    from pr_review.cli import build_collator
+
+    cfg = config_from_args(["--synthesis-model", "codex=gpt-5", "org/repo#1"])
+    collator = build_collator(cfg, workdir="/wd", base="main")
+    assert collator._command[:4] == ["codex", "exec", "--model", "gpt-5"]
