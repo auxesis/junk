@@ -14,16 +14,14 @@ from pr_review.target import Target, parse_target
 from pr_review import output, prompts
 
 DEFAULT_MODEL = "claude-opus-4-8"
-DEFAULT_AGENT = "claude"
 
 
 @dataclass
 class RunConfig:
     target: Target
-    agent_names: list[str]
-    type_names: list[str] | None  # None = --review-type omitted (resolve later)
-    model: str
-    extra_flags: list[str]
+    agent_models: list[tuple[str, str]]
+    type_names: list[str] | None
+    flags_by_agent: dict[str, list[str]]
     yes: bool
     no_post: bool
     keep: bool
@@ -33,6 +31,19 @@ def _split(value: str) -> list[str]:
     return [s for s in (part.strip() for part in value.split(",")) if s]
 
 
+def _parse_agent_models(values: list[str]) -> list[tuple[str, str]]:
+    pairs: list[tuple[str, str]] = []
+    for value in values:
+        agent, sep, models_str = value.partition("=")
+        agent = agent.strip()
+        reviewer = get_reviewer(agent)  # validates agent; raises ValueError
+        models = _split(models_str) if (sep and models_str.strip()) else [reviewer.default_model]
+        for model in models:
+            if (agent, model) not in pairs:
+                pairs.append((agent, model))
+    return pairs
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="pr-review",
@@ -40,10 +51,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("target", help="PR URL or owner/repo#N (or 'help' for this message)")
     p.add_argument(
-        "--agent", default=DEFAULT_AGENT,
+        "--model", action="append", metavar="AGENT[=MODELS]", default=None,
         help=(
-            "comma-separated agents "
-            f"(available: {', '.join(reviewers_available())}, default: {DEFAULT_AGENT})"
+            "per-agent models, repeatable, e.g. --model claude=claude-opus-4-8,claude-fable-5 "
+            f"(agents: {', '.join(reviewers_available())}; default: claude=claude-opus-4-8)"
         ),
     )
     p.add_argument(
@@ -52,10 +63,6 @@ def build_parser() -> argparse.ArgumentParser:
             "comma-separated review types "
             f"(available: {', '.join(types_available())}; omit to choose interactively)"
         ),
-    )
-    p.add_argument(
-        "--model", default=DEFAULT_MODEL,
-        help=f"Claude model id (default: {DEFAULT_MODEL})",
     )
     p.add_argument(
         "--post-without-prompting", action="store_true",
@@ -67,7 +74,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--claude-flags", default="",
-        help='Extra flags appended to the claude invocation, e.g. --claude-flags="--debug" (default: "")',
+        help='Extra flags for claude jobs, e.g. --claude-flags="--debug" (default: "")',
+    )
+    p.add_argument(
+        "--codex-flags", default="",
+        help='Extra flags for codex jobs, e.g. --codex-flags="--oss" (default: "")',
     )
     p.add_argument(
         "--keep-clone", action="store_true",
@@ -81,16 +92,34 @@ def config_from_args(argv: list[str]) -> RunConfig:
     if argv and argv[0] == "help":
         argv = ["--help", *argv[1:]]
     args = build_parser().parse_args(argv)
+
+    agent_models = (
+        _parse_agent_models(args.model) if args.model else [("claude", DEFAULT_MODEL)]
+    )
+    flags_by_agent: dict[str, list[str]] = {}
+    if args.claude_flags:
+        flags_by_agent["claude"] = shlex.split(args.claude_flags)
+    if args.codex_flags:
+        flags_by_agent["codex"] = shlex.split(args.codex_flags)
+
     return RunConfig(
         target=parse_target(args.target),
-        agent_names=_split(args.agent),
+        agent_models=agent_models,
         type_names=_split(args.types) if args.types is not None else None,
-        model=args.model,
-        extra_flags=shlex.split(args.claude_flags),
+        flags_by_agent=flags_by_agent,
         yes=args.post_without_prompting,
         no_post=args.print_only,
         keep=args.keep_clone,
     )
+
+
+def build_jobs(cfg: RunConfig) -> list[ReviewJob]:
+    return [
+        ReviewJob(get_reviewer(agent), get_review_type(t), model,
+                  cfg.flags_by_agent.get(agent, []))
+        for agent, model in cfg.agent_models
+        for t in cfg.type_names or []
+    ]
 
 
 def resolve_review_types(
@@ -99,11 +128,6 @@ def resolve_review_types(
     has_tty: bool,
     prompt_fn=prompts.prompt_review_types_via_tty,
 ) -> list[str]:
-    """Return the review types to run, prompting interactively if unspecified.
-
-    If `--review-type` was given, use it. Otherwise prompt on an interactive
-    terminal; with no terminal, error (exit 2) rather than guessing.
-    """
     if type_names is not None:
         return type_names
     if not has_tty:
@@ -116,19 +140,9 @@ def resolve_review_types(
     return prompt_fn(types_available())
 
 
-def build_jobs(cfg: RunConfig) -> list[ReviewJob]:
-    return [
-        ReviewJob(get_reviewer(a), get_review_type(t), cfg.model, cfg.extra_flags)
-        for a in cfg.agent_names
-        for t in cfg.type_names or []
-    ]
-
-
 def main(argv: list[str] | None = None) -> int:
     cfg = config_from_args(sys.argv[1:] if argv is None else argv)
-    cfg.type_names = resolve_review_types(
-        cfg.type_names, has_tty=output.tty_available()
-    )
+    cfg.type_names = resolve_review_types(cfg.type_names, has_tty=output.tty_available())
     jobs = build_jobs(cfg)  # validates agent/type names before any clone
 
     checkout = clone_pr(cfg.target.owner, cfg.target.repo, cfg.target.number)
