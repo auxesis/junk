@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import subprocess
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from pr_review.payload import Payload, parse_payload
 from pr_review.review_types.base import ReviewType
@@ -46,23 +46,16 @@ def _review_env(workdir: str) -> dict[str, str]:
     return env
 
 
-def run_cli_reviewer(
+def run_cli_payload(
     cmd_prefix: Sequence[str],
+    build_prompt: Callable[[str], str],
     *,
     workdir: str,
-    owner: str,
-    repo: str,
-    number: int,
-    base: str,
-    review_type: ReviewType,
 ) -> Payload:
     fd, payload_path = tempfile.mkstemp(prefix="pr-review-payload.", suffix=".json")
     os.close(fd)
     try:
-        prompt = build_review_prompt(
-            owner=owner, repo=repo, number=number, base=base,
-            payload_path=payload_path, review_type=review_type,
-        )
+        prompt = build_prompt(payload_path)
         subprocess.run(
             list(cmd_prefix), cwd=workdir, input=prompt, text=True, check=True,
             env=_review_env(workdir),
@@ -77,3 +70,22 @@ def run_cli_reviewer(
             os.unlink(payload_path)
         except FileNotFoundError:
             pass
+
+
+def run_cli_reviewer(
+    cmd_prefix: Sequence[str],
+    *,
+    workdir: str,
+    owner: str,
+    repo: str,
+    number: int,
+    base: str,
+    review_type: ReviewType,
+) -> Payload:
+    def build(payload_path: str) -> str:
+        return build_review_prompt(
+            owner=owner, repo=repo, number=number, base=base,
+            payload_path=payload_path, review_type=review_type,
+        )
+
+    return run_cli_payload(cmd_prefix, build, workdir=workdir)

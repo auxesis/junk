@@ -51,3 +51,22 @@ def test_review_env_prepends_to_existing_trusted_paths(monkeypatch):
     monkeypatch.setenv("MISE_TRUSTED_CONFIG_PATHS", "/already/trusted")
     env = _review_env("/tmp/clone")
     assert env["MISE_TRUSTED_CONFIG_PATHS"] == "/tmp/clone:/already/trusted"
+
+
+def test_claude_command_includes_model_and_flags():
+    cmd = get_reviewer("claude").command("claude-opus-4-8", ["--foo"])
+    assert cmd[:4] == ["claude", "--print", "--model", "claude-opus-4-8"]
+    assert "--dangerously-skip-permissions" in cmd
+    assert cmd[-1] == "--foo"
+
+
+def test_codex_command_omits_model_when_empty():
+    cmd = get_reviewer("codex").command("", [])
+    assert cmd == ["codex", "exec", "--dangerously-bypass-approvals-and-sandbox"]
+
+
+def test_codex_command_includes_model_when_given():
+    cmd = get_reviewer("codex").command("gpt-5", ["--oss"])
+    assert cmd[:4] == ["codex", "exec", "--model", "gpt-5"]
+    assert "--dangerously-bypass-approvals-and-sandbox" in cmd
+    assert cmd[-1] == "--oss"
