@@ -1,5 +1,9 @@
 from pr_review.payload import Comment, Payload
-from pr_review.synthesis import build_synthesis_prompt, serialize_findings
+from pr_review.synthesis import (
+    LLMSynthesisCollator,
+    build_synthesis_prompt,
+    serialize_findings,
+)
 
 
 def test_serialize_findings_labels_sources_with_counts():
@@ -27,11 +31,6 @@ def test_build_synthesis_prompt_has_context_findings_and_instructions():
     assert "## Review stats" in prompt
     assert "HARD CAP: 8 inline comments" in prompt
     assert "FINDINGS_HERE" in prompt
-
-
-import pytest
-
-from pr_review.synthesis import LLMSynthesisCollator
 
 
 def _job(label, rtype, n):
