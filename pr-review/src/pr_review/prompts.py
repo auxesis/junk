@@ -4,6 +4,8 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 
+from pr_review import terminal
+
 
 def select_from_menu(
     available: list[str],
@@ -79,61 +81,45 @@ def choose_agent_models(
     return pairs
 
 
-def _tty_io():
-    try:
-        tty = open("/dev/tty", "r+")
-    except OSError:
-        return None
-    return tty
-
-
 def prompt_review_types_via_tty(available: list[str]) -> list[str]:
-    tty = _tty_io()
-    if tty is None:
+    io = terminal.open_interactive()
+    if io is None:
         print(
             "pr-review: no terminal to prompt for --review-type.\n"
             f"  pass one, e.g. --review-type {','.join(available)}",
             file=sys.stderr,
         )
         raise SystemExit(2)
-    with tty:
-        def reader() -> str:
-            return tty.readline()
-
-        def writer(text: str) -> None:
-            tty.write(text)
-            tty.flush()
-
+    read_line, write, close = io
+    try:
         for _ in range(3):
             try:
-                return choose_review_types(available, reader, writer)
+                return choose_review_types(available, read_line, write)
             except ValueError as exc:
-                writer(f"  {exc}\n")
+                write(f"  {exc}\n")
         raise SystemExit("pr-review: no valid review type selected")
+    finally:
+        close()
 
 
 def prompt_agent_models_via_tty(
     agents: list[str], default_model: Callable[[str], str]
 ) -> list[tuple[str, str]]:
-    tty = _tty_io()
-    if tty is None:
+    io = terminal.open_interactive()
+    if io is None:
         print(
             "pr-review: no terminal to prompt for --model.\n"
             "  pass one, e.g. --model claude=claude-opus-4-8",
             file=sys.stderr,
         )
         raise SystemExit(2)
-    with tty:
-        def reader() -> str:
-            return tty.readline()
-
-        def writer(text: str) -> None:
-            tty.write(text)
-            tty.flush()
-
+    read_line, write, close = io
+    try:
         for _ in range(3):
             try:
-                return choose_agent_models(agents, default_model, reader, writer)
+                return choose_agent_models(agents, default_model, read_line, write)
             except ValueError as exc:
-                writer(f"  {exc}\n")
+                write(f"  {exc}\n")
         raise SystemExit("pr-review: no valid agent/model selected")
+    finally:
+        close()

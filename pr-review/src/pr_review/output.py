@@ -10,6 +10,7 @@ from enum import Enum
 
 from pr_review.payload import Payload
 from pr_review.target import Target
+from pr_review import terminal
 
 
 class PostMode(Enum):
@@ -29,7 +30,7 @@ def decide_mode(*, yes: bool, no_post: bool, has_tty: bool) -> PostMode:
 
 
 def tty_available() -> bool:
-    return sys.stdin.isatty() or os.path.exists("/dev/tty")
+    return terminal.can_prompt()
 
 
 def render(payload: Payload) -> str:
@@ -70,16 +71,18 @@ def _manual_hint(target: Target) -> str:
 
 
 def _confirm(target: Target, n_comments: int) -> bool:
-    try:
-        with open("/dev/tty", "r+") as tty:
-            tty.write(
-                f"\nPost this review to {target.slug}#{target.number} "
-                f"with {n_comments} inline comment(s)? [y/N] "
-            )
-            tty.flush()
-            reply = tty.readline().strip().lower()
-    except OSError:
+    io = terminal.open_interactive()
+    if io is None:
         return False
+    read_line, write, close = io
+    try:
+        write(
+            f"\nPost this review to {target.slug}#{target.number} "
+            f"with {n_comments} inline comment(s)? [y/N] "
+        )
+        reply = read_line().strip().lower()
+    finally:
+        close()
     return reply in ("y", "yes")
 
 
