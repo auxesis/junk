@@ -65,7 +65,7 @@ fake, not the real subprocess.
   `--claude-flags`/`--codex-flags`, the booleans), `build_jobs` (the
   `(agent,model) × review_type` matrix with per-agent flags), `resolve_agent_models`
   and `resolve_review_types` (explicit / prompt on TTY / exit-2 without one), and
-  the `help` word aliasing to `--help`, plus --synthesis-model / --no-synthesis parsing and build_collator (synthesis vs deterministic, judge command).
+  the `help` word aliasing to `--help`, plus `--synthesis-model` / `--no-synthesis` parsing and `build_collator` (synthesis vs deterministic, judge command).
 - **test_prompts.py** — `select_from_menu` (numbers / names / empty-default /
   dedupe / invalid), `choose_review_types` (wraps it), and `choose_agent_models`
   (pick agents, then per-agent models with defaults). The `/dev/tty` wrappers are

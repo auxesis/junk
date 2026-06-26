@@ -3,8 +3,8 @@
 Review a GitHub pull request with one or more LLMs, in an **isolated clone**.
 
 `pr-review` clones the target PR into a throwaway temp directory, fans out to one
-or more `(reviewer × review-type)` jobs **in parallel**, collates their findings
-into a single review, and prints it — prompting before it posts anything to the
+or more `(reviewer × review-type)` jobs **in parallel**, collates and synthesises their findings
+into a single review (de-duplicating across models when more than one runs), and prints it — prompting before it posts anything to the
 PR. Because every run works in its own clone, you can review multiple PRs at once
 without touching your working tree or colliding with another run.
 
@@ -144,7 +144,7 @@ pr-review --model claude=claude-opus-4-8 --claude-flags="--debug" org/repo#214
 
 ```
 target → clone (blobless) into a temp dir → gh pr checkout
-       → fan out (reviewer × type) jobs in parallel → collate into one review
+       → fan out (reviewer × type) jobs in parallel → collate (synthesise across models if >1 job) into one review
        → print, then post / prompt / review-only per the rules above
        → delete the temp clone (unless --keep-clone)
 ```
@@ -247,8 +247,7 @@ becomes available.
 
 `DeterministicMergeCollator` merges multiple jobs' payloads into one: bodies under
 per-job headers, comments concatenated with the 8-comment cap re-applied, and any
-overflow listed in the body. A smarter LLM-synthesis collator can be added as
-another `Collator` subclass.
+overflow listed in the body. `LLMSynthesisCollator` (in `synthesis.py`) is the default for multi-job runs — a judge LLM de-dupes findings across models, verifies them against the diff, and emits one review; `cli.py`'s `build_collator` selects it (or the deterministic merge under `--no-synthesis`).
 
 ### Design docs
 
