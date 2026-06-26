@@ -15,7 +15,7 @@ def test_config_defaults():
 
 def test_model_bare_agent_uses_default_model():
     cfg = config_from_args(["--model", "codex", "org/repo#1"])
-    assert cfg.agent_models == [("codex", "gpt-5-codex")]
+    assert cfg.agent_models == [("codex", "")]  # codex defers to its own default model
 
 
 def test_model_explicit_and_repeatable():

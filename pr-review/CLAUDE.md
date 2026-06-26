@@ -25,7 +25,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 10 files, one per `src/pr_review/` module (70 tests total):
+`tests/` holds 11 files, one per `src/pr_review/` module (76 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -54,8 +54,10 @@ fake, not the real subprocess.
   `post_review` builds the `gh api .../reviews --method POST --input` call via a
   fake runner.
 - **test_orchestrator.py** — `run_reviews` with in-process `FakeReviewer`/`FakeType`
-  (no subprocess): single-job passthrough, two-job merge, and failure attribution
-  (a raising reviewer surfaces a `RuntimeError` naming the `reviewer/type`).
+  (no subprocess): single-job passthrough, two-job merge (model in label),
+  empty-model label, and graceful failure — a raising job is captured in
+  `RunResult.failures` (not raised), partial failures keep the successes and note
+  them in the body, and an all-failed run yields `payload=None`.
 - **test_cli.py** — `config_from_args` option parsing (`--model agent[=models]`
   repeatable → `(agent, model)` pairs, `--review-type` lists, per-agent
   `--claude-flags`/`--codex-flags`, the booleans), `build_jobs` (the
@@ -66,3 +68,7 @@ fake, not the real subprocess.
   dedupe / invalid), `choose_review_types` (wraps it), and `choose_agent_models`
   (pick agents, then per-agent models with defaults). The `/dev/tty` wrappers are
   the thin shells, verified manually.
+- **test_terminal.py** — `terminal.can_prompt` / `open_interactive`: detection
+  prefers `/dev/tty` but falls back to stdin/stderr when `/dev/tty` can't be
+  opened (screen / detached sessions), and reports no-terminal only when neither
+  works.

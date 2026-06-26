@@ -76,9 +76,14 @@ pr-review <target> --review-type test-gap,infracode \
 ```
 
 - `--model claude` (no `=`) uses claude's default model (`claude-opus-4-8`);
-  `codex`'s default is `gpt-5-codex`.
+  `--model codex` lets codex use its own configured default (its available
+  models depend on your codex auth — e.g. a ChatGPT-account login can't use
+  `gpt-5-codex`). Pin one explicitly with `--model codex=<id>`.
 - Model ids are passed **verbatim** to the agent's CLI — give real ids
   (`claude-opus-4-8`, not `opus-4.8`).
+- A failing job (bad model, auth, etc.) doesn't abort the run: surviving jobs
+  still produce a review, failures are reported, and the exit is non-zero only
+  if every job failed.
 - Registered agents: `claude`, `codex`. Registered review types: `test-gap`,
   `infracode`. Unknown names fail fast, before any clone.
 - Omit `--model` (or `--review-type`) to choose interactively; with no terminal

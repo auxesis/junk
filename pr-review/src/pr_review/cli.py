@@ -173,7 +173,7 @@ def main(argv: list[str] | None = None) -> int:
         file=sys.stderr,
     )
     try:
-        payload = run_reviews(
+        result = run_reviews(
             jobs=jobs, workdir=checkout.workdir, base=checkout.base,
             owner=cfg.target.owner, repo=cfg.target.repo, number=cfg.target.number,
         )
@@ -183,9 +183,19 @@ def main(argv: list[str] | None = None) -> int:
         else:
             cleanup(checkout)
 
-    print(output.render(payload))
+    for label, rtype, err in result.failures:
+        print(f"pr-review: {label} / {rtype} failed: {err}", file=sys.stderr)
+
+    if result.payload is None:
+        print(
+            f"pr-review: all {len(jobs)} review job(s) failed; no review produced.",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(output.render(result.payload))
     mode = output.decide_mode(
         yes=cfg.yes, no_post=cfg.no_post, has_tty=output.tty_available()
     )
-    output.dispatch(mode, cfg.target, payload)
+    output.dispatch(mode, cfg.target, result.payload)
     return 0

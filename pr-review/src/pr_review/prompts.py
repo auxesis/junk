@@ -72,7 +72,8 @@ def choose_agent_models(
     pairs: list[tuple[str, str]] = []
     for agent in chosen:
         dm = default_model(agent)
-        writer(f"Models for {agent} (comma-separated) [default: {dm}]: ")
+        shown = dm if dm else "the agent's own default"
+        writer(f"Models for {agent} (comma-separated) [default: {shown}]: ")
         reply = reader().strip()
         models = [m.strip() for m in reply.split(",") if m.strip()] if reply else [dm]
         for model in models:

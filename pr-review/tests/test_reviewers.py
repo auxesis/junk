@@ -37,4 +37,5 @@ def test_codex_is_registered():
 
 
 def test_codex_default_model():
-    assert get_reviewer("codex").default_model == "gpt-5-codex"
+    # Empty = defer to codex's own configured default model.
+    assert get_reviewer("codex").default_model == ""
