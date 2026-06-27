@@ -45,14 +45,23 @@ def _parse_synthesis_model(value: str) -> tuple[str, str]:
 
 def _parse_agent_models(values: list[str]) -> list[tuple[str, str]]:
     pairs: list[tuple[str, str]] = []
+
+    def add(agent: str, model: str) -> None:
+        if (agent, model) not in pairs:
+            pairs.append((agent, model))
+
     for value in values:
-        agent, sep, models_str = value.partition("=")
-        agent = agent.strip()
-        reviewer = get_reviewer(agent)  # validates agent; raises ValueError
-        models = _split(models_str) if (sep and models_str.strip()) else [reviewer.default_model]
-        for model in models:
-            if (agent, model) not in pairs:
-                pairs.append((agent, model))
+        agent_part, sep, models_str = value.partition("=")
+        if sep:
+            # "agent=model[,model...]" — one agent, comma-separated models.
+            agent = agent_part.strip()
+            reviewer = get_reviewer(agent)  # validates agent; raises ValueError
+            for model in _split(models_str) or [reviewer.default_model]:
+                add(agent, model)
+        else:
+            # bare "agent[,agent...]" — each agent uses its default model.
+            for agent in _split(agent_part):
+                add(agent, get_reviewer(agent).default_model)
     return pairs
 
 

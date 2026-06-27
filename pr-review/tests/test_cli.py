@@ -31,9 +31,19 @@ def test_model_explicit_and_repeatable():
     ]
 
 
+def test_model_comma_separated_bare_agents():
+    cfg = config_from_args(["--model", "claude,codex", "org/repo#1"])
+    assert cfg.agent_models == [("claude", "claude-opus-4-8"), ("codex", "")]
+
+
 def test_model_unknown_agent_raises():
     with pytest.raises(ValueError):
         config_from_args(["--model", "ghost=x", "org/repo#1"])
+
+
+def test_model_unknown_bare_agent_raises():
+    with pytest.raises(ValueError):
+        config_from_args(["--model", "claude,ghost", "org/repo#1"])
 
 
 def test_flags_by_agent_parsing():

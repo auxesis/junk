@@ -79,6 +79,9 @@ pr-review <target> --review-type test-gap,infracode \
   `--model codex` lets codex use its own configured default (its available
   models depend on your codex auth — e.g. a ChatGPT-account login can't use
   `gpt-5-codex`). Pin one explicitly with `--model codex=<id>`.
+- A bare value can name several agents: `--model claude,codex` runs both with
+  their default models (equivalent to `--model claude --model codex`). With `=`,
+  the comma separates *models* for that one agent (`--model claude=opus,fable`).
 - Model ids are passed **verbatim** to the agent's CLI — give real ids
   (`claude-opus-4-8`, not `opus-4.8`).
 - A failing job (bad model, auth, etc.) doesn't abort the run: surviving jobs
