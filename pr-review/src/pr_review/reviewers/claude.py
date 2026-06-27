@@ -12,6 +12,9 @@ class ClaudeReviewer(Reviewer):
         return [
             "claude", "--print", "--model", model,
             "--permission-mode", "acceptEdits", "--dangerously-skip-permissions",
+            # A review needs only the built-in tools; don't load the user's MCP
+            # servers (e.g. Serena, which pops a browser dashboard each run).
+            "--strict-mcp-config",
             "--allowedTools", "Bash", "Read", "Grep", "Glob", "Write",
             *extra_flags,
         ]

@@ -57,6 +57,7 @@ def test_claude_command_includes_model_and_flags():
     cmd = get_reviewer("claude").command("claude-opus-4-8", ["--foo"])
     assert cmd[:4] == ["claude", "--print", "--model", "claude-opus-4-8"]
     assert "--dangerously-skip-permissions" in cmd
+    assert "--strict-mcp-config" in cmd  # no MCP servers (e.g. Serena) for reviews
     assert cmd[-1] == "--foo"
 
 
