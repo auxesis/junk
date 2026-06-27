@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -40,6 +41,30 @@ def render(payload: Payload) -> str:
         lines.append(c.body)
         lines.append("")
     return "\n".join(lines)
+
+
+def _render_with_glow(markdown: str, run=subprocess.run) -> bool:
+    """Pretty-render the markdown via `glow -p -w 100`; True on success."""
+    fd, path = tempfile.mkstemp(prefix="pr-review-render.", suffix=".md")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(markdown)
+        return run(["glow", "-p", "-w", "100", path]).returncode == 0
+    except OSError:
+        return False
+    finally:
+        try:
+            os.unlink(path)
+        except FileNotFoundError:
+            pass
+
+
+def show_review(payload: Payload, *, which=shutil.which, run=subprocess.run) -> None:
+    """Show the review to the human: via `glow` if it's on PATH, else plain text."""
+    markdown = render(payload)
+    if which("glow") and _render_with_glow(markdown, run):
+        return
+    print(markdown)
 
 
 def _run(cmd: Sequence[str], **kw) -> subprocess.CompletedProcess:

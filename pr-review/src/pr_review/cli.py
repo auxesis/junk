@@ -243,7 +243,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    print(output.render(result.payload))
+    output.show_review(result.payload)
     mode = output.decide_mode(
         yes=cfg.yes, no_post=cfg.no_post, has_tty=output.tty_available()
     )

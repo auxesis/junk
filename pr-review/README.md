@@ -22,6 +22,7 @@ tested, so new agents and review types are additive — see [Developing](#develo
 - [`gh`](https://cli.github.com/) — authenticated (`gh auth status` must pass).
 - [`claude`](https://docs.claude.com/en/docs/claude-code) — the Claude Code CLI, on your `PATH`.
 - [`codex`](https://github.com/openai/codex) — the OpenAI Codex CLI, on your `PATH` (only needed to run a `--model codex` job).
+- [`glow`](https://github.com/charmbracelet/glow) — optional; if on your `PATH`, the review printed before the post prompt is rendered with it (`glow -p -w 100`).
 - `~/bin` on your `PATH` (the install step symlinks the commands there).
 
 ---

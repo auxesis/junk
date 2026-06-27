@@ -67,3 +67,38 @@ def test_not_posted_hint_writes_payload_and_includes_path():
         assert json.load(open(input_path))["body"] == "b"
     finally:
         os.unlink(input_path)
+
+
+def test_show_review_renders_with_glow_when_present(capsys):
+    captured = {}
+
+    def fake_run(cmd):
+        captured["cmd"] = cmd
+        with open(cmd[-1], encoding="utf-8") as f:
+            captured["content"] = f.read()
+        return subprocess.CompletedProcess(cmd, 0)
+
+    output.show_review(
+        Payload(body="hello", comments=[Comment("a.py", 1, "gap")]),
+        which=lambda name: "/usr/bin/glow", run=fake_run,
+    )
+    assert captured["cmd"][:4] == ["glow", "-p", "-w", "100"]
+    assert "hello" in captured["content"]
+    assert "a.py:1" in captured["content"]
+    assert capsys.readouterr().out == ""  # glow rendered it; nothing printed
+
+
+def test_show_review_prints_plain_when_glow_absent(capsys):
+    output.show_review(Payload(body="hello", comments=[]), which=lambda name: None)
+    assert "hello" in capsys.readouterr().out
+
+
+def test_show_review_falls_back_to_print_when_glow_fails(capsys):
+    def failing(cmd):
+        return subprocess.CompletedProcess(cmd, 1)
+
+    output.show_review(
+        Payload(body="hello", comments=[]),
+        which=lambda name: "/usr/bin/glow", run=failing,
+    )
+    assert "hello" in capsys.readouterr().out
