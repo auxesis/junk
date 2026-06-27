@@ -15,7 +15,7 @@ def test_config_defaults():
 
 def test_model_bare_agent_uses_default_model():
     cfg = config_from_args(["--model", "codex", "org/repo#1"])
-    assert cfg.agent_models == [("codex", "")]  # codex defers to its own default model
+    assert cfg.agent_models == [("codex", "gpt-5.5")]
 
 
 def test_model_explicit_and_repeatable():
@@ -33,7 +33,7 @@ def test_model_explicit_and_repeatable():
 
 def test_model_comma_separated_bare_agents():
     cfg = config_from_args(["--model", "claude,codex", "org/repo#1"])
-    assert cfg.agent_models == [("claude", "claude-opus-4-8"), ("codex", "")]
+    assert cfg.agent_models == [("claude", "claude-opus-4-8"), ("codex", "gpt-5.5")]
 
 
 def test_model_unknown_agent_raises():

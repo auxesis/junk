@@ -6,11 +6,10 @@ from pr_review.reviewers.base import Reviewer, register
 
 class CodexReviewer(Reviewer):
     name = "codex"
-    # Empty = let codex use its own configured default model. Codex's model
-    # availability depends on the auth (a ChatGPT-account login can't use
-    # `gpt-5-codex`), so deferring to codex's own choice "just works"; pin one
-    # with `--model codex=<id>`.
-    default_model = ""
+    # gpt-5.5 is available on ChatGPT-account auth (gpt-5-codex is NOT). Override
+    # per run with `--model codex=<id>` (e.g. gpt-5.4, gpt-5.4-mini). An empty
+    # model still falls through to codex's own configured default.
+    default_model = "gpt-5.5"
 
     def command(self, model: str, extra_flags: list[str]) -> list[str]:
         cmd = ["codex", "exec"]
