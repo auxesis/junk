@@ -23,7 +23,7 @@ def test_serialize_findings_labels_sources_with_counts():
 
 def test_build_synthesis_prompt_has_context_findings_and_instructions():
     prompt = build_synthesis_prompt(
-        owner="o", repo="r", number=7, base="main",
+        owner="o", repo="r", number=7, base="deadbeef",
         payload_path="/tmp/p.json", findings="FINDINGS_HERE",
     )
     assert "Repository: o/r" in prompt
@@ -32,6 +32,8 @@ def test_build_synthesis_prompt_has_context_findings_and_instructions():
     assert "## Review stats" in prompt
     assert "HARD CAP: 8 inline comments" in prompt
     assert "FINDINGS_HERE" in prompt
+    assert "Base commit: deadbeef" in prompt
+    assert "origin/" not in prompt
 
 
 def _job(label, rtype, n):

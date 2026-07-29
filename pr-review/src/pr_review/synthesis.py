@@ -24,7 +24,7 @@ nearby lines.
 
 ## What to do
 
-1. Read the diff to ground yourself: `git diff origin/<base>...HEAD` (three-dot =
+1. Read the diff to ground yourself: `git diff <base>...HEAD` (three-dot =
    exactly the changes on this branch).
 2. De-duplicate: merge findings that describe the SAME issue, even when worded
    differently or anchored to slightly different lines. Treat them as one finding.
@@ -96,7 +96,7 @@ def build_synthesis_prompt(
         "You are consolidating GitHub pull request reviews. Context for this run:\n"
         f"- Repository: {owner}/{repo}\n"
         f"- PR number: {number}\n"
-        f"- Base ref:  origin/{base}\n"
+        f"- Base commit: {base}\n"
         "- HEAD is ALREADY checked out at the exact code to review. Do not switch branches.\n"
         f"- Payload file to write: {payload_path}\n"
     )

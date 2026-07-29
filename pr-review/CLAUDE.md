@@ -25,7 +25,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 12 files, one per `src/pr_review/` module (101 tests total):
+`tests/` holds 12 files, one per `src/pr_review/` module (104 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -40,16 +40,20 @@ fake, not the real subprocess.
   name raises `ValueError`.
 - **test_reviewers.py** — the `Reviewer` registry (`claude` and `codex` registered,
   each with a `default_model`, unknown raises), `Reviewer.command` argv for both
-  agents (codex omits `--model` when empty), the shared `build_review_prompt`, and
+  agents (codex omits `--model` when empty), the shared `build_review_prompt`
+  (including that it names the base as a bare commit, never `origin/<ref>`), and
   `_review_env` (trusts the clone's `mise.toml`). The `review()` calls shell out to
   `claude`/`codex` and are not unit-tested.
 - **test_collate.py** — `DeterministicMergeCollator`: single-job identity
   passthrough, empty-jobs placeholder, two-job merge (sorted provenance headers +
   concatenated comments), and cap re-application with an overflow section across
   the merged set.
-- **test_checkout.py** — `clone_pr` builds the exact `git clone --filter=blob:none`
-  / `gh pr checkout` / `gh pr view` sequence with the right `cwd`, via an injected
-  `FakeRunner` + `mkdtemp` (no network); and `cleanup` removes the workdir.
+- **test_checkout.py** — `clone_pr` builds the exact `gh api` (base ref + sha) /
+  `git clone --filter=blob:none` / `git fetch refs/pull/<n>/head` / `git fetch
+  <base-sha>` / `git checkout --detach` sequence with the right `cwd`, via an
+  injected `FakeRunner` + `mkdtemp` (no network); that the returned `base` is a
+  commit and not a branch name (so merged PRs still diff); that unresolvable PR
+  metadata raises; and `cleanup` removes the workdir.
 - **test_output.py** — `decide_mode` across the print-only / post-without-prompting
   / TTY matrix; `render` emits the body plus `path:line` comment anchors;
   `post_review` builds the `gh api .../reviews --method POST --input` call via a

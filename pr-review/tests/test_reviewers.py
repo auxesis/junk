@@ -21,14 +21,23 @@ def test_unknown_reviewer_raises():
 
 def test_build_review_prompt_includes_context_and_instructions():
     prompt = build_review_prompt(
-        owner="org", repo="repo", number=7, base="main",
+        owner="org", repo="repo", number=7, base="deadbeef",
         payload_path="/tmp/p.json", review_type=get_review_type("test-gap"),
     )
     assert "Repository: org/repo" in prompt
     assert "PR number: 7" in prompt
-    assert "origin/main" in prompt
     assert "/tmp/p.json" in prompt
     assert "# Test Coverage Review" in prompt
+
+
+def test_build_review_prompt_names_the_base_as_a_bare_commit():
+    """The base is a commit, so the prompt must not prefix it with `origin/`."""
+    prompt = build_review_prompt(
+        owner="org", repo="repo", number=7, base="deadbeef",
+        payload_path="/tmp/p.json", review_type=get_review_type("test-gap"),
+    )
+    assert "Base commit: deadbeef" in prompt
+    assert "origin/" not in prompt
 
 
 def test_codex_is_registered():

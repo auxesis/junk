@@ -20,7 +20,7 @@ confirms. Your only side effect is writing the payload file.
 
 ## Workflow
 
-1. Read the diff: `git diff origin/<base>...HEAD` (three-dot = exactly the
+1. Read the diff: `git diff <base>...HEAD` (three-dot = exactly the
    changes on this branch). Orient with `--stat` first. Focus on `+` lines.
 2. For each changed file, look for the equivalent file in any sibling stack
    (another service or region in the same repo, e.g. infra/cts/... vs

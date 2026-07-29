@@ -147,15 +147,22 @@ pr-review --model claude=claude-opus-4-8 --claude-flags="--debug" org/repo#214
 ### What happens during a run
 
 ```
-target → clone (blobless) into a temp dir → gh pr checkout
+target → clone (blobless) into a temp dir → check out refs/pull/<n>/head detached
        → fan out (reviewer × type) jobs in parallel → collate (synthesise across models if >1 job) into one review
        → print, then post / prompt / review-only per the rules above
        → delete the temp clone (unless --keep-clone)
 ```
 
 The clone uses `git clone --filter=blob:none`: it is fast and light but keeps the
-full history graph, so the reviewer's `git diff origin/<base>...HEAD` always has
-its merge-base.
+full history graph, so the reviewer's `git diff <base>...HEAD` always has its
+merge-base.
+
+The checkout deliberately avoids `gh pr checkout`, and the base is a commit sha
+rather than a branch name. Both exist to make merged PRs reviewable:
+`gh pr checkout` fetches the head *branch*, which GitHub deletes on merge, and a
+merged PR's base branch already contains the head, so `origin/<base>...HEAD`
+would diff to nothing. `refs/pull/<n>/head` and the PR's `base.sha` are both
+permanent, and reproduce GitHub's own "Files changed" exactly.
 
 ---
 
@@ -171,7 +178,7 @@ pr-review/
 ├── src/pr_review/
 │   ├── cli.py              # arg/env parsing → RunConfig → orchestrate → output
 │   ├── target.py           # parse PR URL / owner/repo#N
-│   ├── checkout.py         # blobless clone + gh pr checkout into a temp dir
+│   ├── checkout.py         # blobless clone + detached refs/pull/<n>/head in a temp dir
 │   ├── orchestrator.py     # parallel fan-out (ThreadPoolExecutor) + collate
 │   ├── payload.py          # review payload model, JSON validation, comment cap
 │   ├── collate.py          # Collator + DeterministicMergeCollator

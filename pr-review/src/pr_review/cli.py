@@ -217,7 +217,7 @@ def main(argv: list[str] | None = None) -> int:
     checkout = clone_pr(cfg.target.owner, cfg.target.repo, cfg.target.number)
     print(
         f"pr-review: {cfg.target.slug}#{cfg.target.number} "
-        f"base=origin/{checkout.base} jobs={len(jobs)}",
+        f"base={checkout.base_ref}@{checkout.base[:12]} jobs={len(jobs)}",
         file=sys.stderr,
     )
     collator = build_collator(cfg, workdir=checkout.workdir, base=checkout.base)

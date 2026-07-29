@@ -12,7 +12,7 @@ after the human confirms. Your only side effect is writing the payload file.
 
 ## Workflow
 
-1. Read the diff: `git diff origin/<base>...HEAD` (three-dot = exactly the
+1. Read the diff: `git diff <base>...HEAD` (three-dot = exactly the
    changes on this branch). Orient with `--stat` first. Focus on `+` lines only.
 
 2. Detect the repo's test conventions before writing any sketch. Find the test

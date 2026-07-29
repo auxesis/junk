@@ -15,7 +15,7 @@ def _build_context(*, owner: str, repo: str, number: int, base: str, payload_pat
         "You are reviewing a GitHub pull request. Context for this run:\n"
         f"- Repository: {owner}/{repo}\n"
         f"- PR number: {number}\n"
-        f"- Base ref:  origin/{base}\n"
+        f"- Base commit: {base}\n"
         "- HEAD is ALREADY checked out at the exact code to review. Do not switch branches.\n"
         f"- Payload file to write: {payload_path}\n"
     )
