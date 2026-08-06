@@ -1,8 +1,8 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    addressable (2.5.1)
-      public_suffix (~> 2.0, >= 2.0.2)
+    addressable (2.8.1)
+      public_suffix (>= 2.0.2, < 6.0)
     byebug (9.0.6)
     coderay (1.1.1)
     declarative (0.0.9)
@@ -49,7 +49,7 @@ GEM
     pry-byebug (3.4.2)
       byebug (~> 9.0)
       pry (~> 0.10)
-    public_suffix (2.0.5)
+    public_suffix (4.0.7)
     representable (3.0.4)
       declarative (< 0.1.0)
       declarative-option (< 0.2.0)
