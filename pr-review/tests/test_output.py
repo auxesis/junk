@@ -3,7 +3,7 @@ import os
 import subprocess
 
 from pr_review import output
-from pr_review.output import PostMode, decide_mode, post_review, render
+from pr_review.output import PostMode, decide_mode, dispatch, post_review, render
 from pr_review.payload import Comment, Payload
 from pr_review.target import Target
 
@@ -40,11 +40,69 @@ def test_post_review_builds_gh_api_command(tmp_path):
         calls.append(list(cmd))
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
-    post_review(Target("org", "repo", 5), Payload(body="b"), runner=runner)
-    cmd = calls[0]
-    assert cmd[:2] == ["gh", "api"]
-    assert cmd[2] == "repos/org/repo/pulls/5/reviews"
-    assert "--method" in cmd and "POST" in cmd and "--input" in cmd
+    path = post_review(Target("org", "repo", 5), Payload(body="b"), runner=runner)
+    try:
+        cmd = calls[0]
+        assert cmd[:2] == ["gh", "api"]
+        assert cmd[2] == "repos/org/repo/pulls/5/reviews"
+        assert "--method" in cmd and "POST" in cmd and "--input" in cmd
+    finally:
+        os.unlink(path)
+
+
+def test_post_review_leaves_payload_file_on_disk():
+    def runner(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    path = post_review(Target("org", "repo", 5), Payload(body="b"), runner=runner)
+    try:
+        assert os.path.exists(path)
+        assert json.load(open(path))["body"] == "b"
+    finally:
+        os.unlink(path)
+
+
+def test_dispatch_keeps_payload_and_exits_nonzero_when_post_fails(capsys):
+    def runner(cmd, **kw):
+        raise subprocess.CalledProcessError(1, cmd)
+
+    code = dispatch(PostMode.POST, Target("org", "repo", 5), Payload(body="b"), runner=runner)
+    err = capsys.readouterr().err
+    assert code == 1
+    # the failure hint must name a real file holding the payload, so an
+    # expensive review isn't lost to a tail-end auth/permission error
+    path = err.split("--input ", 1)[1].strip()
+    try:
+        assert os.path.exists(path)
+        assert json.load(open(path))["body"] == "b"
+    finally:
+        os.unlink(path)
+
+
+def test_dispatch_reports_payload_path_after_a_successful_post(capsys):
+    def runner(cmd, **kw):
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    code = dispatch(PostMode.POST, Target("org", "repo", 5), Payload(body="b"), runner=runner)
+    err = capsys.readouterr().err
+    assert code == 0
+    assert "posted review to org/repo#5" in err
+    path = err.split("payload kept at ", 1)[1].strip()
+    try:
+        assert os.path.exists(path)
+    finally:
+        os.unlink(path)
+
+
+def test_dispatch_review_only_keeps_payload_and_exits_zero(capsys):
+    code = dispatch(PostMode.REVIEW_ONLY, Target("org", "repo", 5), Payload(body="b"))
+    err = capsys.readouterr().err
+    assert code == 0
+    path = err.split("--input ", 1)[1].strip()
+    try:
+        assert os.path.exists(path)
+    finally:
+        os.unlink(path)
 
 
 def test_write_payload_file_creates_valid_json():

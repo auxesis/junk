@@ -79,27 +79,37 @@ def _write_payload_file(payload: Payload) -> str:
     return path
 
 
-def post_review(target: Target, payload: Payload, *, runner=_run) -> None:
+def _post_payload_file(target: Target, path: str, *, runner=_run) -> None:
+    runner(
+        ["gh", "api", f"repos/{target.slug}/pulls/{target.number}/reviews",
+         "--method", "POST", "--input", path]
+    )
+
+
+def post_review(target: Target, payload: Payload, *, runner=_run) -> str:
+    """POST the review via gh and return the payload file's path.
+
+    The file is left on disk on purpose: posting is the tail end of an
+    expensive review, so a failure here (bad token, missing permission) must
+    not cost the review itself.
+    """
     path = _write_payload_file(payload)
-    try:
-        runner(
-            ["gh", "api", f"repos/{target.slug}/pulls/{target.number}/reviews",
-             "--method", "POST", "--input", path]
-        )
-    finally:
-        try:
-            os.unlink(path)
-        except FileNotFoundError:
-            pass
+    _post_payload_file(target, path, runner=runner)
+    return path
+
+
+def _payload_note(target: Target, path: str, lead: str) -> str:
+    return (
+        f"{lead}\n  {path}\n"
+        f"  to post it: gh api repos/{target.slug}/pulls/{target.number}/reviews "
+        f"--method POST --input {path}"
+    )
 
 
 def _not_posted_hint(target: Target, payload: Payload) -> str:
     # Keep the payload on disk so the user can post it manually.
-    path = _write_payload_file(payload)
-    return (
-        f"pr-review: not posted. Payload written to:\n  {path}\n"
-        f"  to post it: gh api repos/{target.slug}/pulls/{target.number}/reviews "
-        f"--method POST --input {path}"
+    return _payload_note(
+        target, _write_payload_file(payload), "pr-review: not posted. Payload written to:"
     )
 
 
@@ -119,12 +129,24 @@ def _confirm(target: Target, n_comments: int) -> bool:
     return reply in ("y", "yes")
 
 
-def dispatch(mode: PostMode, target: Target, payload: Payload, *, runner=_run) -> None:
-    if mode is PostMode.POST:
-        post_review(target, payload, runner=runner)
+def dispatch(mode: PostMode, target: Target, payload: Payload, *, runner=_run) -> int:
+    """Post the review (or explain why it wasn't). Returns the exit code."""
+    if mode is PostMode.POST or (
+        mode is PostMode.PROMPT and _confirm(target, len(payload.comments))
+    ):
+        # Write the payload before posting so its path survives a failed post.
+        path = _write_payload_file(payload)
+        try:
+            _post_payload_file(target, path, runner=runner)
+        except Exception as err:
+            print(f"pr-review: posting failed: {err}", file=sys.stderr)
+            print(
+                _payload_note(target, path, "pr-review: the review was kept at:"),
+                file=sys.stderr,
+            )
+            return 1
         print(f"pr-review: posted review to {target.slug}#{target.number}.", file=sys.stderr)
-    elif mode is PostMode.PROMPT and _confirm(target, len(payload.comments)):
-        post_review(target, payload, runner=runner)
-        print(f"pr-review: posted review to {target.slug}#{target.number}.", file=sys.stderr)
-    else:
-        print(_not_posted_hint(target, payload), file=sys.stderr)
+        print(f"pr-review: payload kept at {path}", file=sys.stderr)
+        return 0
+    print(_not_posted_hint(target, payload), file=sys.stderr)
+    return 0

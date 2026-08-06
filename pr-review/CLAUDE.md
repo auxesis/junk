@@ -25,7 +25,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 12 files, one per `src/pr_review/` module (104 tests total):
+`tests/` holds 12 files, one per `src/pr_review/` module (108 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -57,9 +57,11 @@ fake, not the real subprocess.
 - **test_output.py** — `decide_mode` across the print-only / post-without-prompting
   / TTY matrix; `render` emits the body plus `path:line` comment anchors;
   `post_review` builds the `gh api .../reviews --method POST --input` call via a
-  fake runner; the not-posted path writes the payload to a real temp file and
-  names it in the hint; and `show_review` renders via `glow` when present (else
-  plain text), with a fake `which`/`run`.
+  fake runner and leaves the payload file on disk; the not-posted path writes the
+  payload to a real temp file and names it in the hint; `dispatch` returns the exit
+  code and, when the post fails, keeps the payload and names it in the retry hint
+  (so a tail-end 403 doesn't cost the review); and `show_review` renders via `glow`
+  when present (else plain text), with a fake `which`/`run`.
 - **test_orchestrator.py** — `run_reviews` with in-process `FakeReviewer`/`FakeType`
   (no subprocess): single-job passthrough, two-job merge (model in label),
   empty-model label, and graceful failure — a raising job is captured in

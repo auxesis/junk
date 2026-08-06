@@ -247,5 +247,4 @@ def main(argv: list[str] | None = None) -> int:
     mode = output.decide_mode(
         yes=cfg.yes, no_post=cfg.no_post, has_tty=output.tty_available()
     )
-    output.dispatch(mode, cfg.target, result.payload)
-    return 0
+    return output.dispatch(mode, cfg.target, result.payload)
