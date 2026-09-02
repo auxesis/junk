@@ -15,17 +15,26 @@ ln -sf "$MISE_PROJECT_ROOT/bin/pr-review" "$HOME/bin/pr-review"
 """
 
 [tasks.sync-vendor]
-description = "Re-fetch the vendored golang-pro skill from upstream (REF=main)"
+description = "Re-fetch the vendored upstream skills (REF=<ref>, SKILL=<name>)"
 run = """
 ref="${REF:-main}"
 base="https://raw.githubusercontent.com/Jeffallan/claude-skills/$ref"
-dir="$MISE_PROJECT_ROOT/vendor/golang-pro"
-curl -fsSL -o "$dir/LICENSE" "$base/LICENSE"
-curl -fsSL -o "$dir/SKILL.md" "$base/skills/golang-pro/SKILL.md"
-for f in concurrency interfaces generics testing project-structure; do
-  curl -fsSL -o "$dir/references/$f.md" "$base/skills/golang-pro/references/$f.md"
+root="$MISE_PROJECT_ROOT/vendor"
+# The vendored tree is the manifest: re-fetch exactly the files already here, so
+# a skill or reference is added or dropped by editing the tree, not this task.
+curl -fsSL -o "$root/LICENSE" "$base/LICENSE"
+for dir in "$root"/*/; do
+  skill=$(basename "$dir")
+  if [ -n "${SKILL:-}" ] && [ "$SKILL" != "$skill" ]; then continue; fi
+  curl -fsSL -o "$dir/SKILL.md" "$base/skills/$skill/SKILL.md"
+  for ref_file in "$dir"references/*.md; do
+    curl -fsSL -o "$ref_file" "$base/skills/$skill/references/$(basename "$ref_file")"
+  done
+  echo "synced $skill"
 done
-echo "Fetched from $ref. Read the diff, then update the commit, version, and date"
-echo "in vendor/golang-pro/PROVENANCE.md — and golang.py's header if the rubric moves."
-git -C "$MISE_PROJECT_ROOT" --no-pager diff --stat -- vendor/golang-pro
+echo
+echo "Fetched from $ref. Read the diff, then update the commit, version, and date in"
+echo "each synced vendor/<skill>/PROVENANCE.md — and the matching review type's header"
+echo "if the rubric moves. The tests assert those commits agree."
+git -C "$MISE_PROJECT_ROOT" --no-pager diff --stat -- vendor
 """

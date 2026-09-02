@@ -25,7 +25,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 13 files, one per `src/pr_review/` module (128 tests total):
+`tests/` holds 13 files, one per `src/pr_review/` module (149 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -34,15 +34,19 @@ fake, not the real subprocess.
   path and the `comments`-default; its validation rejections (invalid JSON,
   missing/non-string body, comment missing `path`, non-string body, non-integer
   `line`); and `cap_comments` splitting at the 8-comment cap.
-- **test_review_types.py** — the `ReviewType` registry: `test-gap`, `infracode`
-  and `golang` are registered, `get_review_type` returns the named instance, each
-  type's instructions carry the required output-contract/cap markers, and an
-  unknown name raises `ValueError`. `golang` additionally asserts the rubric names
-  its Go-specific axes (goroutines, `context.Context`, `%w`, `-race`, generics,
-  `internal/`), defers coverage findings to `test-gap`, and runs `go vet` /
-  `golangci-lint` only opportunistically — plus two attribution guards: the
-  vendored upstream MIT `LICENSE` is present, and `golang.py`'s header and
-  `PROVENANCE.md` both name the pinned upstream commit.
+- **test_review_types.py** — the `ReviewType` registry: `test-gap` and `infracode`
+  are registered, `get_review_type` returns the named instance, their instructions
+  carry the required output-contract/cap markers, and an unknown name raises
+  `ValueError`. The four per-language types (`golang`, `typescript`, `rust`,
+  `python`) are covered by one parametrized set driven by the `LANGUAGE_TYPES`
+  table — registration, the shared output/cap/severity contract, each rubric's
+  own axes (goroutines and `%w`; `satisfies` and `as const`; `unsafe` and
+  `unwrap()`; mutable defaults and bare excepts), the `test-gap` deferral for
+  coverage findings, and the opportunistic-toolchain wording — plus the
+  attribution guards: the vendored MIT `LICENSE` is present, each skill has its
+  `SKILL.md` and five `references/*.md`, and every rubric's header agrees with its
+  `PROVENANCE.md` on the pinned upstream commit. Adding a language type means
+  adding one row to that table.
 - **test_reviewers.py** — the `Reviewer` registry (`claude` and `codex` registered,
   each with a `default_model`, unknown raises), `Reviewer.command` argv for both
   agents (codex omits `--model` when empty), the shared `build_review_prompt`

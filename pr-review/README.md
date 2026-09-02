@@ -8,10 +8,12 @@ into a single review (de-duplicating across models when more than one runs), and
 PR. Because every run works in its own clone, you can review multiple PRs at once
 without touching your working tree or colliding with another run.
 
-Today it ships two agents (**Claude** and **Codex**, headless) and three review types
-(**test-gap**: test-coverage gap analysis; **infracode**: infrastructure-as-code
-review; **golang**: idiomatic-Go review — goroutine lifecycle, context, error
-wrapping, interfaces, generics). The multi-LLM, multi-type, and collation machinery is already built and
+Today it ships two agents (**Claude** and **Codex**, headless) and six review types:
+two language-agnostic (**test-gap**: test-coverage gap analysis; **infracode**:
+infrastructure-as-code review) and four per-language (**golang**, **typescript**,
+**rust**, **python**), each distilled from the corresponding MIT-licensed
+[claude-skills](https://github.com/Jeffallan/claude-skills) skill — see
+[Vendored upstream material](#vendored-upstream-material). The multi-LLM, multi-type, and collation machinery is already built and
 tested, so new agents and review types are additive — see [Developing](#developing).
 
 ---
@@ -72,7 +74,7 @@ agents with the repeatable `--model agent[=models]` flag; `--review-type` is a
 comma-separated list.
 
 ```bash
-pr-review <target> --review-type test-gap,infracode,golang \
+pr-review <target> --review-type test-gap,rust \
   --model claude=claude-opus-4-8,claude-fable-5 \
   --model codex=gpt-5,gpt-5.5
 ```
@@ -90,7 +92,13 @@ pr-review <target> --review-type test-gap,infracode,golang \
   still produce a review, failures are reported, and the exit is non-zero only
   if every job failed.
 - Registered agents: `claude`, `codex`. Registered review types: `test-gap`,
-  `infracode`, `golang`. Unknown names fail fast, before any clone.
+  `infracode`, `golang`, `typescript`, `rust`, `python`. Unknown names fail fast,
+  before any clone.
+- The per-language types each defer coverage gaps to `test-gap`, so pairing them
+  (`--review-type rust,test-gap`) gives complementary findings rather than
+  duplicates. Each opportunistically runs that language's toolchain (`cargo
+  clippy`, `tsc --noEmit`, `mypy`, `go vet`) when the clone already has it, and
+  reviews by reading when it doesn't.
 - Omit `--model` (or `--review-type`) to choose interactively; with no terminal
   (CI, piped stdin) the tool errors and asks you to pass the flag.
 - `--claude-flags="…"` / `--codex-flags="…"` pass extra flags to that agent's CLI.
@@ -185,9 +193,10 @@ pr-review/
 │   ├── collate.py          # Collator + DeterministicMergeCollator
 │   ├── output.py           # posting-mode decision, render, gh-api post
 │   ├── reviewers/          # Reviewer ABC + registry; claude.py, codex.py
-│   └── review_types/       # ReviewType ABC + registry; test_gap.py, infracode.py, golang.py
+│   └── review_types/       # ReviewType ABC + registry; test_gap.py, infracode.py,
+│                           #   golang.py, typescript.py, rust.py, python.py
 ├── tests/                  # pytest suite
-├── vendor/golang-pro/      # upstream skill + MIT LICENSE, verbatim (never read at runtime)
+├── vendor/                 # upstream skills + MIT LICENSE, verbatim (never read at runtime)
 └── docs/superpowers/       # design spec + implementation plan
 ```
 
@@ -233,8 +242,8 @@ just works.
 
 ### Extending: add a review type
 
-Same pattern in `review_types/` (`test_gap.py`, `infracode.py` and `golang.py`
-are worked examples). A review type's `instructions()` must include the JSON-payload output
+Same pattern in `review_types/` (`test_gap.py`, `infracode.py` and the four
+per-language types are worked examples). A review type's `instructions()` must include the JSON-payload output
 contract (write the payload file, don't post, anchor comments at `path:line`,
 8-comment cap) — copy the `## Output (REQUIRED)` section from an existing type:
 
@@ -258,11 +267,25 @@ becomes available.
 
 ### Vendored upstream material
 
-The `golang` rubric is distilled from the MIT-licensed
-[`golang-pro`](https://github.com/Jeffallan/claude-skills) skill by Jeffallan. The
-upstream `SKILL.md`, its five `references/*.md`, and the MIT `LICENSE` are vendored
-verbatim under `vendor/golang-pro/`, with the source URL, pinned commit, skill
-version, and fetch date recorded in `vendor/golang-pro/PROVENANCE.md`.
+The four per-language rubrics are distilled from MIT-licensed skills by Jeffallan
+([claude-skills](https://github.com/Jeffallan/claude-skills)):
+
+| Review type | Upstream skill |
+|---|---|
+| `golang` | `skills/golang-pro` |
+| `typescript` | `skills/typescript-pro` |
+| `rust` | `skills/rust-engineer` |
+| `python` | `skills/python-pro` |
+
+Each skill's `SKILL.md` and its five `references/*.md` are vendored verbatim under
+`vendor/<skill>/`, with the source URL, pinned commit, skill version, and fetch
+date in `vendor/<skill>/PROVENANCE.md`. The MIT `LICENSE` sits once at
+`vendor/LICENSE` — one upstream repository, one grant.
+
+Those skills teach an agent to *write* code; a review type needs instructions for
+reading someone else's diff, so each rubric is authored work derived from the
+upstream material, not a copy of it. The vendored text is the record of what it
+derives from.
 
 Nothing there is read at runtime — `pyproject.toml` packages only `src/pr_review`,
 so the vendored text never ships in the wheel and `pr-review` gains no dependency
@@ -270,12 +293,17 @@ on it or on the network. It is there so the MIT notice travels with the copy, an
 so upstream drift is a diff you can read:
 
 ```bash
-mise run sync-vendor          # re-fetch from main
-mise run sync-vendor REF=v2   # or a tag / sha
+mise run sync-vendor                      # every skill, from main
+mise run sync-vendor SKILL=rust-engineer  # just one
+mise run sync-vendor REF=v2               # or a tag / sha
 ```
 
-Then read the diff, update `PROVENANCE.md`, and adjust `golang.py`'s rubric if the
-upstream guidance actually moved.
+The vendored tree is its own manifest: the task re-fetches exactly the files
+already present, so you add or drop a skill by editing the tree, not the task.
+Then read the diff, update the affected `PROVENANCE.md`, and adjust that review
+type's rubric if the upstream guidance actually moved. The suite asserts each
+rubric's header and its `PROVENANCE.md` name the same commit, so a re-sync that
+forgets the rubric fails rather than rotting silently.
 
 ### Collation
 

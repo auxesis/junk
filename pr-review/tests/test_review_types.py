@@ -5,7 +5,7 @@ import pytest
 from pr_review.review_types import available, get_review_type
 
 REPO = Path(__file__).resolve().parents[1]
-VENDOR = REPO / "vendor" / "golang-pro"
+VENDOR = REPO / "vendor"
 
 
 def test_test_gap_is_registered():
@@ -35,60 +35,97 @@ def test_infracode_instructions_contain_domain_and_contract():
     assert "HARD CAP: 8 inline comments" in text
 
 
-def test_golang_is_registered():
-    assert "golang" in available()
-    assert get_review_type("golang").name == "golang"
+# --- the language review types distilled from the vendored skills ---
+
+# review type -> (vendored skill dir, module, axes the rubric must name,
+#                 toolchain commands it may run opportunistically)
+LANGUAGE_TYPES = {
+    "golang": (
+        "golang-pro", "golang",
+        ("goroutine", "context.Context", "%w", "-race", "generic", "internal/"),
+        ("go vet", "golangci-lint"),
+    ),
+    "typescript": (
+        "typescript-pro", "typescript",
+        ("any", "strict", "satisfies", "discriminated union", "as const", "unknown"),
+        ("tsc --noEmit", "eslint"),
+    ),
+    "rust": (
+        "rust-engineer", "rust",
+        ("unsafe", "unwrap()", "Result", "lifetime", "clone", "async"),
+        ("cargo clippy", "cargo fmt"),
+    ),
+    "python": (
+        "python-pro", "python",
+        ("type hint", "mutable default", "bare except", "async", "dataclass", "pathlib"),
+        ("mypy", "ruff"),
+    ),
+}
 
 
-def test_golang_instructions_contain_domain_and_contract():
-    text = get_review_type("golang").instructions()
-    assert "Go Review" in text
+@pytest.mark.parametrize("name", sorted(LANGUAGE_TYPES))
+def test_language_type_is_registered(name):
+    assert name in available()
+    assert get_review_type(name).name == name
+
+
+@pytest.mark.parametrize("name", sorted(LANGUAGE_TYPES))
+def test_language_type_instructions_contain_the_shared_contract(name):
+    text = get_review_type(name).instructions()
     assert "## Output (REQUIRED)" in text
     assert "HARD CAP: 8 inline comments" in text
+    assert "## Severity ladder" in text
 
 
-def test_golang_instructions_name_the_go_specific_axes():
-    """The rubric is distilled from golang-pro's references; each one has to
-    survive into the prompt as something reviewable in a diff."""
-    text = get_review_type("golang").instructions()
-    for axis in ("goroutine", "context.Context", "%w", "-race", "generic", "internal/"):
-        assert axis in text, axis
+@pytest.mark.parametrize("name", sorted(LANGUAGE_TYPES))
+def test_language_type_names_its_language_specific_axes(name):
+    """Each rubric is distilled from one skill's references; the axes those cover
+    have to survive into the prompt as something reviewable in a diff."""
+    text = get_review_type(name).instructions().lower()
+    for axis in LANGUAGE_TYPES[name][2]:
+        assert axis.lower() in text, f"{name}: {axis}"
 
 
-def test_golang_defers_coverage_findings_to_test_gap():
-    """golang-pro's testing.md overlaps the test-gap type. The rubric keeps the
-    Go-specific testing facts and hands uncovered-branch hunting back."""
-    text = get_review_type("golang").instructions()
-    assert "test-gap" in text
+@pytest.mark.parametrize("name", sorted(LANGUAGE_TYPES))
+def test_language_type_defers_coverage_findings_to_test_gap(name):
+    """Every upstream skill carries testing guidance that overlaps the test-gap
+    type. Each rubric keeps the language-specific facts and hands coverage back."""
+    assert "test-gap" in get_review_type(name).instructions()
 
 
-def test_golang_runs_the_toolchain_only_when_it_is_there():
-    """`go vet` / `golangci-lint` findings beat guessed ones, but a clone without a
-    toolchain must not turn into a review full of setup noise."""
-    text = get_review_type("golang").instructions()
-    assert "go vet" in text
-    assert "golangci-lint" in text
+@pytest.mark.parametrize("name", sorted(LANGUAGE_TYPES))
+def test_language_type_runs_the_toolchain_only_when_it_is_there(name):
+    """Real diagnostics beat guesses, but a clone without a toolchain must not turn
+    into a review full of setup noise."""
+    text = get_review_type(name).instructions()
+    for cmd in LANGUAGE_TYPES[name][3]:
+        assert cmd in text, f"{name}: {cmd}"
     assert "never report" in text.lower()
 
 
-def test_vendored_upstream_license_is_present():
-    """MIT: the notice travels with the copy. If this file goes, the attribution
-    in golang.py is no longer backed by anything in the tree."""
-    licence = (VENDOR / "LICENSE").read_text(encoding="utf-8")
-    assert "MIT License" in licence
-    assert "Copyright (c)" in licence
-
-
-def test_golang_module_attributes_the_pinned_upstream_commit():
-    """The rubric is derived work; its header must name what it derives from, at a
+@pytest.mark.parametrize("name", sorted(LANGUAGE_TYPES))
+def test_language_type_attributes_its_pinned_upstream_commit(name):
+    """Each rubric is derived work; its header must name what it derives from, at a
     revision someone can actually diff against."""
-    import pr_review.review_types.golang as mod
+    import importlib
 
+    skill, module = LANGUAGE_TYPES[name][0], LANGUAGE_TYPES[name][1]
+    doc = importlib.import_module(f"pr_review.review_types.{module}").__doc__
     commit = "efebc44c90ae6eb3b36ff1c53802a765418481b9"
-    assert commit in mod.__doc__
-    assert "MIT" in mod.__doc__
-    assert "Jeffallan/claude-skills" in mod.__doc__
-    assert commit in (VENDOR / "PROVENANCE.md").read_text(encoding="utf-8")
+    assert commit in doc, name
+    assert "MIT" in doc and "Jeffallan/claude-skills" in doc, name
+    assert skill in doc, name
+    provenance = (VENDOR / skill / "PROVENANCE.md").read_text(encoding="utf-8")
+    assert commit in provenance, name
+
+
+@pytest.mark.parametrize("name", sorted(LANGUAGE_TYPES))
+def test_vendored_skill_material_is_present(name):
+    """MIT: the notice travels with the copy. Without the vendored text there is
+    nothing in the tree backing the attribution in the rubric's header."""
+    skill = LANGUAGE_TYPES[name][0]
+    assert (VENDOR / skill / "SKILL.md").read_text(encoding="utf-8").strip()
+    assert len(list((VENDOR / skill / "references").glob("*.md"))) == 5
 
 
 def test_unknown_type_raises():
