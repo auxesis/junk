@@ -8,9 +8,10 @@ into a single review (de-duplicating across models when more than one runs), and
 PR. Because every run works in its own clone, you can review multiple PRs at once
 without touching your working tree or colliding with another run.
 
-Today it ships two agents (**Claude** and **Codex**, headless) and two review types
+Today it ships two agents (**Claude** and **Codex**, headless) and three review types
 (**test-gap**: test-coverage gap analysis; **infracode**: infrastructure-as-code
-review). The multi-LLM, multi-type, and collation machinery is already built and
+review; **golang**: idiomatic-Go review — goroutine lifecycle, context, error
+wrapping, interfaces, generics). The multi-LLM, multi-type, and collation machinery is already built and
 tested, so new agents and review types are additive — see [Developing](#developing).
 
 ---
@@ -71,7 +72,7 @@ agents with the repeatable `--model agent[=models]` flag; `--review-type` is a
 comma-separated list.
 
 ```bash
-pr-review <target> --review-type test-gap,infracode \
+pr-review <target> --review-type test-gap,infracode,golang \
   --model claude=claude-opus-4-8,claude-fable-5 \
   --model codex=gpt-5,gpt-5.5
 ```
@@ -89,7 +90,7 @@ pr-review <target> --review-type test-gap,infracode \
   still produce a review, failures are reported, and the exit is non-zero only
   if every job failed.
 - Registered agents: `claude`, `codex`. Registered review types: `test-gap`,
-  `infracode`. Unknown names fail fast, before any clone.
+  `infracode`, `golang`. Unknown names fail fast, before any clone.
 - Omit `--model` (or `--review-type`) to choose interactively; with no terminal
   (CI, piped stdin) the tool errors and asks you to pass the flag.
 - `--claude-flags="…"` / `--codex-flags="…"` pass extra flags to that agent's CLI.
@@ -184,8 +185,9 @@ pr-review/
 │   ├── collate.py          # Collator + DeterministicMergeCollator
 │   ├── output.py           # posting-mode decision, render, gh-api post
 │   ├── reviewers/          # Reviewer ABC + registry; claude.py, codex.py
-│   └── review_types/       # ReviewType ABC + registry; test_gap.py, infracode.py
+│   └── review_types/       # ReviewType ABC + registry; test_gap.py, infracode.py, golang.py
 ├── tests/                  # pytest suite
+├── vendor/golang-pro/      # upstream skill + MIT LICENSE, verbatim (never read at runtime)
 └── docs/superpowers/       # design spec + implementation plan
 ```
 
@@ -231,8 +233,8 @@ just works.
 
 ### Extending: add a review type
 
-Same pattern in `review_types/` (`test_gap.py` and `infracode.py` are worked
-examples). A review type's `instructions()` must include the JSON-payload output
+Same pattern in `review_types/` (`test_gap.py`, `infracode.py` and `golang.py`
+are worked examples). A review type's `instructions()` must include the JSON-payload output
 contract (write the payload file, don't post, anchor comments at `path:line`,
 8-comment cap) — copy the `## Output (REQUIRED)` section from an existing type:
 
@@ -253,6 +255,27 @@ register(SecurityType())
 
 Import it in `src/pr_review/review_types/__init__.py`, and `--review-type security`
 becomes available.
+
+### Vendored upstream material
+
+The `golang` rubric is distilled from the MIT-licensed
+[`golang-pro`](https://github.com/Jeffallan/claude-skills) skill by Jeffallan. The
+upstream `SKILL.md`, its five `references/*.md`, and the MIT `LICENSE` are vendored
+verbatim under `vendor/golang-pro/`, with the source URL, pinned commit, skill
+version, and fetch date recorded in `vendor/golang-pro/PROVENANCE.md`.
+
+Nothing there is read at runtime — `pyproject.toml` packages only `src/pr_review`,
+so the vendored text never ships in the wheel and `pr-review` gains no dependency
+on it or on the network. It is there so the MIT notice travels with the copy, and
+so upstream drift is a diff you can read:
+
+```bash
+mise run sync-vendor          # re-fetch from main
+mise run sync-vendor REF=v2   # or a tag / sha
+```
+
+Then read the diff, update `PROVENANCE.md`, and adjust `golang.py`'s rubric if the
+upstream guidance actually moved.
 
 ### Collation
 
