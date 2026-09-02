@@ -8,4 +8,10 @@ while [ -L "$source" ]; do
   [[ $source != /* ]] && source="$dir/$source"
 done
 repo=$(cd -P "$(dirname "$source")/.." >/dev/null 2>&1 && pwd)
-exec uv run --project "$repo" pr-review "$@"
+# uv may only be on PATH inside the repo (mise activate scopes tools per
+# directory), so resolve it through mise against the repo's config when the
+# bare name isn't found.
+if command -v uv >/dev/null 2>&1; then
+  exec uv run --project "$repo" pr-review "$@"
+fi
+exec mise x -C "$repo" -- uv run --project "$repo" pr-review "$@"
