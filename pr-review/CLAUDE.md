@@ -25,7 +25,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 12 files, one per `src/pr_review/` module (108 tests total):
+`tests/` holds 13 files, one per `src/pr_review/` module (121 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -43,7 +43,19 @@ fake, not the real subprocess.
   agents (codex omits `--model` when empty), the shared `build_review_prompt`
   (including that it names the base as a bare commit, never `origin/<ref>`), and
   `_review_env` (trusts the clone's `mise.toml`). The `review()` calls shell out to
-  `claude`/`codex` and are not unit-tested.
+  `claude`/`codex` and are not unit-tested; the shell around them is covered by
+  **test_run.py**.
+- **test_run.py** — the shared agent runner in `reviewers/_run.py`. `run_cli_payload`
+  with an injected fake runner: the payload file, not the exit status, is the
+  contract — a valid payload survives a non-zero exit (the `codex` EAGAIN panic:
+  review done, payload written, then exit 101), while an empty / missing /
+  malformed payload raises with the exit status named, and the temp payload path is
+  cleaned up on both paths. `run_agent` against a trivial `sys.executable` child
+  (no agent, no network): the child cannot set `O_NONBLOCK` on our stdio — the
+  regression pin for the flag leak between parallel jobs — plus prompt-on-stdin,
+  both child streams relayed to the sink, exit status returned, a child that never
+  reads its prompt yielding a status rather than a `BrokenPipeError`, and the child
+  running in the workdir with `mise` trust set.
 - **test_collate.py** — `DeterministicMergeCollator`: single-job identity
   passthrough, empty-jobs placeholder, two-job merge (sorted provenance headers +
   concatenated comments), and cap re-application with an overflow section across
