@@ -6,7 +6,7 @@ from pr_review.reviewers.base import Reviewer, register
 
 class ClaudeReviewer(Reviewer):
     name = "claude"
-    default_model = "claude-opus-4-8"
+    default_model = "claude-opus-5"
 
     def command(self, model: str, extra_flags: list[str]) -> list[str]:
         return [

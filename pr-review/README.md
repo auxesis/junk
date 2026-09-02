@@ -75,19 +75,19 @@ comma-separated list.
 
 ```bash
 pr-review <target> --review-type test-gap,rust \
-  --model claude=claude-opus-4-8,claude-fable-5 \
-  --model codex=gpt-5,gpt-5.5
+  --model claude=claude-opus-5,claude-fable-5 \
+  --model codex=gpt-5.6-terra,gpt-5.6-sol
 ```
 
-- `--model claude` (no `=`) uses claude's default model (`claude-opus-4-8`);
-  `--model codex` uses `gpt-5.5`. Override per run with `--model codex=<id>`
+- `--model claude` (no `=`) uses claude's default model (`claude-opus-5`);
+  `--model codex` uses `gpt-5.6-terra`. Override per run with `--model codex=<id>`
   (model availability depends on your codex auth — e.g. a ChatGPT-account login
-  can't use `gpt-5-codex`).
+  can't use `gpt-5-codex`; `codex --model` lists what yours actually offers).
 - A bare value can name several agents: `--model claude,codex` runs both with
   their default models (equivalent to `--model claude --model codex`). With `=`,
   the comma separates *models* for that one agent (`--model claude=opus,fable`).
 - Model ids are passed **verbatim** to the agent's CLI — give real ids
-  (`claude-opus-4-8`, not `opus-4.8`).
+  (`claude-opus-5`, not `opus-5`).
 - A failing job (bad model, auth, etc.) doesn't abort the run: surviving jobs
   still produce a review, failures are reported, and the exit is non-zero only
   if every job failed.
@@ -113,8 +113,8 @@ each comment labelled by confidence (`[2 models: claude, codex]` /
 `[single-source: codex]`), with a `## Review stats` section showing per-model
 counts and cross-model overlap.
 
-- `--synthesis-model AGENT[=MODEL]` — the judge (default `claude=claude-opus-4-8`;
-  e.g. `--synthesis-model codex=gpt-5`).
+- `--synthesis-model AGENT[=MODEL]` — the judge (default `claude=claude-opus-5`;
+  e.g. `--synthesis-model codex=gpt-5.6-terra`).
 - `--no-synthesis` — skip it and raw-merge the jobs (today's behaviour).
 - A single job skips synthesis; if the judge run fails, pr-review falls back to
   the raw merge so you always get a review.
@@ -134,9 +134,9 @@ By default `pr-review` **reviews and prints, then asks** before posting to the P
 
 | Option | Effect | Default |
 |--------|--------|---------|
-| `--model agent[=models]` | Per-agent models (repeatable) | `claude=claude-opus-4-8` |
+| `--model agent[=models]` | Per-agent models (repeatable) | `claude=claude-opus-5` |
 | `--codex-flags="<flags>"` | Extra flags appended to the `codex` invocation | empty |
-| `--synthesis-model agent[=model]` | Judge that de-dupes/verifies findings across jobs | `claude=claude-opus-4-8` |
+| `--synthesis-model agent[=model]` | Judge that de-dupes/verifies findings across jobs | `claude=claude-opus-5` |
 | `--no-synthesis` | Skip synthesis; raw-merge multi-job results | off |
 | `--post-without-prompting` | Post without prompting | off |
 | `--print-only` | Review and print only; never post | off |
@@ -150,7 +150,7 @@ form with the `=` so the leading dashes aren't read as `pr-review` options.)
 pr-review --print-only org/repo#214                   # dry run, prints the review only
 pr-review --post-without-prompting org/repo#214       # non-interactive, auto-post
 pr-review --keep-clone org/repo#214                   # leave the clone behind for inspection
-pr-review --model claude=claude-opus-4-8 --claude-flags="--debug" org/repo#214
+pr-review --model claude=claude-opus-5 --claude-flags="--debug" org/repo#214
 ```
 
 ### What happens during a run

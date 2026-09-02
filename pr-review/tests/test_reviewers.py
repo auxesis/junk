@@ -11,7 +11,7 @@ def test_claude_is_registered():
 
 
 def test_claude_default_model():
-    assert get_reviewer("claude").default_model == "claude-opus-4-8"
+    assert get_reviewer("claude").default_model == "claude-opus-5"
 
 
 def test_unknown_reviewer_raises():
@@ -46,7 +46,7 @@ def test_codex_is_registered():
 
 
 def test_codex_default_model():
-    assert get_reviewer("codex").default_model == "gpt-5.5"
+    assert get_reviewer("codex").default_model == "gpt-5.6-terra"
 
 
 def test_review_env_trusts_the_clone_for_mise(monkeypatch):
@@ -79,3 +79,11 @@ def test_codex_command_includes_model_when_given():
     assert cmd[:4] == ["codex", "exec", "--model", "gpt-5"]
     assert "--dangerously-bypass-approvals-and-sandbox" in cmd
     assert cmd[-1] == "--oss"
+
+
+def test_cli_default_model_tracks_the_claude_reviewer():
+    """cli.DEFAULT_MODEL (the no---model default and the synthesis judge) must not
+    be a second copy of the claude reviewer's default that can drift from it."""
+    from pr_review.cli import DEFAULT_MODEL
+
+    assert DEFAULT_MODEL == get_reviewer("claude").default_model

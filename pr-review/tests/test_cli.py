@@ -15,7 +15,7 @@ def test_config_defaults():
 
 def test_model_bare_agent_uses_default_model():
     cfg = config_from_args(["--model", "codex", "org/repo#1"])
-    assert cfg.agent_models == [("codex", "gpt-5.5")]
+    assert cfg.agent_models == [("codex", "gpt-5.6-terra")]
 
 
 def test_model_explicit_and_repeatable():
@@ -33,7 +33,7 @@ def test_model_explicit_and_repeatable():
 
 def test_model_comma_separated_bare_agents():
     cfg = config_from_args(["--model", "claude,codex", "org/repo#1"])
-    assert cfg.agent_models == [("claude", "claude-opus-4-8"), ("codex", "gpt-5.5")]
+    assert cfg.agent_models == [("claude", "claude-opus-5"), ("codex", "gpt-5.6-terra")]
 
 
 def test_model_unknown_agent_raises():
@@ -57,7 +57,7 @@ def test_help_shows_default_values(capsys):
     with pytest.raises(SystemExit):
         config_from_args(["--help"])
     out = capsys.readouterr().out
-    assert "claude-opus-4-8" in out
+    assert "claude-opus-5" in out
     assert "default:" in out
 
 
@@ -108,7 +108,7 @@ def test_resolve_review_types_errors_without_tty(capsys):
 
 
 def test_resolve_agent_models_explicit_passthrough():
-    pairs = [("claude", "claude-opus-4-8")]
+    pairs = [("claude", "claude-opus-5")]
     assert resolve_agent_models(pairs, has_tty=True, prompt_fn=lambda a, d: []) == pairs
 
 
@@ -122,7 +122,7 @@ def test_resolve_agent_models_prompts_when_tty():
 
     assert resolve_agent_models(None, has_tty=True, prompt_fn=fake_prompt) == [("codex", "gpt-5")]
     assert "claude" in seen["agents"]
-    assert seen["claude_default"] == "claude-opus-4-8"
+    assert seen["claude_default"] == "claude-opus-5"
 
 
 def test_resolve_agent_models_errors_without_tty(capsys):
@@ -134,7 +134,7 @@ def test_resolve_agent_models_errors_without_tty(capsys):
 
 def test_config_synthesis_defaults():
     cfg = config_from_args(["org/repo#1"])
-    assert cfg.synthesis_model == ("claude", "claude-opus-4-8")
+    assert cfg.synthesis_model == ("claude", "claude-opus-5")
     assert cfg.no_synthesis is False
 
 
@@ -145,7 +145,7 @@ def test_config_synthesis_model_override():
 
 def test_config_synthesis_bare_agent_uses_default():
     cfg = config_from_args(["--synthesis-model", "claude", "org/repo#1"])
-    assert cfg.synthesis_model == ("claude", "claude-opus-4-8")
+    assert cfg.synthesis_model == ("claude", "claude-opus-5")
 
 
 def test_config_no_synthesis_flag():

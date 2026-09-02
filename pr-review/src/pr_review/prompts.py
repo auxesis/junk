@@ -110,7 +110,7 @@ def prompt_agent_models_via_tty(
     if io is None:
         print(
             "pr-review: no terminal to prompt for --model.\n"
-            "  pass one, e.g. --model claude=claude-opus-4-8",
+            "  pass one, e.g. --model claude=claude-opus-5",
             file=sys.stderr,
         )
         raise SystemExit(2)

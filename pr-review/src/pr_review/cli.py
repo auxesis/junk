@@ -15,7 +15,9 @@ from pr_review.synthesis import LLMSynthesisCollator
 from pr_review.target import Target, parse_target
 from pr_review import output, prompts
 
-DEFAULT_MODEL = "claude-opus-4-8"
+# The no---model default and the synthesis judge both key off claude; read it
+# from the registry so bumping the reviewer bumps these too.
+DEFAULT_MODEL = get_reviewer("claude").default_model
 
 
 @dataclass
@@ -74,8 +76,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--model", action="append", metavar="AGENT[=MODELS]", default=None,
         help=(
-            "per-agent models, repeatable, e.g. --model claude=claude-opus-4-8,claude-fable-5 "
-            f"(agents: {', '.join(reviewers_available())}; default: claude=claude-opus-4-8)"
+            "per-agent models, repeatable, e.g. --model claude=claude-opus-5,claude-fable-5 "
+            f"(agents: {', '.join(reviewers_available())}; default: claude={DEFAULT_MODEL})"
         ),
     )
     p.add_argument(
