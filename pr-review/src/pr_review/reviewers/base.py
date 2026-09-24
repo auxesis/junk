@@ -29,11 +29,12 @@ class Reviewer(ABC):
         review_type: ReviewType,
         model: str,
         extra_flags: list[str],
+        context: str = "",
     ) -> Payload:
         return run_cli_reviewer(
             self.command(model, extra_flags),
             workdir=workdir, owner=owner, repo=repo, number=number,
-            base=base, review_type=review_type,
+            base=base, review_type=review_type, context=context,
         )
 
 

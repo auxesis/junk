@@ -15,8 +15,8 @@ class FakeReviewer:
         self.name = name
         self.calls = []
 
-    def review(self, *, workdir, base, owner, repo, number, review_type, model, extra_flags):
-        self.calls.append({"type": review_type.name, "model": model, "flags": extra_flags})
+    def review(self, *, workdir, base, owner, repo, number, review_type, model, extra_flags, context=""):
+        self.calls.append({"type": review_type.name, "model": model, "flags": extra_flags, "context": context})
         return Payload(body=f"{self.name}/{review_type.name}", comments=[Comment("f.py", 1, "g")])
 
 
@@ -36,7 +36,7 @@ def test_single_job_passthrough_and_per_job_args():
     result = _run([ReviewJob(r, FakeType("test-gap"), "m1", ["--x"])])
     assert result.failures == []
     assert result.payload.body == "claude/test-gap"
-    assert r.calls == [{"type": "test-gap", "model": "m1", "flags": ["--x"]}]
+    assert r.calls == [{"type": "test-gap", "model": "m1", "flags": ["--x"], "context": ""}]
 
 
 def test_two_jobs_merge_label_includes_model():
@@ -91,3 +91,10 @@ def test_each_comment_carries_its_job_source():
     result = _run([ReviewJob(FakeReviewer("claude"), FakeType("test-gap"), "m1", [])])
     assert result.payload.comments[0].sources == [Source("claude", "m1", "test-gap")]
     assert result.jobs[0].raw == 1
+
+
+def test_the_context_summary_reaches_every_reviewer():
+    r = FakeReviewer("claude")
+    run_reviews(jobs=[ReviewJob(r, FakeType("test-gap"), "m1", [])], workdir="/wd", base="b",
+                owner="o", repo="r", number=1, context="SUMMARY")
+    assert r.calls[0]["context"] == "SUMMARY"

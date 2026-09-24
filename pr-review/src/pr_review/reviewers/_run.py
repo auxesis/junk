@@ -29,12 +29,13 @@ def _build_context(*, owner: str, repo: str, number: int, base: str, payload_pat
 
 def build_review_prompt(
     *, owner: str, repo: str, number: int, base: str,
-    payload_path: str, review_type: ReviewType,
+    payload_path: str, review_type: ReviewType, context: str = "",
 ) -> str:
-    context = _build_context(
+    run = _build_context(
         owner=owner, repo=repo, number=number, base=base, payload_path=payload_path
     )
-    return context + "\n" + review_type.instructions()
+    parts = [run, context, review_type.instructions()] if context else [run, review_type.instructions()]
+    return "\n".join(parts)
 
 
 def _review_env(workdir: str) -> dict[str, str]:
@@ -155,11 +156,12 @@ def run_cli_reviewer(
     number: int,
     base: str,
     review_type: ReviewType,
+    context: str = "",
 ) -> Payload:
     def build(payload_path: str) -> str:
         return build_review_prompt(
             owner=owner, repo=repo, number=number, base=base,
-            payload_path=payload_path, review_type=review_type,
+            payload_path=payload_path, review_type=review_type, context=context,
         )
 
     return run_cli_payload(cmd_prefix, build, workdir=workdir)

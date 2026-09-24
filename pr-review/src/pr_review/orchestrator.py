@@ -44,6 +44,7 @@ def run_reviews(
     number: int,
     collator: Collator | None = None,
     max_workers: int | None = None,
+    context: str = "",
 ) -> RunResult:
     collator = collator or DeterministicMergeCollator()
 
@@ -54,6 +55,7 @@ def run_reviews(
             payload = job.reviewer.review(
                 workdir=workdir, base=base, owner=owner, repo=repo, number=number,
                 review_type=job.review_type, model=job.model, extra_flags=job.extra_flags,
+                context=context,
             )
             for comment in payload.comments:
                 comment.sources = [source]

@@ -40,6 +40,18 @@ def test_build_review_prompt_names_the_base_as_a_bare_commit():
     assert "origin/" not in prompt
 
 
+def test_build_review_prompt_places_the_context_before_the_instructions():
+    prompt = build_review_prompt(owner="o", repo="r", number=1, base="b", payload_path="/p",
+                                 review_type=get_review_type("test-gap"), context="## Pull request context\nX")
+    assert prompt.index("## Pull request context") < prompt.index("# Test Coverage Review")
+
+
+def test_build_review_prompt_without_context_is_unchanged():
+    prompt = build_review_prompt(owner="o", repo="r", number=1, base="b", payload_path="/p",
+                                 review_type=get_review_type("test-gap"))
+    assert "## Pull request context" not in prompt
+
+
 def test_codex_is_registered():
     assert "codex" in available()
     assert get_reviewer("codex").name == "codex"

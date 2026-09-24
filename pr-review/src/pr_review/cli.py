@@ -173,7 +173,7 @@ def config_from_args(argv: list[str]) -> RunConfig:
     )
 
 
-def build_collator(cfg: RunConfig, *, workdir: str, base: str) -> Collator:
+def build_collator(cfg: RunConfig, *, workdir: str, base: str, context: str = "") -> Collator:
     if cfg.no_synthesis:
         return DeterministicMergeCollator()
     agent, model = cfg.synthesis_model
@@ -181,6 +181,7 @@ def build_collator(cfg: RunConfig, *, workdir: str, base: str) -> Collator:
     return LLMSynthesisCollator(
         command=command, workdir=workdir,
         owner=cfg.target.owner, repo=cfg.target.repo, number=cfg.target.number, base=base,
+        context=context,
     )
 
 

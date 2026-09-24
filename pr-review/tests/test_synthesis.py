@@ -41,6 +41,12 @@ def test_build_synthesis_prompt_has_context_findings_and_instructions():
     assert "origin/" not in prompt
 
 
+def test_the_judge_gets_the_context_summary():
+    prompt = build_synthesis_prompt(owner="o", repo="r", number=7, base="b", payload_path="/p",
+                                    findings="F", context="## Pull request context\nX")
+    assert prompt.index("## Pull request context") < prompt.index("# Synthesis Review")
+
+
 def _job(label, rtype, n):
     agent = label.split(" ")[0]
     src = Source(agent, "m", rtype)

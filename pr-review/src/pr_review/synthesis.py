@@ -89,8 +89,9 @@ def _cap_payload(payload: Payload) -> Payload:
 
 def build_synthesis_prompt(
     *, owner: str, repo: str, number: int, base: str, payload_path: str, findings: str,
+    context: str = "",
 ) -> str:
-    context = (
+    run_context = (
         "You are consolidating GitHub pull request reviews. Context for this run:\n"
         f"- Repository: {owner}/{repo}\n"
         f"- PR number: {number}\n"
@@ -98,7 +99,10 @@ def build_synthesis_prompt(
         "- HEAD is ALREADY checked out at the exact code to review. Do not switch branches.\n"
         f"- Payload file to write: {payload_path}\n"
     )
-    return f"{context}\n{_INSTRUCTIONS}\n{writing_rules_block()}\n## Findings to consolidate\n\n{findings}\n"
+    parts = [run_context, context] if context else [run_context]
+    return "\n".join(parts) + (
+        f"\n{_INSTRUCTIONS}\n{writing_rules_block()}\n## Findings to consolidate\n\n{findings}\n"
+    )
 
 
 def _sources_by_key(jobs: list[Job]) -> dict[str, Source]:
@@ -131,6 +135,7 @@ class LLMSynthesisCollator(Collator):
         number: int,
         base: str,
         runner: Callable[..., object] = run_cli_json,
+        context: str = "",
     ):
         self._command = command
         self._workdir = workdir
@@ -139,6 +144,7 @@ class LLMSynthesisCollator(Collator):
         self._number = number
         self._base = base
         self._runner = runner
+        self._context = context
         self.ran = False
 
     def collate(self, jobs: list[Job]) -> Payload:
@@ -151,6 +157,7 @@ class LLMSynthesisCollator(Collator):
             return build_synthesis_prompt(
                 owner=self._owner, repo=self._repo, number=self._number,
                 base=self._base, payload_path=payload_path, findings=findings,
+                context=self._context,
             )
 
         try:
