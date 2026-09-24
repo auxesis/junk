@@ -268,7 +268,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         # The stage reads diff hunks from the clone, so it runs before cleanup.
         if result.payload is not None:
-            staged = stage.apply(result.payload) if stage else check_payload(result.payload)
+            if stage is None:
+                staged = check_payload(result.payload)
+            else:
+                try:
+                    staged = stage.apply(result.payload)
+                except Exception as e:
+                    print(
+                        f"pr-review: plain-language stage failed ({e}); "
+                        "using the word-and-shape check only",
+                        file=sys.stderr,
+                    )
+                    staged = check_payload(result.payload)
     finally:
         if cfg.keep:
             print(f"pr-review: kept checkout at {checkout.workdir}", file=sys.stderr)
@@ -285,10 +296,6 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    report = format_report(staged)
-    if report:
-        print(report, file=sys.stderr)
-
     agent, model = _plain_language_pair(cfg)
     record = RunRecord(
         jobs=result.jobs,
@@ -301,6 +308,11 @@ def main(argv: list[str] | None = None) -> int:
     payload = finalize(staged.payload, record)
 
     output.show_review(payload)
+
+    report = format_report(staged)
+    if report:
+        print(report, file=sys.stderr)
+
     mode = output.decide_mode(
         yes=cfg.yes, no_post=cfg.no_post, has_tty=output.tty_available()
     )

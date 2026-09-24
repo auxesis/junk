@@ -4,6 +4,30 @@ from pr_review.cli import build_jobs, config_from_args, resolve_agent_models, re
 from pr_review.target import Target
 
 
+def _patch_run(monkeypatch, *, payload, stage):
+    """Patch main()'s side-effecting collaborators so it runs with no clone,
+    no subprocess and no network, returning `payload` from run_reviews and
+    `stage` (or None to skip building one) as the plain-language stage."""
+    import pr_review.cli as cli
+    from pr_review.checkout import Checkout
+    from pr_review.orchestrator import RunResult
+
+    monkeypatch.setattr(
+        cli, "clone_pr",
+        lambda owner, repo, number: Checkout(workdir="/wd", base="base-sha", base_ref="main"),
+    )
+    monkeypatch.setattr(cli, "cleanup", lambda checkout: None)
+    monkeypatch.setattr(
+        cli, "run_reviews",
+        lambda **kw: RunResult(payload=payload, failures=[], jobs=[]),
+    )
+    monkeypatch.setattr(
+        cli, "build_plain_language_stage", lambda cfg, *, workdir, base: stage,
+    )
+    monkeypatch.setattr(cli.output, "tty_available", lambda: False)
+    return cli
+
+
 def test_config_defaults():
     cfg = config_from_args(["org/repo#3"])
     assert cfg.target == Target("org", "repo", 3)
@@ -211,3 +235,49 @@ def test_no_plain_language_builds_no_stage():
 
     cfg = config_from_args(["--no-plain-language", "org/repo#1"])
     assert build_plain_language_stage(cfg, workdir="/wd", base="b") is None
+
+
+def test_a_stage_apply_exception_falls_back_to_the_check_only(monkeypatch, capsys):
+    from pr_review.payload import Comment, Payload
+
+    payload = Payload(body="Verdict.",
+                       comments=[Comment("f.py", 1, "**X.**\n\n**Impact:** y\n\n**Fix:** z")])
+
+    class RaisingStage:
+        def apply(self, payload):
+            raise RuntimeError("boom")
+
+    cli = _patch_run(monkeypatch, payload=payload, stage=RaisingStage())
+    exit_code = cli.main([
+        "--model", "claude", "--review-type", "test-gap", "--print-only", "org/repo#1",
+    ])
+
+    err = capsys.readouterr().err
+    assert exit_code == 0
+    assert "plain-language" in err.lower() and "boom" in err
+
+
+def test_the_plain_language_report_prints_after_show_review(monkeypatch, capsys):
+    import sys
+
+    from pr_review.payload import Comment, Payload
+    from pr_review.plain_language.stage import StageResult
+
+    payload = Payload(body="Verdict.",
+                       comments=[Comment("f.py", 1, "**X.**\n\n**Impact:** y\n\n**Fix:** z")])
+
+    class FakeStage:
+        def apply(self, payload):
+            return StageResult(payload=payload, remaining={0: []}, body_remaining=[],
+                               warnings=["a plain-language warning"])
+
+    cli = _patch_run(monkeypatch, payload=payload, stage=FakeStage())
+    monkeypatch.setattr(
+        cli.output, "show_review",
+        lambda payload: print("SHOW_REVIEW_CALLED", file=sys.stderr),
+    )
+    cli.main(["--model", "claude", "--review-type", "test-gap", "--print-only", "org/repo#1"])
+
+    err = capsys.readouterr().err
+    assert "SHOW_REVIEW_CALLED" in err and "a plain-language warning" in err
+    assert err.index("SHOW_REVIEW_CALLED") < err.index("a plain-language warning")
