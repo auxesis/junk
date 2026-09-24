@@ -4,9 +4,10 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable
 
-from pr_review.collate import Collator, DeterministicMergeCollator, Job
-from pr_review.payload import Payload, cap_comments
-from pr_review.reviewers._run import run_cli_payload
+from pr_review.collate import Collator, DeterministicMergeCollator, Job, _first_line
+from pr_review.payload import Payload, Source, cap_comments, payload_from_dict
+from pr_review.plain_language.rules import writing_rules_block
+from pr_review.reviewers._run import run_cli_json
 
 _INSTRUCTIONS = r"""# Synthesis Review
 
@@ -30,18 +31,10 @@ nearby lines.
    differently or anchored to slightly different lines. Treat them as one finding.
 3. Verify each merged finding against the actual diff/code. DROP any finding you
    cannot substantiate from the code — these are likely hallucinations.
-4. Confidence:
-   - raised by 2+ models AND verified -> keep; label `[N models: a, b]`.
-   - raised by 1 model AND verified -> keep; label `[single-source: <model>]`.
-   - raised by 1 model AND not verifiable -> drop.
+4. Keep a finding only if you verified it against the code. A finding raised by
+   two or more models is more likely to be real, but verify it too.
 5. HARD CAP: 8 inline comments (highest-confidence first). List any overflow as a
    bullet list in the body under "## Additional findings not posted inline".
-
-## Stats (REQUIRED)
-
-Include a "## Review stats" section in the body with:
-- one row per source: its raw finding count and how many of its findings survived.
-- cross-model overlap: how many kept findings were corroborated by 2+ models.
 
 ## Output (REQUIRED)
 
@@ -50,12 +43,17 @@ JSON:
 
   {
     "event": "COMMENT",
-    "body": "<verdict + the ## Review stats section + any overflow list>",
+    "body": "<verdict + any overflow list>",
     "comments": [
       {"path": "relative/path", "line": N, "side": "RIGHT",
-       "body": "[2 models: claude, codex] **<finding>** ..."}
+       "sources": ["<label> [<review-type>]", "..."],
+       "body": "**<finding line>**\n\n**Impact:** ...\n\n**Evidence:** ...\n\n**Fix:** ..."}
     ]
   }
+
+"sources" lists every source whose findings this comment merges, each written
+exactly as it appears after "### Source: " below, up to but not including " — ".
+Do not name models in the comment body; pr-review adds that itself.
 
 Anchor each comment on a line that EXISTS in the diff (the added / RIGHT side),
 using the file's post-diff line number. Then ALSO print the same review to stdout
@@ -83,8 +81,8 @@ def _cap_payload(payload: Payload) -> Payload:
     if overflow:
         payload.comments = kept
         payload.body += (
-            "\n\n---\n\n## Additional findings not posted inline\n\n"
-            + "\n".join(f"- `{c.path}:{c.line}`" for c in overflow)
+            "\n\n---\n\n## Other findings not posted as comments\n\n"
+            + "\n".join(f"- `{c.path}:{c.line}` — {_first_line(c.body)}" for c in overflow)
         )
     return payload
 
@@ -100,7 +98,26 @@ def build_synthesis_prompt(
         "- HEAD is ALREADY checked out at the exact code to review. Do not switch branches.\n"
         f"- Payload file to write: {payload_path}\n"
     )
-    return f"{context}\n{_INSTRUCTIONS}\n## Findings to consolidate\n\n{findings}\n"
+    return f"{context}\n{_INSTRUCTIONS}\n{writing_rules_block()}\n## Findings to consolidate\n\n{findings}\n"
+
+
+def _sources_by_key(jobs: list[Job]) -> dict[str, Source]:
+    by_key: dict[str, Source] = {}
+    for label, rtype, payload in jobs:
+        for c in payload.comments:
+            if c.sources:
+                by_key[f"{label} [{rtype}]"] = c.sources[0]
+                break
+    return by_key
+
+
+def _map_sources(labels: object, by_key: dict[str, Source]) -> list[Source]:
+    found: list[Source] = []
+    for label in labels if isinstance(labels, list) else []:
+        source = by_key.get(label) if isinstance(label, str) else None
+        if source is not None and source not in found:
+            found.append(source)
+    return found
 
 
 class LLMSynthesisCollator(Collator):
@@ -113,7 +130,7 @@ class LLMSynthesisCollator(Collator):
         repo: str,
         number: int,
         base: str,
-        runner: Callable[..., Payload] = run_cli_payload,
+        runner: Callable[..., object] = run_cli_json,
     ):
         self._command = command
         self._workdir = workdir
@@ -122,6 +139,7 @@ class LLMSynthesisCollator(Collator):
         self._number = number
         self._base = base
         self._runner = runner
+        self.ran = False
 
     def collate(self, jobs: list[Job]) -> Payload:
         if len(jobs) <= 1:
@@ -136,7 +154,8 @@ class LLMSynthesisCollator(Collator):
             )
 
         try:
-            payload = self._runner(self._command, build, workdir=self._workdir)
+            data = self._runner(self._command, build, workdir=self._workdir)
+            payload = payload_from_dict(data)
         except Exception as e:
             print(
                 f"pr-review: synthesis failed ({self._command[0]}: {e}); "
@@ -144,4 +163,18 @@ class LLMSynthesisCollator(Collator):
                 file=sys.stderr,
             )
             return DeterministicMergeCollator().collate(jobs)
+
+        by_key = _sources_by_key(jobs)
+        raw = data.get("comments")
+        raw = raw if isinstance(raw, list) else []
+        for i, comment in enumerate(payload.comments):
+            entry = raw[i] if i < len(raw) and isinstance(raw[i], dict) else {}
+            comment.sources = _map_sources(entry.get("sources"), by_key)
+            if not comment.sources:
+                print(
+                    f"pr-review: synthesis gave no known source for "
+                    f"{comment.path}:{comment.line}; its footer will say pr-review.",
+                    file=sys.stderr,
+                )
+        self.ran = True
         return _cap_payload(payload)
