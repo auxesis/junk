@@ -300,10 +300,13 @@ def main(argv: list[str] | None = None) -> int:
                         stack=[e.number for e in ctx.stack] if ctx else [])
     filtered = None
     staged = None
+    missing = 0
     try:
         summary, context_path = "", ""
         if ctx:
-            ctx.stack = [e for e in ctx.stack if e.number in checkout.stack_refs]
+            fetched = [e for e in ctx.stack if e.number in checkout.stack_refs]
+            missing = len(ctx.stack) - len(fetched)
+            ctx.stack = fetched
             context_path = write_context_file(checkout.workdir, render_context_file(ctx))
             summary = prompt_summary(ctx, context_path)
 
@@ -366,7 +369,7 @@ def main(argv: list[str] | None = None) -> int:
         plain_language_model=(model or agent) if stage else None,
         rewritten=staged.rewritten,
         reader_ran=staged.reader_ran,
-        stack_line=describe_stack(ctx) if ctx else None,
+        stack_line=describe_stack(ctx, missing=missing) if ctx else None,
         context_line=describe_loaded(ctx) if ctx else None,
         not_posted=[describe_dropped(d) for d in filtered.dropped],
     )

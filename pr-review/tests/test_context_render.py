@@ -95,6 +95,13 @@ def test_describe_stack_and_loaded():
     )
 
 
+def test_describe_stack_says_when_pull_requests_could_not_be_fetched():
+    assert describe_stack(ctx([LATER]), missing=1) == (
+        "Stack: 0 earlier and 1 later pull request(s) (#8). "
+        "Some pull requests in the stack could not be fetched.")
+    assert describe_stack(ctx([LATER]), missing=0) == "Stack: 0 earlier and 1 later pull request(s) (#8)."
+
+
 def test_describe_dropped_says_why_and_links():
     assert describe_dropped(Dropped("**A.**", "fixed-later", "#8", "refs/stack/8:a.tf")) == (
         "**A.** Fixed in #8 (refs/stack/8:a.tf).")

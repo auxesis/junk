@@ -100,7 +100,12 @@ report what it already raises, or what the author has already answered.
 """
 
 
-def describe_stack(ctx: PullRequestContext) -> str:
+def describe_stack(ctx: PullRequestContext, missing: int = 0) -> str:
+    line = _describe_fetched_stack(ctx)
+    return line + (" Some pull requests in the stack could not be fetched." if missing else "")
+
+
+def _describe_fetched_stack(ctx: PullRequestContext) -> str:
     if not ctx.stack:
         return "Stack: not part of a stack."
     if ctx.stack_position:

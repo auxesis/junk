@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 27 files, one per `src/pr_review/` module (334 tests total):
+`tests/` holds 27 files, one per `src/pr_review/` module (335 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -127,7 +127,8 @@ fake, not the real subprocess.
   report that something is missing" / "Before you report anything, read the
   discussion") and the `UNTRUSTED_RULE`; and
   `describe_stack`, `describe_loaded` and `describe_dropped` build the
-  **How this review was made** block's stack line, context-loaded line, and
+  **How this review was made** block's stack line (which adds "Some pull
+  requests in the stack could not be fetched." when `missing` is set), context-loaded line, and
   one line per dropped finding (naming the fix, the thread or the reply it was
   answered in).
 - **test_context_filter.py** — `apply_verdicts` for every verdict kind: `keep`
