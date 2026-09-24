@@ -35,7 +35,7 @@ def test_details_list_every_job_with_found_and_posted_counts():
     text = render_details(record, comments)
     assert text.startswith("<details>\n<summary>How this review was made</summary>")
     assert "| claude | claude-opus-5 | test-gap | 3 found, 2 posted |" in text
-    assert "| codex | gpt-5.6-terra | test-gap | failed: boom |" in text
+    assert "| codex | gpt-5.6-terra | test-gap | failed |" in text
     assert text.rstrip().endswith("</details>")
     assert "Synthesis" not in text and "Plain language" not in text
 
@@ -62,9 +62,11 @@ def test_details_note_the_reader_test_did_not_run():
     assert "read every comment as a new reader would" not in text
 
 
-def test_a_pipe_in_an_error_does_not_break_the_table():
-    text = render_details(RunRecord(jobs=[JobRecord(CODEX, error="a | b")]), [])
-    assert "failed: a \\| b" in text
+def test_a_failed_job_does_not_post_the_error_text():
+    text = render_details(RunRecord(jobs=[JobRecord(CODEX, error="a | b /Users/me/secret")]), [])
+    assert "| codex | gpt-5.6-terra | test-gap | failed |" in text
+    assert "a | b /Users/me/secret" not in text
+    assert "secret" not in text
 
 
 def test_finalize_appends_footers_and_details_without_changing_the_input():

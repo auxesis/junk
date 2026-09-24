@@ -37,11 +37,6 @@ def attribution(sources: list[Source]) -> str:
     return f"<sub>Found by {len(models)} {noun}: {', '.join(names)}</sub>"
 
 
-def _cell(text: str) -> str:
-    first = text.strip().splitlines()[0] if text.strip() else ""
-    return first[:120].replace("|", "\\|")
-
-
 def render_details(record: RunRecord, comments: list[Comment]) -> str:
     lines = [
         "<details>", "<summary>How this review was made</summary>", "",
@@ -50,7 +45,9 @@ def render_details(record: RunRecord, comments: list[Comment]) -> str:
     for job in record.jobs:
         s = job.source
         if job.error is not None:
-            result = f"failed: {_cell(job.error)}"
+            # The detail (which can name local paths) already went to stderr
+            # from cli.main; the PR only needs to know the job failed.
+            result = "failed"
         else:
             posted = sum(1 for c in comments if s in c.sources)
             result = f"{job.raw} found, {posted} posted"
