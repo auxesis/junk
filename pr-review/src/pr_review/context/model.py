@@ -1,7 +1,7 @@
 """The pull request context: description, discussion, linked issues and stack."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -56,3 +56,6 @@ class PullRequestContext:
     stack: list[StackEntry]
     stack_position: tuple[int, int] | None
     failed: list[str]
+    # `failed` names the parts for the posted review; `errors` adds the reasons,
+    # which can hold local paths, for stderr only.
+    errors: list[str] = field(default_factory=list)

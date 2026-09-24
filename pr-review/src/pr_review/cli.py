@@ -293,8 +293,8 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as e:
             print(f"pr-review: could not load the pull request context ({e}); "
                   "reviewing the diff only.", file=sys.stderr)
-        for part in ctx.failed if ctx else []:
-            print(f"pr-review: context: could not load {part}.", file=sys.stderr)
+        for error in ctx.errors if ctx else []:
+            print(f"pr-review: context: could not load {error}.", file=sys.stderr)
 
     checkout = clone_pr(cfg.target.owner, cfg.target.repo, cfg.target.number,
                         stack=[e.number for e in ctx.stack] if ctx else [])

@@ -315,3 +315,18 @@ def test_no_context_filter_builds_no_filter():
     for flag in ("--no-context-filter", "--no-context"):
         cfg = config_from_args([flag, "org/repo#1"])
         assert build_context_filter(cfg, workdir="/wd", context_path="/c.md") is None
+
+
+def test_context_errors_print_in_full_on_stderr(monkeypatch, capsys):
+    from pr_review.context.model import PullRequestContext
+
+    cli = _patch_run(monkeypatch, payload=None, stage=None)
+    ctx = PullRequestContext(number=1, title="T", body="", author="ada", issues=[], comments=[],
+                             threads=[], stack=[], stack_position=None, failed=["discussion"],
+                             errors=["discussion (HTTP 502 at /home/ada/.config/gh)"])
+    monkeypatch.setattr(cli, "gather_context", lambda gh, number: ctx)
+    monkeypatch.setattr(cli, "write_context_file", lambda workdir, text: "/wd/.git/pr-review/pr-context.md")
+    cli.main(["--model", "claude", "--review-type", "test-gap", "--print-only", "org/repo#1"])
+
+    err = capsys.readouterr().err
+    assert "pr-review: context: could not load discussion (HTTP 502 at /home/ada/.config/gh)." in err

@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 27 files, one per `src/pr_review/` module (330 tests total):
+`tests/` holds 27 files, one per `src/pr_review/` module (332 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -109,7 +109,9 @@ fake, not the real subprocess.
   and branch names are URL-encoded in the `gh api` path.
 - **test_context_gather.py** — `gather_context` assembles the description,
   linked issues, discussion and stack from fakes; a failed part (discussion,
-  an issue) is left out and named in `failed` rather than raising; and a failed
+  an issue, the stack) is left out rather than raising, named in `failed` by
+  part name only (so no local path reaches the posted review) and in `errors`
+  with its reason; and a failed
   read of the pull request itself raises, since there is no review without it.
 - **test_context_render.py** — `stack_map` orders earlier/this/later pull
   requests with their state, position and `refs/stack/<n>` ref, and reports
@@ -184,7 +186,8 @@ fake, not the real subprocess.
   `--context-filter-model` parsing and `build_context_filter` (follows the
   synthesis model by default; builds none under either `--no-context` or
   `--no-context-filter`); `main()`, with `clone_pr`/`gather_context`/`run_reviews`/
-  `cleanup`/the stage all faked (no clone, no subprocess, no network): a
+  `cleanup`/the stage all faked (no clone, no subprocess, no network): context
+  `errors` print to stderr with their reasons; a
   `stage.apply` exception is caught, warned on stderr, and falls back to
   `check_payload` rather than losing the review; and the plain-language report
   prints after `output.show_review`, not before.
