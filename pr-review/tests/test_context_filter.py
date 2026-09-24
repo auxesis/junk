@@ -1,6 +1,7 @@
 from pr_review.context.filter import (
     MAX_REPLIES, ContextFilter, _add_evidence, answers_by_id, apply_verdicts, build_filter_prompt,
 )
+from pr_review.context.render import UNTRUSTED_RULE
 from pr_review.context.model import Entry, PullRequestContext, StackEntry, Thread
 from pr_review.payload import Comment, Payload, Source
 
@@ -9,7 +10,8 @@ SRC = Source("claude", "m", "infracode")
 
 def ctx():
     root = Entry(10, "thread", "https://x/r10", "bot", False, "t", "Unused parameter.", "a.py", 4)
-    author_reply = Entry(11, "thread", "https://x/r11", "ada", True, "t", "Used later in the stack.", "a.py", 4, 10)
+    author_reply = Entry(11, "thread", "https://x/r11", "ada", True, "t", "Used later in the stack.", "a.py", 4, 10,
+                         association="CONTRIBUTOR")
     other_reply = Entry(12, "thread", "https://x/r12", "bob", False, "t", "Agreed.", "a.py", 4, 10)
     return PullRequestContext(
         number=7, title="T", body="B", author="ada", issues=[],
@@ -106,7 +108,8 @@ def test_replies_beyond_the_cap_go_to_the_overflow_list():
 def test_the_prompt_names_refs_states_findings_and_the_context_file():
     prompt = build_filter_prompt(payload_path="/o.json", context_path="/c.md", ctx=ctx(), payload=payload(1))
     for expected in ("/o.json", "/c.md", "refs/stack/8", "(closed, later", "### Finding 0: f0.py:1",
-                     '"fixed-later"', '"already-raised"', '"answered"', '"reply"', "(author)"):
+                     '"fixed-later"', '"already-raised"', '"answered"', '"reply"', "(author)",
+                     "- 11: thread by ada [CONTRIBUTOR] (author)", UNTRUSTED_RULE):
         assert expected in prompt, expected
 
 

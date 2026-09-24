@@ -13,7 +13,8 @@ class FakeGitHub:
 def gh():
     return FakeGitHub({
         "issues/7/comments": [
-            {"id": 1, "html_url": "u1", "user": {"login": "ada"}, "created_at": "2026-01-02", "body": "Looks good."},
+            {"id": 1, "html_url": "u1", "user": {"login": "ada"}, "created_at": "2026-01-02", "body": "Looks good.",
+             "author_association": "MEMBER"},
         ],
         "pulls/7/reviews": [
             {"id": 2, "html_url": "u2", "user": {"login": "bot"}, "submitted_at": "2026-01-01", "body": "Verdict."},
@@ -52,3 +53,9 @@ def test_review_comments_group_into_threads_with_path_and_line():
 def test_a_reply_whose_root_is_missing_becomes_a_root():
     orphan = Entry(5, "thread", "u", "x", False, "t", "b", in_reply_to=99)
     assert [t.root.id for t in group_threads([orphan])] == [5]
+
+
+def test_the_author_association_is_kept_and_defaults_to_empty():
+    comments, threads = load_discussion(gh(), 7, "ada")
+    assert [e.association for e in comments] == ["", "MEMBER"]
+    assert threads[0].root.association == ""

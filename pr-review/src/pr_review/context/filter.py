@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, replace
 
 from pr_review.collate import _first_line
 from pr_review.context.model import Entry, PullRequestContext
-from pr_review.context.render import stack_map
+from pr_review.context.render import UNTRUSTED_RULE, author_label, stack_map
 from pr_review.payload import Comment, Payload, Reply
 from pr_review.reviewers._run import run_cli_json
 
@@ -106,10 +106,11 @@ def build_filter_prompt(*, payload_path: str, context_path: str, ctx: PullReques
         f"Output file to write: {payload_path}",
         f"Context file: {context_path}\n",
         _INSTRUCTIONS,
+        UNTRUSTED_RULE + "\n",
         "## Stack refs\n",
         stack_map(ctx),
         "\n## Discussion entries by id\n",
-        *[f"- {e.id}: {e.kind} by {e.author}{' (author)' if e.is_author else ''}" for e in _entries(ctx)],
+        *[f"- {e.id}: {e.kind} by {author_label(e)}" for e in _entries(ctx)],
         "\n## Findings\n",
     ]
     for i, c in enumerate(payload.comments):

@@ -154,6 +154,15 @@ thread (at most 3 per run).
 - `--no-context-filter` — give reviewers the context, but do not filter findings.
 - `--context-filter-model AGENT[=MODEL]` — the filter's model (default: the synthesis model).
 
+### Security
+
+Context mode puts text written by any GitHub user (the description, linked
+issues, comments and the other pull requests in the stack) into prompts for
+agents that run with permission checks turned off. pr-review marks that text as
+untrusted and tells the agents never to follow it, but that is a mitigation, not
+a guarantee. Use `--no-context` on repositories where untrusted people can
+comment.
+
 ### Posting behaviour
 
 By default `pr-review` **reviews and prints, then asks** before posting to the PR:

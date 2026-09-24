@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 27 files, one per `src/pr_review/` module (323 tests total):
+`tests/` holds 27 files, one per `src/pr_review/` module (326 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -92,8 +92,9 @@ fake, not the real subprocess.
 - **test_context_discussion.py** — issue comments and non-empty review bodies
   merge in time order (an empty review body is dropped); the author is marked
   on every entry; review comments group into threads with their path and line
-  (an outdated comment keeps its original line); and a reply whose root comment
-  is missing becomes a root itself.
+  (an outdated comment keeps its original line); a reply whose root comment
+  is missing becomes a root itself; and each entry keeps GitHub's
+  `author_association` (empty when absent).
 - **test_context_issues.py** — `#N` references in a body are found once each,
   including a closing keyword and a markdown link, excluding the pull request's
   own number, a colour literal and a URL fragment; a referenced pull request is
@@ -113,11 +114,14 @@ fake, not the real subprocess.
 - **test_context_render.py** — `stack_map` orders earlier/this/later pull
   requests with their state, position and `refs/stack/<n>` ref, and reports
   "not part of a stack" when there is none; `render_context_file` includes
-  every part with comment/thread ids and `(author)` marks, and writes "(none)"
-  under "Other pull requests in the stack" when it is empty; `prompt_summary`
-  opens with the context-file path and the stack map and description, and
-  carries both reviewer instructions ("Before you report that something is
-  missing" / "Before you report anything, read the discussion"); and
+  every part with comment/thread ids, author associations and `(author)` marks,
+  fences every untrusted body (description, issue, discussion entry, stack pull
+  request) between `<<<untrusted` and `>>>`, keeps a body from closing its own
+  fence, and writes "(none)" under "Other pull requests in the stack" when it is
+  empty; `prompt_summary` opens with the context-file path and the stack map and
+  fenced description, and carries both reviewer instructions ("Before you
+  report that something is missing" / "Before you report anything, read the
+  discussion") and the `UNTRUSTED_RULE`; and
   `describe_stack`, `describe_loaded` and `describe_dropped` build the
   **How this review was made** block's stack line, context-loaded line, and
   one line per dropped finding (naming the fix, the thread or the reply it was
@@ -137,7 +141,7 @@ fake, not the real subprocess.
   Evidence, and appends at the end when there is no **Fix**); replies beyond
   `MAX_REPLIES` (3) go to the body's overflow list instead; `build_filter_prompt`
   names the payload and context file paths, the stack's refs and states, each
-  finding and each author mark; a failed filter call keeps every finding, and a
+  finding, each author's association and mark, and the `UNTRUSTED_RULE`; a failed filter call keeps every finding, and a
   response with no `verdicts` list (or a non-object response) does the same
   and warns "context filter returned no verdicts list; every finding is kept";
   and `answers_by_id` covers both top-level comments and every thread entry.

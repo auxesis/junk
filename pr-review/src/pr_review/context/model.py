@@ -16,6 +16,7 @@ class Entry:
     path: str | None = None
     line: int | None = None
     in_reply_to: int | None = None
+    association: str = ""
 
 
 @dataclass

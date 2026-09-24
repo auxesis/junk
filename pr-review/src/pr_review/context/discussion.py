@@ -18,6 +18,7 @@ def _entry(kind: str, raw: dict, author: str) -> Entry:
         path=raw.get("path"),
         line=line,
         in_reply_to=raw.get("in_reply_to_id"),
+        association=raw.get("author_association") or "",
     )
 
 
