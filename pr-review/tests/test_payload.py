@@ -4,8 +4,10 @@ from pr_review.payload import (
     MAX_INLINE_COMMENTS,
     Comment,
     Payload,
+    Source,
     cap_comments,
     parse_payload,
+    payload_from_dict,
 )
 
 
@@ -59,3 +61,32 @@ def test_parse_rejects_comment_non_string_body():
 def test_parse_rejects_comment_non_integer_line():
     with pytest.raises(ValueError):
         parse_payload('{"body":"b","comments":[{"path":"x.py","line":"abc","body":"g"}]}')
+
+
+def test_sources_never_reach_the_github_payload():
+    c = Comment("a.py", 3, "gap", sources=[Source("claude", "opus", "test-gap")])
+    assert "sources" not in c.to_dict()
+    assert "sources" not in Payload(body="b", comments=[c]).to_json()
+
+
+def test_comment_sources_default_to_empty_and_are_not_shared():
+    a, b = Comment("a.py", 1, "x"), Comment("b.py", 2, "y")
+    a.sources.append(Source("claude", "m", "t"))
+    assert b.sources == []
+
+
+def test_source_is_hashable_and_compares_by_value():
+    assert Source("claude", "m", "t") == Source("claude", "m", "t")
+    assert len({Source("claude", "m", "t"), Source("claude", "m", "t")}) == 1
+
+
+def test_payload_from_dict_matches_parse_payload():
+    data = {"body": "b", "comments": [{"path": "x.py", "line": 2, "body": "g"}]}
+    p = payload_from_dict(data)
+    assert p.body == "b"
+    assert p.comments[0].path == "x.py"
+
+
+def test_payload_from_dict_rejects_a_non_object():
+    with pytest.raises(ValueError, match="JSON object"):
+        payload_from_dict(["not", "an", "object"])
