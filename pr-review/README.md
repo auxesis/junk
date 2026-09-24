@@ -109,15 +109,30 @@ When a run produces more than one job, pr-review runs a **synthesis pass** befor
 posting: a judge LLM is handed every finding (tagged by model and review-type)
 plus the diff, and it de-dupes findings that overlap across models, verifies each
 against the code (dropping ones it can't substantiate), and emits one review —
-each comment labelled by confidence (`[2 models: claude, codex]` /
-`[single-source: codex]`), with a `## Review stats` section showing per-model
-counts and cross-model overlap.
+each comment ends with a small footer naming the models that found it
+(`Found by 2 models: claude, codex`), and the body ends with a collapsed
+**How this review was made** block listing every job, its review type, how many
+findings it raised and how many were posted.
 
 - `--synthesis-model AGENT[=MODEL]` — the judge (default `claude=claude-opus-5`;
   e.g. `--synthesis-model codex=gpt-5.6-terra`).
 - `--no-synthesis` — skip it and raw-merge the jobs (today's behaviour).
 - A single job skips synthesis; if the judge run fails, pr-review falls back to
   the raw merge so you always get a review.
+
+### Plain language
+
+Every comment is written for an engineer who did not write the code and does not
+know this part of the system. Each one has a bold finding line, then **Impact**,
+an optional **Evidence**, and **Fix**. After collation pr-review checks every
+comment for listed jargon, contractions and long sentences, has a model read each
+comment beside its diff lines as a new reader would, and rewrites only the
+comments that reader could not act on. Anything left is listed on stderr before
+you confirm the post. The rules and word list are in
+`src/pr_review/plain_language/rules.json`.
+
+- `--plain-language-model AGENT[=MODEL]` — the reader and rewriter (default: the synthesis model).
+- `--no-plain-language` — skip the reader test and rewrite; the word-and-shape check still reports.
 
 ### Posting behaviour
 
@@ -138,6 +153,8 @@ By default `pr-review` **reviews and prints, then asks** before posting to the P
 | `--codex-flags="<flags>"` | Extra flags appended to the `codex` invocation | empty |
 | `--synthesis-model agent[=model]` | Judge that de-dupes/verifies findings across jobs | `claude=claude-opus-5` |
 | `--no-synthesis` | Skip synthesis; raw-merge multi-job results | off |
+| `--plain-language-model agent[=model]` | Reader test and rewrite model | the synthesis model |
+| `--no-plain-language` | Skip the reader test and rewrite | off |
 | `--post-without-prompting` | Post without prompting | off |
 | `--print-only` | Review and print only; never post | off |
 | `--claude-flags="<flags>"` | Extra flags appended to the `claude` invocation | empty |
