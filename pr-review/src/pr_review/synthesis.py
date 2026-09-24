@@ -34,7 +34,7 @@ nearby lines.
 4. Keep a finding only if you verified it against the code. A finding raised by
    two or more models is more likely to be real, but verify it too.
 5. HARD CAP: 8 inline comments (highest-confidence first). List any overflow as a
-   bullet list in the body under "## Additional findings not posted inline".
+   bullet list in the body under "## Other findings not posted as comments".
 
 ## Output (REQUIRED)
 

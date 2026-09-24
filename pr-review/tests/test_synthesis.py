@@ -33,6 +33,8 @@ def test_build_synthesis_prompt_has_context_findings_and_instructions():
     assert "[2 models:" not in prompt
     assert '"sources"' in prompt
     assert "## How to write each comment (REQUIRED)" in prompt
+    assert "## Other findings not posted as comments" in prompt
+    assert "Additional findings not posted inline" not in prompt
     assert "HARD CAP: 8 inline comments" in prompt
     assert "FINDINGS_HERE" in prompt
     assert "Base commit: deadbeef" in prompt
