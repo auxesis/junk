@@ -1,11 +1,13 @@
 """Clone a PR into an isolated temp dir (blobless), worktree-free."""
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 Runner = Callable[..., subprocess.CompletedProcess]
 
@@ -21,6 +23,7 @@ class Checkout:
     """
     base_ref: str = ""
     """Name of the base branch, for display only."""
+    stack_refs: list[int] = field(default_factory=list)
 
 
 def _run(cmd: Sequence[str], **kw) -> subprocess.CompletedProcess:
@@ -44,6 +47,7 @@ def clone_pr(
     repo: str,
     number: int,
     *,
+    stack: Sequence[int] = (),
     runner: Runner = _run,
     mkdtemp: Callable[[], str] | None = None,
 ) -> Checkout:
@@ -67,10 +71,29 @@ def clone_pr(
     # rewritten base branch), so ask for it by sha instead of assuming the clone
     # already has it.
     runner(["git", "fetch", "--filter=blob:none", "origin", base_sha], cwd=workdir)
+    fetched: list[int] = []
+    for n in stack:
+        try:
+            runner(["git", "fetch", "--filter=blob:none", "origin", f"+refs/pull/{n}/head:refs/stack/{n}"],
+                   cwd=workdir)
+        except Exception as e:
+            print(f"pr-review: could not fetch #{n} from the stack ({e}); leaving it out.", file=sys.stderr)
+            continue
+        fetched.append(n)
     runner(["git", "checkout", "--detach", pr_ref], cwd=workdir)
 
-    return Checkout(workdir=workdir, base=base_sha, base_ref=base_ref)
+    return Checkout(workdir=workdir, base=base_sha, base_ref=base_ref, stack_refs=fetched)
 
 
 def cleanup(checkout: Checkout) -> None:
     shutil.rmtree(checkout.workdir, ignore_errors=True)
+
+
+def write_context_file(workdir: str, text: str) -> str:
+    """Inside .git, so no reviewer's search of the working tree finds it."""
+    folder = os.path.join(workdir, ".git", "pr-review")
+    os.makedirs(folder, exist_ok=True)
+    path = os.path.join(folder, "pr-context.md")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(text)
+    return path
