@@ -1,3 +1,5 @@
+import os
+
 from pr_review.payload import Comment, Payload, Source
 from pr_review.plain_language.stage import PlainLanguageStage, check_payload, format_report
 
@@ -117,6 +119,25 @@ def test_the_check_runs_again_after_the_rewrite():
     runner = FakeRunner(rewrite={"comments": [{"index": 0, "body": still_bad}]})
     result = stage(runner).apply(payload(JARGON))
     assert any('"happy path"' in p.detail for p in result.remaining[0])
+
+
+def test_reader_and_rewrite_run_in_a_fresh_empty_tempdir_not_the_clone():
+    seen = []
+
+    def runner(command, build_prompt, *, workdir):
+        seen.append((workdir, os.path.isdir(workdir), os.listdir(workdir)))
+        build_prompt("/tmp/out.json")
+        answers = [{"comments": [], "body": {}}, {"comments": [{"index": 0, "body": FIXED}], "body": None}]
+        return answers[len(seen) - 1]
+
+    stage = PlainLanguageStage(command=["judge"], workdir="/wd", base="b", runner=runner,
+                               diff=lambda workdir, base: "")
+    stage.apply(payload(JARGON))
+    assert len(seen) == 2
+    for workdir, isdir, contents in seen:
+        assert workdir != "/wd"
+        assert isdir
+        assert contents == []
 
 
 def test_the_body_is_rewritten_when_it_has_a_blocking_problem():

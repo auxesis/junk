@@ -1,6 +1,7 @@
 """The plain-language stage: check, reader test, one rewrite, check again."""
 from __future__ import annotations
 
+import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
@@ -72,44 +73,47 @@ class PlainLanguageStage:
                 "no comment matched a line in the diff; the reader test sees no diff lines"
             )
 
-        reader = None
-        try:
-            reader = parse_reader_result(self._runner(
-                self._command,
-                lambda path: build_reader_prompt(
-                    payload_path=path,
-                    comments=[(i, c, hunks[i]) for i, c in enumerate(payload.comments)],
-                    body=payload.body,
-                ),
-                workdir=self._workdir,
-            ))
-        except Exception as e:
-            warnings.append(f"reader test failed ({e}); rewriting on the word-and-shape check only")
+        # The reader and rewrite calls get no repo access (spec: "no tools, no
+        # repo access"), so they run in an empty sandbox, never the clone.
+        with tempfile.TemporaryDirectory(prefix="pr-review-sandbox.") as sandbox:
+            reader = None
+            try:
+                reader = parse_reader_result(self._runner(
+                    self._command,
+                    lambda path: build_reader_prompt(
+                        payload_path=path,
+                        comments=[(i, c, hunks[i]) for i, c in enumerate(payload.comments)],
+                        body=payload.body,
+                    ),
+                    workdir=sandbox,
+                ))
+            except Exception as e:
+                warnings.append(f"reader test failed ({e}); rewriting on the word-and-shape check only")
 
-        problems = {
-            i: checked.remaining[i] + _reader_problems(reader.comments.get(i) if reader else None)
-            for i in range(len(payload.comments))
-        }
-        body_problems = checked.body_remaining + _reader_problems(reader.body if reader else None)
-        items = [
-            RewriteItem(i, c, hunks[i], _blocking(problems[i]))
-            for i, c in enumerate(payload.comments) if _blocking(problems[i])
-        ]
-        body_blocking = _blocking(body_problems)
-        if not items and not body_blocking:
-            return StageResult(payload, problems, body_problems, 0, warnings)
+            problems = {
+                i: checked.remaining[i] + _reader_problems(reader.comments.get(i) if reader else None)
+                for i in range(len(payload.comments))
+            }
+            body_problems = checked.body_remaining + _reader_problems(reader.body if reader else None)
+            items = [
+                RewriteItem(i, c, hunks[i], _blocking(problems[i]))
+                for i, c in enumerate(payload.comments) if _blocking(problems[i])
+            ]
+            body_blocking = _blocking(body_problems)
+            if not items and not body_blocking:
+                return StageResult(payload, problems, body_problems, 0, warnings)
 
-        try:
-            new_bodies, new_body = parse_rewrite_result(self._runner(
-                self._command,
-                lambda path: build_rewrite_prompt(
-                    payload_path=path, items=items, body=payload.body, body_problems=body_blocking,
-                ),
-                workdir=self._workdir,
-            ))
-        except Exception as e:
-            warnings.append(f"rewrite failed ({e}); posting the review as written")
-            return StageResult(payload, problems, body_problems, 0, warnings)
+            try:
+                new_bodies, new_body = parse_rewrite_result(self._runner(
+                    self._command,
+                    lambda path: build_rewrite_prompt(
+                        payload_path=path, items=items, body=payload.body, body_problems=body_blocking,
+                    ),
+                    workdir=sandbox,
+                ))
+            except Exception as e:
+                warnings.append(f"rewrite failed ({e}); posting the review as written")
+                return StageResult(payload, problems, body_problems, 0, warnings)
 
         comments = list(payload.comments)
         rewritten = 0
