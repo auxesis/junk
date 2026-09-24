@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 27 files, one per `src/pr_review/` module (332 tests total):
+`tests/` holds 27 files, one per `src/pr_review/` module (333 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -188,7 +188,8 @@ fake, not the real subprocess.
   synthesis model by default; builds none under either `--no-context` or
   `--no-context-filter`); `main()`, with `clone_pr`/`gather_context`/`run_reviews`/
   `cleanup`/the stage all faked (no clone, no subprocess, no network): context
-  `errors` print to stderr with their reasons; a
+  `errors` print to stderr with their reasons; the clone is cleaned up even
+  when writing the context file raises; a
   `stage.apply` exception is caught, warned on stderr, and falls back to
   `check_payload` rather than losing the review; and the plain-language report
   prints after `output.show_review`, not before.

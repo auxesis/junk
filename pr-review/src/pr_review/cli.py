@@ -298,25 +298,25 @@ def main(argv: list[str] | None = None) -> int:
 
     checkout = clone_pr(cfg.target.owner, cfg.target.repo, cfg.target.number,
                         stack=[e.number for e in ctx.stack] if ctx else [])
-    summary, context_path = "", ""
-    if ctx:
-        ctx.stack = [e for e in ctx.stack if e.number in checkout.stack_refs]
-        context_path = write_context_file(checkout.workdir, render_context_file(ctx))
-        summary = prompt_summary(ctx, context_path)
-
-    print(
-        f"pr-review: {cfg.target.slug}#{cfg.target.number} "
-        f"base={checkout.base_ref}@{checkout.base[:12]} jobs={len(jobs)}",
-        file=sys.stderr,
-    )
-    collator = build_collator(cfg, workdir=checkout.workdir, base=checkout.base, context=summary)
-    stage = build_plain_language_stage(cfg, workdir=checkout.workdir, base=checkout.base)
-    context_filter = (
-        build_context_filter(cfg, workdir=checkout.workdir, context_path=context_path) if ctx else None
-    )
     filtered = None
     staged = None
     try:
+        summary, context_path = "", ""
+        if ctx:
+            ctx.stack = [e for e in ctx.stack if e.number in checkout.stack_refs]
+            context_path = write_context_file(checkout.workdir, render_context_file(ctx))
+            summary = prompt_summary(ctx, context_path)
+
+        print(
+            f"pr-review: {cfg.target.slug}#{cfg.target.number} "
+            f"base={checkout.base_ref}@{checkout.base[:12]} jobs={len(jobs)}",
+            file=sys.stderr,
+        )
+        collator = build_collator(cfg, workdir=checkout.workdir, base=checkout.base, context=summary)
+        stage = build_plain_language_stage(cfg, workdir=checkout.workdir, base=checkout.base)
+        context_filter = (
+            build_context_filter(cfg, workdir=checkout.workdir, context_path=context_path) if ctx else None
+        )
         result = run_reviews(
             jobs=jobs, workdir=checkout.workdir, base=checkout.base,
             owner=cfg.target.owner, repo=cfg.target.repo, number=cfg.target.number,

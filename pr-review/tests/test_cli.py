@@ -330,3 +330,22 @@ def test_context_errors_print_in_full_on_stderr(monkeypatch, capsys):
 
     err = capsys.readouterr().err
     assert "pr-review: context: could not load discussion (HTTP 502 at /home/ada/.config/gh)." in err
+
+
+def test_the_clone_is_cleaned_up_when_writing_the_context_file_fails(monkeypatch):
+    from pr_review.context.model import PullRequestContext
+
+    cli = _patch_run(monkeypatch, payload=None, stage=None)
+    ctx = PullRequestContext(number=1, title="T", body="", author="ada", issues=[], comments=[],
+                             threads=[], stack=[], stack_position=None, failed=[])
+    monkeypatch.setattr(cli, "gather_context", lambda gh, number: ctx)
+
+    def disk_full(workdir, text):
+        raise OSError("disk full")
+
+    cleaned = []
+    monkeypatch.setattr(cli, "write_context_file", disk_full)
+    monkeypatch.setattr(cli, "cleanup", lambda checkout: cleaned.append(checkout.workdir))
+    with pytest.raises(OSError):
+        cli.main(["--model", "claude", "--review-type", "test-gap", "--print-only", "org/repo#1"])
+    assert cleaned == ["/wd"]
