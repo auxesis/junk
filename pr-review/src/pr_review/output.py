@@ -1,6 +1,7 @@
 """Decide whether to post, render the review, and post via gh."""
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -9,7 +10,7 @@ import tempfile
 from collections.abc import Sequence
 from enum import Enum
 
-from pr_review.payload import Payload
+from pr_review.payload import Payload, Reply
 from pr_review.target import Target
 from pr_review import terminal
 
@@ -113,15 +114,32 @@ def _not_posted_hint(target: Target, payload: Payload) -> str:
     )
 
 
-def _confirm(target: Target, n_comments: int) -> bool:
+def _write_reply_file(reply: Reply) -> str:
+    fd, path = tempfile.mkstemp(prefix=f"pr-review-reply.{reply.in_reply_to}.", suffix=".json")
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        json.dump(reply.to_dict(), f)
+    return path
+
+
+def _reply_command(target: Target, reply_id: int, path: str) -> list[str]:
+    return ["gh", "api", f"repos/{target.slug}/pulls/{target.number}/comments/{reply_id}/replies",
+            "--method", "POST", "--input", path]
+
+
+def _reply_hint(target: Target, reply_id: int, path: str) -> str:
+    return f"  to post the reply to comment {reply_id}: {' '.join(_reply_command(target, reply_id, path))}"
+
+
+def _confirm(target: Target, n_comments: int, n_replies: int = 0) -> bool:
     io = terminal.open_interactive()
     if io is None:
         return False
     read_line, write, close = io
+    replies = f" and {n_replies} reply(ies)" if n_replies else ""
     try:
         write(
             f"\nPost this review to {target.slug}#{target.number} "
-            f"with {n_comments} inline comment(s)? [y/N] "
+            f"with {n_comments} inline comment(s){replies}? [y/N] "
         )
         reply = read_line().strip().lower()
     finally:
@@ -130,23 +148,41 @@ def _confirm(target: Target, n_comments: int) -> bool:
 
 
 def dispatch(mode: PostMode, target: Target, payload: Payload, *, runner=_run) -> int:
-    """Post the review (or explain why it wasn't). Returns the exit code."""
+    """Post the review, then each reply (or explain why not). Returns the exit code."""
     if mode is PostMode.POST or (
-        mode is PostMode.PROMPT and _confirm(target, len(payload.comments))
+        mode is PostMode.PROMPT and _confirm(target, len(payload.comments), len(payload.replies))
     ):
         # Write the payload before posting so its path survives a failed post.
         path = _write_payload_file(payload)
+        reply_files = [(r.in_reply_to, _write_reply_file(r)) for r in payload.replies]
         try:
             _post_payload_file(target, path, runner=runner)
         except Exception as err:
             print(f"pr-review: posting failed: {err}", file=sys.stderr)
-            print(
-                _payload_note(target, path, "pr-review: the review was kept at:"),
-                file=sys.stderr,
-            )
+            print(_payload_note(target, path, "pr-review: the review was kept at:"), file=sys.stderr)
+            for reply_id, reply_path in reply_files:
+                print(_reply_hint(target, reply_id, reply_path), file=sys.stderr)
             return 1
         print(f"pr-review: posted review to {target.slug}#{target.number}.", file=sys.stderr)
         print(f"pr-review: payload kept at {path}", file=sys.stderr)
+
+        failed: list[tuple[int, str, Exception]] = []
+        for reply_id, reply_path in reply_files:
+            try:
+                runner(_reply_command(target, reply_id, reply_path))
+            except Exception as err:
+                failed.append((reply_id, reply_path, err))
+                continue
+            os.unlink(reply_path)
+        if failed:
+            print(f"pr-review: review posted; {len(failed)} of {len(reply_files)} replies failed: "
+                  f"{failed[0][2]}", file=sys.stderr)
+            for reply_id, reply_path, _ in failed:
+                print(_reply_hint(target, reply_id, reply_path), file=sys.stderr)
+            return 1
         return 0
+
     print(_not_posted_hint(target, payload), file=sys.stderr)
+    for r in payload.replies:
+        print(_reply_hint(target, r.in_reply_to, _write_reply_file(r)), file=sys.stderr)
     return 0

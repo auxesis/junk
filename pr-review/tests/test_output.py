@@ -4,7 +4,7 @@ import subprocess
 
 from pr_review import output
 from pr_review.output import PostMode, decide_mode, dispatch, post_review, render
-from pr_review.payload import Comment, Payload
+from pr_review.payload import Comment, Payload, Reply
 from pr_review.target import Target
 
 
@@ -160,3 +160,85 @@ def test_show_review_falls_back_to_print_when_glow_fails(capsys):
         which=lambda name: "/usr/bin/glow", run=failing,
     )
     assert "hello" in capsys.readouterr().out
+
+
+def _ok(cmd, **kw):
+    return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+
+def _paths(err):
+    return [line.split("--input ", 1)[1].strip() for line in err.splitlines() if "--input " in line]
+
+
+def test_replies_post_after_the_review_and_their_files_are_removed(capsys):
+    calls = []
+
+    def runner(cmd, **kw):
+        calls.append(list(cmd))
+        return _ok(cmd)
+
+    p = Payload(body="b", replies=[Reply(11, "r1"), Reply(12, "r2")])
+    code = dispatch(PostMode.POST, Target("org", "repo", 5), p, runner=runner)
+    assert code == 0
+    assert calls[0][2] == "repos/org/repo/pulls/5/reviews"
+    assert calls[1][2] == "repos/org/repo/pulls/5/comments/11/replies"
+    assert calls[2][2] == "repos/org/repo/pulls/5/comments/12/replies"
+    reply_file = calls[1][calls[1].index("--input") + 1]
+    assert not os.path.exists(reply_file)
+    os.unlink(capsys.readouterr().err.split("payload kept at ", 1)[1].strip())
+
+
+def test_a_failed_reply_does_not_stop_the_others_and_keeps_its_file(capsys):
+    def runner(cmd, **kw):
+        if "comments/11/replies" in cmd[2]:
+            raise subprocess.CalledProcessError(1, cmd)
+        return _ok(cmd)
+
+    p = Payload(body="b", replies=[Reply(11, "r1"), Reply(12, "r2")])
+    code = dispatch(PostMode.POST, Target("org", "repo", 5), p, runner=runner)
+    err = capsys.readouterr().err
+    assert code == 1
+    assert "review posted; 1 of 2 replies failed" in err
+    [kept] = _paths(err)
+    try:
+        assert "comments/11/replies" in err
+        assert json.load(open(kept)) == {"body": "r1"}
+    finally:
+        os.unlink(kept)
+
+
+def test_a_failed_review_posts_no_replies_and_keeps_everything(capsys):
+    calls = []
+
+    def runner(cmd, **kw):
+        calls.append(list(cmd))
+        raise subprocess.CalledProcessError(1, cmd)
+
+    p = Payload(body="b", replies=[Reply(11, "r1")])
+    code = dispatch(PostMode.POST, Target("org", "repo", 5), p, runner=runner)
+    err = capsys.readouterr().err
+    assert code == 1
+    assert len(calls) == 1
+    paths = _paths(err)
+    assert len(paths) == 2
+    for path in paths:
+        assert os.path.exists(path)
+        os.unlink(path)
+
+
+def test_review_only_writes_reply_files_with_a_command_each(capsys):
+    code = dispatch(PostMode.REVIEW_ONLY, Target("org", "repo", 5), Payload(body="b", replies=[Reply(11, "r1")]))
+    err = capsys.readouterr().err
+    assert code == 0
+    paths = _paths(err)
+    assert len(paths) == 2 and "comments/11/replies" in err
+    for path in paths:
+        os.unlink(path)
+
+
+def test_the_confirm_prompt_counts_replies(monkeypatch):
+    written = []
+    monkeypatch.setattr(output.terminal, "open_interactive",
+                        lambda: (lambda: "n", written.append, lambda: None))
+    assert output._confirm(Target("org", "repo", 5), 2, 1) is False
+    assert "with 2 inline comment(s) and 1 reply(ies)?" in written[0]
