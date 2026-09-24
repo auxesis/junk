@@ -236,3 +236,8 @@ A manual check after implementation: run pr-review on the first pull request of 
 - Replying to answers given in issue comments or review bodies. GitHub has no threads there, so these become new comments with a link.
 - Reviewing the whole stack in one run.
 - Resolving or hiding earlier pr-review threads that a later run finds are fixed.
+
+## Known limits
+
+- The collator caps inline comments at 8 before the context filter runs. Findings already moved to the body's overflow list are not filtered, and a comment the filter drops does not free an inline slot for an overflow finding.
+- Later stack entries are capped at 10 in total (`MAX_DEPTH`), not only by depth: a wide tree of later pull requests stops at 10 entries even when every branch is shallow.
