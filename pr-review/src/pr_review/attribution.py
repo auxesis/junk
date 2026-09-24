@@ -1,0 +1,79 @@
+"""Model attribution: a footer on each comment and a collapsed record of the run."""
+from __future__ import annotations
+
+from collections import Counter
+from dataclasses import dataclass, field, replace
+
+from pr_review.payload import Comment, Payload, Source
+
+
+@dataclass
+class JobRecord:
+    source: Source
+    raw: int = 0
+    error: str | None = None
+
+
+@dataclass
+class RunRecord:
+    jobs: list[JobRecord] = field(default_factory=list)
+    synthesis_model: str | None = None
+    plain_language_model: str | None = None
+    rewritten: int = 0
+
+
+def _models(sources: list[Source]) -> list[tuple[str, str]]:
+    return list(dict.fromkeys((s.agent, s.model) for s in sources))
+
+
+def attribution(sources: list[Source]) -> str:
+    models = _models(sources)
+    if not models:
+        return "<sub>Found by pr-review</sub>"
+    per_agent = Counter(agent for agent, _ in models)
+    names = [f"{a} ({m})" if per_agent[a] > 1 and m else a for a, m in models]
+    noun = "model" if len(models) == 1 else "models"
+    return f"<sub>Found by {len(models)} {noun}: {', '.join(names)}</sub>"
+
+
+def _cell(text: str) -> str:
+    first = text.strip().splitlines()[0] if text.strip() else ""
+    return first[:120].replace("|", "\\|")
+
+
+def render_details(record: RunRecord, comments: list[Comment]) -> str:
+    lines = [
+        "<details>", "<summary>How this review was made</summary>", "",
+        "| Agent | Model | Review type | Result |", "|---|---|---|---|",
+    ]
+    for job in record.jobs:
+        s = job.source
+        if job.error is not None:
+            result = f"failed: {_cell(job.error)}"
+        else:
+            posted = sum(1 for c in comments if s in c.sources)
+            result = f"{job.raw} found, {posted} posted"
+        lines.append(f"| {s.agent} | {s.model or '(default)'} | {s.review_type} | {result} |")
+    if record.synthesis_model:
+        shared = sum(1 for c in comments if len(_models(c.sources)) > 1)
+        lines += ["", (
+            f"Synthesis: `{record.synthesis_model}` merged the findings, removed duplicates "
+            f"and dropped findings it could not confirm in the code. {shared} posted "
+            "finding(s) were raised by two or more models."
+        )]
+    if record.plain_language_model:
+        lines += ["", (
+            f"Plain language: `{record.plain_language_model}` read every comment as a new "
+            f"reader would, and rewrote {record.rewritten} of them."
+        )]
+    lines += ["", "</details>"]
+    return "\n".join(lines)
+
+
+def finalize(payload: Payload, record: RunRecord) -> Payload:
+    comments = [
+        replace(c, body=f"{c.body.rstrip()}\n\n{attribution(c.sources)}")
+        for c in payload.comments
+    ]
+    body = f"{payload.body.rstrip()}\n\n{render_details(record, payload.comments)}"
+    return Payload(body=body, comments=comments, event=payload.event)
