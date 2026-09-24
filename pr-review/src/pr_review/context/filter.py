@@ -1,7 +1,6 @@
 """Drop findings the pull request's context already answers; reply where it is wrong."""
 from __future__ import annotations
 
-import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
@@ -74,6 +73,34 @@ def answers_by_id(ctx: PullRequestContext) -> dict[int, str]:
     return {e.id: e.body for e in _entries(ctx)}
 
 
+def _add_evidence(body: str, sentence: str) -> str:
+    """Add evidence sentence to the comment body.
+
+    If an **Evidence:** paragraph exists, append the sentence to its last line.
+    Otherwise insert a new paragraph before **Fix:** or at the end.
+    """
+    lines = body.split('\n')
+
+    for i, line in enumerate(lines):
+        if line.startswith('**Evidence:**'):
+            end = i + 1
+            while end < len(lines) and lines[end].strip():
+                end += 1
+            lines[end - 1] = lines[end - 1] + ' ' + sentence
+            return '\n'.join(lines)
+
+    for i, line in enumerate(lines):
+        if line.startswith('**Fix:**'):
+            lines.insert(i, '')
+            lines.insert(i, f'**Evidence:** {sentence}')
+            return '\n'.join(lines)
+
+    if lines and lines[-1].strip():
+        lines.append('')
+    lines.append(f'**Evidence:** {sentence}')
+    return '\n'.join(lines)
+
+
 def build_filter_prompt(*, payload_path: str, context_path: str, ctx: PullRequestContext, payload: Payload) -> str:
     parts = [
         f"Output file to write: {payload_path}",
@@ -91,9 +118,19 @@ def build_filter_prompt(*, payload_path: str, context_path: str, ctx: PullReques
 
 
 def apply_verdicts(payload: Payload, data: object, ctx: PullRequestContext) -> FilterResult:
-    raw = data.get("verdicts") if isinstance(data, dict) else None
+    warnings: list[str] = []
+
+    if not isinstance(data, dict):
+        warnings.append("context filter returned no verdicts list; every finding is kept")
+        return FilterResult(payload, [], warnings)
+
+    raw = data.get("verdicts")
+    if not isinstance(raw, list):
+        warnings.append("context filter returned no verdicts list; every finding is kept")
+        return FilterResult(payload, [], warnings)
+
     verdicts: dict[int, dict] = {}
-    for v in raw if isinstance(raw, list) else []:
+    for v in raw:
         if isinstance(v, dict) and isinstance(v.get("index"), int) and v["index"] not in verdicts:
             verdicts[v["index"]] = v
 
@@ -103,7 +140,6 @@ def apply_verdicts(payload: Payload, data: object, ctx: PullRequestContext) -> F
     replies: list[Reply] = []
     overflow: list[str] = []
     dropped: list[Dropped] = []
-    warnings: list[str] = []
 
     for i, c in enumerate(payload.comments):
         v = verdicts.get(i, {})
@@ -112,6 +148,10 @@ def apply_verdicts(payload: Payload, data: object, ctx: PullRequestContext) -> F
             reason = v["reason"]
             if reason == "fixed-later":
                 pr = v.get("pull_request")
+                if pr is None:
+                    warnings.append(f"{where}: kept; the verdict named no later pull request")
+                    kept.append(c)
+                    continue
                 if pr not in fixers:
                     warnings.append(f"{where}: kept; #{pr} is not an open or merged later pull request")
                     kept.append(c)
@@ -128,7 +168,8 @@ def apply_verdicts(payload: Payload, data: object, ctx: PullRequestContext) -> F
                 warnings.append(f"{where}: kept as a comment; the reply target is not the author's")
                 kept.append(c)
             elif target.kind != "thread":
-                kept.append(replace(c, body=f"{c.body.rstrip()}\n\nThis replies to [the author's answer]({target.url})."))
+                evidence_sentence = f"The author answered in [this comment]({target.url})."
+                kept.append(replace(c, body=_add_evidence(c.body, evidence_sentence)))
             elif len(replies) < MAX_REPLIES:
                 replies.append(Reply(target.id, body, sources=list(c.sources)))
             else:

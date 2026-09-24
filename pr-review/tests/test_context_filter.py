@@ -1,5 +1,5 @@
 from pr_review.context.filter import (
-    MAX_REPLIES, ContextFilter, answers_by_id, apply_verdicts, build_filter_prompt,
+    MAX_REPLIES, ContextFilter, _add_evidence, answers_by_id, apply_verdicts, build_filter_prompt,
 )
 from pr_review.context.model import Entry, PullRequestContext, StackEntry, Thread
 from pr_review.payload import Comment, Payload, Source
@@ -78,8 +78,12 @@ def test_a_reply_to_someone_else_or_to_an_issue_comment_stays_a_comment_with_a_l
         {"index": 1, "verdict": "reply", "in_reply_to": 1, "body": "x"}]}, ctx())
     assert out.payload.replies == []
     assert len(out.payload.comments) == 2
-    assert "[the author's answer](https://x/c1)" in out.payload.comments[1].body
-    assert "https://x/r12" not in out.payload.comments[0].body
+    assert "**Evidence:** The author answered in [this comment](https://x/c1)." in out.payload.comments[1].body
+    assert "**Fix:** y" in out.payload.comments[1].body
+    # Check that Evidence appears before Fix
+    evidence_pos = out.payload.comments[1].body.index("**Evidence:**")
+    fix_pos = out.payload.comments[1].body.index("**Fix:**")
+    assert evidence_pos < fix_pos
 
 
 def test_replies_beyond_the_cap_go_to_the_overflow_list():
@@ -109,3 +113,43 @@ def test_a_failed_filter_call_keeps_every_finding():
 def test_answers_by_id_covers_comments_and_every_thread_entry():
     assert answers_by_id(ctx()) == {1: "Deliberate, see the ADR.", 10: "Unused parameter.",
                                     11: "Used later in the stack.", 12: "Agreed."}
+
+
+def test_add_evidence_inserts_before_fix_when_no_evidence():
+    body = "**Finding.**\n\n**Impact:** x\n\n**Fix:** y"
+    result = _add_evidence(body, "The author answered in [this comment](url).")
+    assert "**Evidence:** The author answered in [this comment](url)." in result
+    assert result.index("**Evidence:**") < result.index("**Fix:**")
+
+
+def test_add_evidence_appends_to_existing_evidence():
+    body = "**Finding.**\n\n**Evidence:** Something\n\n**Fix:** y"
+    result = _add_evidence(body, "plus this.")
+    assert "**Evidence:** Something plus this." in result
+    assert result.index("**Evidence:**") < result.index("**Fix:**")
+
+
+def test_add_evidence_appends_at_end_when_no_fix():
+    body = "**Finding.**\n\n**Impact:** x"
+    result = _add_evidence(body, "The author answered in [this comment](url).")
+    assert result.endswith("**Evidence:** The author answered in [this comment](url).")
+
+
+def test_verdicts_missing_or_not_a_list_keeps_every_finding():
+    for data in ({}, {"verdicts": None}):
+        out = apply_verdicts(payload(2), data, ctx())
+        assert len(out.payload.comments) == 2
+        assert "context filter returned no verdicts list; every finding is kept" in out.warnings
+
+
+def test_data_not_a_dict_keeps_every_finding():
+    out = apply_verdicts(payload(2), [], ctx())
+    assert len(out.payload.comments) == 2
+    assert "context filter returned no verdicts list; every finding is kept" in out.warnings
+
+
+def test_missing_pull_request_in_fixed_later_verdict():
+    out = apply_verdicts(payload(1), {"verdicts": [
+        {"index": 0, "verdict": "drop", "reason": "fixed-later"}]}, ctx())
+    assert len(out.payload.comments) == 1
+    assert "the verdict named no later pull request" in out.warnings[0]
