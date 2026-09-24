@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 27 files, one per `src/pr_review/` module (326 tests total):
+`tests/` holds 27 files, one per `src/pr_review/` module (329 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -131,7 +131,11 @@ fake, not the real subprocess.
   records the pull request, but is kept (with a warning) when the named pull
   request is earlier, closed, unknown, or missing from the verdict entirely
   ("the verdict named no later pull request"); `already-raised` and `answered`
-  drop with their link; a bad index or an unknown reason is ignored; a `reply`
+  drop with their link, but only when it is the URL of a known comment or
+  thread entry (else kept, warning "the verdict linked to no known comment"),
+  and `answered` only when that entry is the author's (else kept, warning "the
+  linked answer is not the author's"), while `already-raised` may link to
+  anyone's entry; a bad index or an unknown reason is ignored; a `reply`
   to a review-thread comment the author posted becomes a `Reply` addressed to
   the thread's top-level comment (GitHub rejects replies to replies) with
   `answer_id` naming the author's entry, while a `reply` to someone

@@ -60,6 +60,28 @@ def test_already_raised_and_answered_drop_with_their_link():
     assert [(d.reason, d.link) for d in out.dropped] == [("already-raised", "https://x/r10"), ("answered", "https://x/c1")]
 
 
+def test_already_raised_or_answered_with_an_unknown_link_is_kept():
+    for reason in ("already-raised", "answered"):
+        for verdict in ({"link": "https://elsewhere/1"}, {}):
+            out = apply_verdicts(payload(1), {"verdicts": [
+                {"index": 0, "verdict": "drop", "reason": reason, **verdict}]}, ctx())
+            assert len(out.payload.comments) == 1 and out.dropped == [], (reason, verdict)
+            assert out.warnings == ["f0.py:1: kept; the verdict linked to no known comment"], (reason, verdict)
+
+
+def test_answered_with_a_link_to_someone_elses_entry_is_kept():
+    out = apply_verdicts(payload(1), {"verdicts": [
+        {"index": 0, "verdict": "drop", "reason": "answered", "link": "https://x/r12"}]}, ctx())
+    assert len(out.payload.comments) == 1 and out.dropped == []
+    assert out.warnings == ["f0.py:1: kept; the linked answer is not the author's"]
+
+
+def test_already_raised_may_link_to_anyone_including_a_thread_reply():
+    out = apply_verdicts(payload(1), {"verdicts": [
+        {"index": 0, "verdict": "drop", "reason": "already-raised", "link": "https://x/r12"}]}, ctx())
+    assert out.payload.comments == [] and out.dropped[0].link == "https://x/r12"
+
+
 def test_an_unknown_reason_or_bad_index_is_ignored():
     out = apply_verdicts(payload(1), {"verdicts": [
         {"index": 0, "verdict": "drop", "reason": "vibes"}, {"index": 5, "verdict": "drop", "reason": "answered"}]}, ctx())

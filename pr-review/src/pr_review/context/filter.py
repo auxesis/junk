@@ -137,6 +137,7 @@ def apply_verdicts(payload: Payload, data: object, ctx: PullRequestContext) -> F
 
     fixers = {e.number for e in ctx.stack if e.later and e.state != "closed"}
     entries = {e.id: e for e in _entries(ctx)}
+    by_url = {e.url: e for e in entries.values() if e.url}
     kept: list[Comment] = []
     replies: list[Reply] = []
     overflow: list[str] = []
@@ -159,7 +160,16 @@ def apply_verdicts(payload: Payload, data: object, ctx: PullRequestContext) -> F
                     continue
                 link = f"#{pr}"
             else:
-                link = v.get("link") if isinstance(v.get("link"), str) else ""
+                link = v.get("link")
+                linked = by_url.get(link) if isinstance(link, str) else None
+                if linked is None:
+                    warnings.append(f"{where}: kept; the verdict linked to no known comment")
+                    kept.append(c)
+                    continue
+                if reason == "answered" and not linked.is_author:
+                    warnings.append(f"{where}: kept; the linked answer is not the author's")
+                    kept.append(c)
+                    continue
             evidence = v.get("evidence") if isinstance(v.get("evidence"), str) else ""
             dropped.append(Dropped(_first_line(c.body), reason, link, evidence))
         elif v.get("verdict") == "reply":
