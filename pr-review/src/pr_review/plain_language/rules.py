@@ -74,24 +74,26 @@ Every inline comment has this shape, in this order:
 Writing rules (from ISO 24495-1 plain language and ASD-STE100 Simplified
 Technical English):
 
-1. Put the most important information first.
-2. Keep one idea in each sentence.
+1. Put the most important information first. (ISO 24495-1)
+2. Keep one idea in each sentence. (ISO 24495-1)
 3. Keep most sentences under 20 words. Split a sentence over
    {r.sentence_minor_words} words unless it is a list of paths or a quoted
    message. Never write a sentence over {r.sentence_blocking_words} words.
-4. Use the active voice. Say who or what does the action.
+   (ASD-STE100, Sentences)
+4. Use the active voice. Say who or what does the action. (ASD-STE100, Verbs)
 5. Write negatives in full: "does not" and "cannot", never "doesn't" or "can't".
+   (ISO 24495-1)
 6. Use literal words, with no metaphor and no programmer slang. Say what
-   happens: "the alert does not fire", not "the guard is inert".
+   happens: "the alert does not fire", not "the guard is inert". (ISO 24495-1)
 7. Use one term for one thing. Keep the repository's own words. If the diff shows
    what a repository term means, define it once, in a few words. Never replace a
-   term with a similar general word.
+   term with a similar general word. (ASD-STE100, Words)
 8. Keep exact technical names: identifiers, commands, file paths, product names
    and real engineering terms. Put code names in backticks.
 9. Use code fences only for code, commands and command output. Never put an
    explanation inside a fence.
-10. Each comment must make sense alone. Do not refer to "the above" or to another
-    comment.
+10. Each comment must make sense alone. Do not refer to "the above", another
+    comment, or a term only defined elsewhere.
 
 Never use these words and phrases; write the plain words instead:
 {words}

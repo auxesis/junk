@@ -42,11 +42,33 @@ def test_the_block_names_every_label_threshold_word_and_urgency_phrase():
         assert f'"{phrase}:"' in block
 
 
+def test_each_numbered_rule_names_its_source():
+    block = writing_rules_block()
+    assert "1. Put the most important information first. (ISO 24495-1)" in block
+    assert "2. Keep one idea in each sentence. (ISO 24495-1)" in block
+    assert "(ASD-STE100, Sentences)" in block
+    assert "(ASD-STE100, Verbs)" in block
+    assert "(ASD-STE100, Words)" in block
+    # 5 and 6 also cite ISO 24495-1; 4 rules total cite it (1, 2, 5, 6).
+    assert block.count("(ISO 24495-1)") == 4
+    for n in (8, 9, 10):
+        line = next(ln for ln in block.splitlines() if ln.startswith(f"{n}."))
+        assert "(" not in line
+
+
+def test_rule_ten_also_bans_terms_defined_only_elsewhere():
+    normalized = " ".join(writing_rules_block().split())
+    assert (
+        'Do not refer to "the above", another comment, or a term only defined '
+        "elsewhere." in normalized
+    )
+
+
 def test_the_block_itself_writes_negatives_in_full():
     import re
     # The quoted examples of what not to write are the only contractions allowed.
     text = re.sub(r'"[^"]*"', "", writing_rules_block())
-    assert not re.search(r"\b\w+n['']t\b", text)
+    assert not re.search(r"\b\w+n['’]t\b", text)
 
 
 import pytest
