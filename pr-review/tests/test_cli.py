@@ -349,3 +349,86 @@ def test_the_clone_is_cleaned_up_when_writing_the_context_file_fails(monkeypatch
     with pytest.raises(OSError):
         cli.main(["--model", "claude", "--review-type", "test-gap", "--print-only", "org/repo#1"])
     assert cleaned == ["/wd"]
+
+
+def test_main_with_context_prunes_the_stack_and_threads_it_through(monkeypatch):
+    from pr_review.checkout import Checkout
+    from pr_review.context.filter import Dropped, FilterResult
+    from pr_review.context.model import Entry, PullRequestContext, StackEntry, Thread
+    from pr_review.orchestrator import RunResult
+    from pr_review.payload import Comment, Payload
+    from pr_review.plain_language.stage import StageResult
+
+    import pr_review.cli as cli
+
+    answer = Entry(11, "thread", "https://x/r11", "ada", True, "t", "Done in #8.", "a.py", 4)
+    ctx = PullRequestContext(
+        number=7, title="Add widgets", body="Adds widgets.", author="ada", issues=[], comments=[],
+        threads=[Thread(answer, [])],
+        stack=[StackEntry(8, "Locking", "", "open", "s8", True), StackEntry(9, "Cleanup", "", "open", "s9", True)],
+        stack_position=None, failed=[],
+    )
+    reviewed = Payload(body="Verdict.", comments=[Comment("a.py", 4, "**X.**\n\n**Impact:** y\n\n**Fix:** z"),
+                                                   Comment("b.py", 2, "**Y.**\n\n**Impact:** y\n\n**Fix:** z")])
+    filtered = Payload(body="Verdict.", comments=reviewed.comments[1:])
+    seen = {}
+
+    monkeypatch.setattr(cli, "gather_context", lambda gh, number: ctx)
+
+    def clone_pr(owner, repo, number, *, stack):
+        seen["clone_stack"] = stack
+        return Checkout(workdir="/wd", base="base-sha", base_ref="main", stack_refs=[8])
+
+    def write_context_file(workdir, text):
+        seen["context_file"] = text
+        return "/wd/.git/pr-review/pr-context.md"
+
+    def build_collator(cfg, *, workdir, base, context):
+        seen["collator_context"] = context
+        return object()
+
+    def run_reviews(**kw):
+        seen["review_context"] = kw["context"]
+        return RunResult(payload=reviewed, failures=[], jobs=[])
+
+    class FakeFilter:
+        def apply(self, payload, ctx):
+            seen["filtered"] = payload
+            return FilterResult(filtered, [Dropped("**X.**", "fixed-later", "#8", "refs/stack/8:a.py")])
+
+    class FakeStage:
+        def apply(self, payload, answers=None):
+            seen["stage"] = (payload, answers)
+            return StageResult(payload=payload, remaining={}, body_remaining=[], warnings=[])
+
+    def finalize(payload, record):
+        seen["record"] = record
+        return payload
+
+    monkeypatch.setattr(cli, "clone_pr", clone_pr)
+    monkeypatch.setattr(cli, "write_context_file", write_context_file)
+    monkeypatch.setattr(cli, "build_collator", build_collator)
+    monkeypatch.setattr(cli, "run_reviews", run_reviews)
+    monkeypatch.setattr(cli, "build_context_filter", lambda cfg, *, workdir, context_path: FakeFilter())
+    monkeypatch.setattr(cli, "build_plain_language_stage", lambda cfg, *, workdir, base: FakeStage())
+    monkeypatch.setattr(cli, "finalize", finalize)
+    monkeypatch.setattr(cli, "cleanup", lambda checkout: None)
+    monkeypatch.setattr(cli.output, "tty_available", lambda: False)
+    monkeypatch.setattr(cli.output, "show_review", lambda payload: None)
+
+    assert cli.main(["--model", "claude", "--review-type", "test-gap", "--print-only", "org/repo#7"]) == 0
+
+    assert seen["clone_stack"] == [8, 9]
+    assert [e.number for e in ctx.stack] == [8]
+    assert "### #8 Locking" in seen["context_file"] and "#9" not in seen["context_file"]
+    summary = seen["review_context"]
+    assert "/wd/.git/pr-review/pr-context.md" in summary and "- #8 Locking" in summary
+    assert seen["collator_context"] == summary
+    assert seen["filtered"] is reviewed
+    assert seen["stage"] == (filtered, {11: "Done in #8."})
+    record = seen["record"]
+    assert record.stack_line == ("Stack: 0 earlier and 1 later pull request(s) (#8). "
+                                 "Some pull requests in the stack could not be fetched.")
+    assert record.context_line == ("Context loaded: the description, 0 linked issue(s) "
+                                   "and 1 discussion entries.")
+    assert record.not_posted == ["**X.** Fixed in #8 (refs/stack/8:a.py)."]

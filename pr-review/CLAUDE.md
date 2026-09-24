@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 27 files, one per `src/pr_review/` module (335 tests total):
+`tests/` holds 27 files, one per `src/pr_review/` module (336 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -193,8 +193,14 @@ fake, not the real subprocess.
   `errors` print to stderr with their reasons; the clone is cleaned up even
   when writing the context file raises; a
   `stage.apply` exception is caught, warned on stderr, and falls back to
-  `check_payload` rather than losing the review; and the plain-language report
-  prints after `output.show_review`, not before.
+  `check_payload` rather than losing the review; the plain-language report
+  prints after `output.show_review`, not before; and, with context gathered
+  (the filter, collator, `write_context_file` and `finalize` also faked), the
+  stack is pruned to the refs `clone_pr` fetched, the context file is written,
+  the prompt summary reaches both `run_reviews` and `build_collator`, the
+  filter's output reaches `stage.apply` with the `answers` map, and the
+  `RunRecord` carries the stack line (noting the unfetched pull request), the
+  context-loaded line and the not-posted list.
 - **test_prompts.py** — `select_from_menu` (numbers / names / empty-default /
   dedupe / invalid), `choose_review_types` (wraps it), and `choose_agent_models`
   (pick agents, then per-agent models with defaults). The `/dev/tty` wrappers are
