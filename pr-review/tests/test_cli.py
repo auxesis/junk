@@ -175,3 +175,39 @@ def test_build_collator_uses_the_judge_command():
     cfg = config_from_args(["--synthesis-model", "codex=gpt-5", "org/repo#1"])
     collator = build_collator(cfg, workdir="/wd", base="main")
     assert collator._command[:4] == ["codex", "exec", "--model", "gpt-5"]
+
+
+def test_config_plain_language_defaults():
+    cfg = config_from_args(["org/repo#1"])
+    assert cfg.plain_language_model is None
+    assert cfg.no_plain_language is False
+
+
+def test_config_plain_language_model_and_off_switch():
+    cfg = config_from_args(["--plain-language-model", "codex=gpt-5", "--no-plain-language", "org/repo#1"])
+    assert cfg.plain_language_model == ("codex", "gpt-5")
+    assert cfg.no_plain_language is True
+
+
+def test_plain_language_stage_follows_the_synthesis_model_by_default():
+    from pr_review.cli import build_plain_language_stage
+
+    cfg = config_from_args(["--synthesis-model", "codex=gpt-5", "org/repo#1"])
+    stage = build_plain_language_stage(cfg, workdir="/wd", base="b")
+    assert stage._command[:4] == ["codex", "exec", "--model", "gpt-5"]
+
+
+def test_plain_language_model_overrides_the_synthesis_model():
+    from pr_review.cli import build_plain_language_stage
+
+    cfg = config_from_args(["--synthesis-model", "codex=gpt-5",
+                            "--plain-language-model", "claude=claude-sonnet-5", "org/repo#1"])
+    stage = build_plain_language_stage(cfg, workdir="/wd", base="b")
+    assert stage._command[:4] == ["claude", "--print", "--model", "claude-sonnet-5"]
+
+
+def test_no_plain_language_builds_no_stage():
+    from pr_review.cli import build_plain_language_stage
+
+    cfg = config_from_args(["--no-plain-language", "org/repo#1"])
+    assert build_plain_language_stage(cfg, workdir="/wd", base="b") is None

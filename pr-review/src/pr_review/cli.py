@@ -6,9 +6,11 @@ import shlex
 import sys
 from dataclasses import dataclass
 
+from pr_review.attribution import RunRecord, finalize
 from pr_review.checkout import cleanup, clone_pr
 from pr_review.collate import Collator, DeterministicMergeCollator
 from pr_review.orchestrator import ReviewJob, run_reviews
+from pr_review.plain_language.stage import PlainLanguageStage, check_payload, format_report
 from pr_review.reviewers import available as reviewers_available, get_reviewer
 from pr_review.review_types import available as types_available, get_review_type
 from pr_review.synthesis import LLMSynthesisCollator
@@ -31,6 +33,8 @@ class RunConfig:
     keep: bool
     synthesis_model: tuple[str, str]
     no_synthesis: bool
+    plain_language_model: tuple[str, str] | None
+    no_plain_language: bool
 
 
 def _split(value: str) -> list[str]:
@@ -118,6 +122,20 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-synthesis", action="store_true",
         help="skip the synthesis pass; raw-merge multi-job results (default: false)",
     )
+    p.add_argument(
+        "--plain-language-model", metavar="AGENT[=MODEL]", default=None,
+        help=(
+            "agent/model for the plain-language reader test and rewrite "
+            "(default: the synthesis model)"
+        ),
+    )
+    p.add_argument(
+        "--no-plain-language", action="store_true",
+        help=(
+            "skip the plain-language reader test and rewrite; the word-and-shape "
+            "check still reports (default: false)"
+        ),
+    )
     return p
 
 
@@ -147,6 +165,11 @@ def config_from_args(argv: list[str]) -> RunConfig:
             if args.synthesis_model else ("claude", DEFAULT_MODEL)
         ),
         no_synthesis=args.no_synthesis,
+        plain_language_model=(
+            _parse_synthesis_model(args.plain_language_model)
+            if args.plain_language_model else None
+        ),
+        no_plain_language=args.no_plain_language,
     )
 
 
@@ -159,6 +182,18 @@ def build_collator(cfg: RunConfig, *, workdir: str, base: str) -> Collator:
         command=command, workdir=workdir,
         owner=cfg.target.owner, repo=cfg.target.repo, number=cfg.target.number, base=base,
     )
+
+
+def _plain_language_pair(cfg: RunConfig) -> tuple[str, str]:
+    return cfg.plain_language_model or cfg.synthesis_model
+
+
+def build_plain_language_stage(cfg: RunConfig, *, workdir: str, base: str) -> PlainLanguageStage | None:
+    if cfg.no_plain_language:
+        return None
+    agent, model = _plain_language_pair(cfg)
+    command = get_reviewer(agent).command(model, cfg.flags_by_agent.get(agent, []))
+    return PlainLanguageStage(command=command, workdir=workdir, base=base)
 
 
 def build_jobs(cfg: RunConfig) -> list[ReviewJob]:
@@ -223,12 +258,17 @@ def main(argv: list[str] | None = None) -> int:
         file=sys.stderr,
     )
     collator = build_collator(cfg, workdir=checkout.workdir, base=checkout.base)
+    stage = build_plain_language_stage(cfg, workdir=checkout.workdir, base=checkout.base)
+    staged = None
     try:
         result = run_reviews(
             jobs=jobs, workdir=checkout.workdir, base=checkout.base,
             owner=cfg.target.owner, repo=cfg.target.repo, number=cfg.target.number,
             collator=collator,
         )
+        # The stage reads diff hunks from the clone, so it runs before cleanup.
+        if result.payload is not None:
+            staged = stage.apply(result.payload) if stage else check_payload(result.payload)
     finally:
         if cfg.keep:
             print(f"pr-review: kept checkout at {checkout.workdir}", file=sys.stderr)
@@ -238,15 +278,29 @@ def main(argv: list[str] | None = None) -> int:
     for label, rtype, err in result.failures:
         print(f"pr-review: {label} / {rtype} failed: {err}", file=sys.stderr)
 
-    if result.payload is None:
+    if staged is None:
         print(
             f"pr-review: all {len(jobs)} review job(s) failed; no review produced.",
             file=sys.stderr,
         )
         return 1
 
-    output.show_review(result.payload)
+    report = format_report(staged)
+    if report:
+        print(report, file=sys.stderr)
+
+    agent, model = _plain_language_pair(cfg)
+    record = RunRecord(
+        jobs=result.jobs,
+        synthesis_model=(cfg.synthesis_model[1] or cfg.synthesis_model[0])
+        if getattr(collator, "ran", False) else None,
+        plain_language_model=(model or agent) if stage else None,
+        rewritten=staged.rewritten,
+    )
+    payload = finalize(staged.payload, record)
+
+    output.show_review(payload)
     mode = output.decide_mode(
         yes=cfg.yes, no_post=cfg.no_post, has_tty=output.tty_available()
     )
-    return output.dispatch(mode, cfg.target, result.payload)
+    return output.dispatch(mode, cfg.target, payload)
