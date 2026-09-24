@@ -128,6 +128,16 @@ def test_vendored_skill_material_is_present(name):
     assert len(list((VENDOR / skill / "references").glob("*.md"))) == 5
 
 
+@pytest.mark.parametrize("name", available())
+def test_overflow_heading_matches_the_cap_collator(name):
+    """collate.py and synthesis.py both append overflow under this heading; a
+    review type telling the agent to write it must use the same one."""
+    text = get_review_type(name).instructions()
+    assert "## Other findings not posted as comments" in text
+    assert "## Additional findings not posted inline" not in text
+    assert "## Additional coverage gaps not posted inline" not in text
+
+
 def test_unknown_type_raises():
     with pytest.raises(ValueError):
         get_review_type("does-not-exist")

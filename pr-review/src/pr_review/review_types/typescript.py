@@ -126,7 +126,8 @@ never a block.
   would be caught by `eslint` or Prettier, say so in one line at most.
 - Don't say "consider X" without sketching X. Don't quote the diff back.
 - HARD CAP: 8 inline comments. List any overflow as a bullet list in the review
-  body under "## Additional findings not posted inline".
+  body under "## Other findings not posted as comments", each bullet the finding
+  line, then `path:line`.
 - If the diff has no TypeScript changes: write a payload whose body is a one-line
   note saying so and whose comments array is empty.
 

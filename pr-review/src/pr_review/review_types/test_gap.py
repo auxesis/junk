@@ -70,7 +70,8 @@ using the file's post-diff line number — not the @@ hunk number.
 - Prefer patterns already established in the affected area.
 - Don't restate the diff back at the author. Cite path:line and trust them to look.
 - HARD CAP: 8 inline comments. List any overflow as a bullet list in the review
-  body under "## Additional coverage gaps not posted inline".
+  body under "## Other findings not posted as comments", each bullet the finding
+  line, then `path:line`.
 - If the diff is doc-only / CI-only / has no test-relevant changes: write a
   payload whose body is a one-line note saying so and whose comments array is
   empty.
