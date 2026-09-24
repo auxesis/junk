@@ -25,7 +25,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 20 files, one per `src/pr_review/` module (238 tests total):
+`tests/` holds 20 files, one per `src/pr_review/` module (254 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -47,7 +47,10 @@ fake, not the real subprocess.
   attribution guards: the vendored MIT `LICENSE` is present, each skill has its
   `SKILL.md` and five `references/*.md`, and every rubric's header agrees with its
   `PROVENANCE.md` on the pinned upstream commit. Adding a language type means
-  adding one row to that table.
+  adding one row to that table. A separate parametrized set over every
+  registered type asserts the HARD CAP overflow heading is "## Other findings
+  not posted as comments" (matching `collate.py` / `synthesis.py`'s `_cap_payload`)
+  and neither of the two old headings is still there.
 - **test_reviewers.py** — the `Reviewer` registry (`claude` and `codex` registered,
   each with a `default_model`, unknown raises), `Reviewer.command` argv for both
   agents (codex omits `--model` when empty), the shared `build_review_prompt`
@@ -99,7 +102,11 @@ fake, not the real subprocess.
   the `help` word aliasing to `--help`, plus `--synthesis-model` / `--no-synthesis`
   parsing and `build_collator` (synthesis vs deterministic, judge command);
   `--plain-language-model` (defaults to the synthesis model) / `--no-plain-language`
-  and `build_plain_language_stage`.
+  and `build_plain_language_stage`; `main()`, with `clone_pr`/`run_reviews`/
+  `cleanup`/the stage all faked (no clone, no subprocess, no network): a
+  `stage.apply` exception is caught, warned on stderr, and falls back to
+  `check_payload` rather than losing the review; and the plain-language report
+  prints after `output.show_review`, not before.
 - **test_prompts.py** — `select_from_menu` (numbers / names / empty-default /
   dedupe / invalid), `choose_review_types` (wraps it), and `choose_agent_models`
   (pick agents, then per-agent models with defaults). The `/dev/tty` wrappers are
@@ -119,10 +126,14 @@ fake, not the real subprocess.
   line).
 - **test_plain_language_rules.py** — `rules.json` loads with the spec's
   thresholds, labels and urgency phrases; every blocking word matches its display
-  word; repo terms (drift, root, state lock) are not listed; the rendered block
-  names every label, threshold, word and phrase and writes its own negatives in
-  full; every registered review type ends with the block and no longer has the
-  old comment shape.
+  word; "surfaced" bans the verb ("this bug surfaced") but not the noun ("the
+  API surfaces three methods"); repo terms (drift, root, state lock) are not
+  listed; the rendered block names every label, threshold, word and phrase,
+  cites each numbered writing rule's source (ISO 24495-1 / ASD-STE100, or none
+  for 8-10), rule 10 also bans a term only defined elsewhere, and the block
+  writes its own negatives in full (the contraction regex covers both the
+  ASCII `'` and the typographic `’`); every registered review type ends with
+  the block and no longer has the old comment shape.
 - **test_plain_language_check.py** — the deterministic check: a plain comment
   passes; contractions, listed words, sentences over 35 words, a missing bold
   finding line and missing Impact/Fix are blocking; 26–35 words is minor;
@@ -131,7 +142,9 @@ fake, not the real subprocess.
 - **test_plain_language_hunks.py** — `hunk_for` finds the hunk around a new-file
   line across files, ignores removed lines when counting, limits context, and
   returns nothing outside the diff; `git_diff` builds a three-dot diff in the
-  workdir through a fake runner.
+  workdir through a fake runner, with the exact `--no-color --no-ext-diff
+  --src-prefix=a/ --dst-prefix=b/` flags that keep it parseable regardless of
+  the user's git config.
 - **test_plain_language_reader.py** — the reader prompt shows each comment
   beside its diff lines and asks the three questions; parsing keeps
   blocking/minor per comment and for the body and ignores malformed entries.
@@ -139,14 +152,21 @@ fake, not the real subprocess.
   the writing rules and asks for null when the body needs no rewrite; parsing;
   guards reject a changed code block, a dropped inline code span or an empty
   rewrite.
-- **test_plain_language_stage.py** — with a fake runner: no blocking problem
+- **test_plain_language_stage.py** — `check_payload` runs the word-and-shape
+  check only, with no runner call; with a fake runner: no blocking problem
   means no rewrite call; only blocking comments are sent; a reader blocking
   problem triggers a rewrite; path, line, side and sources never change; a
   guard failure keeps the original; a failed reader call still rewrites on the
   check; a failed rewrite posts as written; the check runs again after the
-  rewrite; the body is rewritten; the stderr report.
+  rewrite; the body is rewritten; the stderr report; a non-empty diff that
+  matches no comment's path/line warns; the reader and rewrite calls run in a
+  fresh empty temp directory, never the clone's workdir; and `reader_ran` is
+  true only when the reader call's result was parsed.
 - **test_attribution.py** — the footer for one source, two agents, one agent
   with two models, two review types on one model, and no source; the "How this
-  review was made" block lists every job with found/posted counts or its
-  failure, and mentions synthesis and plain language only when they ran; a pipe
-  in an error is escaped; `finalize` appends both without changing its input.
+  review was made" block lists every job with found/posted counts or "failed"
+  (never the raw error text, which can name local paths), and mentions
+  synthesis and plain language only when they ran; the plain-language line
+  reads "read every comment..." only when `RunRecord.reader_ran` is true, else
+  "the reader test did not run; only the word-and-shape check was applied";
+  `finalize` appends both without changing its input.
