@@ -76,6 +76,7 @@ DEPLOY_REGION = "ap-southeast-2"
 ~~~
 
 - **Finding line** (required): one bold sentence that says what is wrong. There is no `Problem:` label; the finding line is the problem.
+- **Urgency:** a review type with a severity ladder starts the finding line with a plain phrase for the level, never the ladder's own name: block is "Fix before merge:", request-changes is "Change before merge:", follow-up is "Fix in a follow-up:", and minor is "Optional:". For example: `**Fix before merge: `DEPLOY_REGION` is not set in any environment file, so the deploy task cannot run.**`. The phrases live in `rules.json`.
 - **Impact** (required): what breaks, and when.
 - **Evidence** (optional): how the reviewer knows. Leave it out when the finding line says everything, for example "no test calls `seal()` with an empty key".
 - **Fix** (required): what to change. Code goes here, and only here.
@@ -225,7 +226,7 @@ The stage can never stop a review from being produced.
 ### Prompt changes
 
 - `review_types/*`: the "Each inline comment must be self-contained" section is replaced by the rendered writing rules and comment shape. The type-specific content rules stay (test-gap's sketch requirement, the severity ladders).
-- `synthesis.py`: the rendered block is added. The payload example uses the new shape. The `[N models: …]` / `[single-source: …]` prefix is removed from the instructions, and the judge returns `sources` and `stats` as JSON (see **Attribution**). The judge no longer writes a `## Review stats` section.
+- `synthesis.py`: the rendered block is added. The payload example uses the new shape. The `[N models: …]` / `[single-source: …]` prefix is removed from the instructions, and the judge returns `sources` for each comment (see **Attribution**). The judge no longer writes a `## Review stats` section.
 - `collate.DeterministicMergeCollator`: the overflow list uses finding lines (it already does, via `_first_line`), and its heading becomes "Other findings not posted as comments".
 
 ## Testing
@@ -281,10 +282,11 @@ Overflow bullets in the body get no footer.
 A collapsed `<details>` block at the end of the body, on every run, built by code from the run's data:
 
 - a table with one row for each job: agent, model, review type, and whether the job succeeded or failed;
-- when synthesis ran: the synthesis model, and for each source the number of findings it raised and the number that were kept, plus how many kept findings two or more models raised;
+- for each job, the number of findings it raised and the number that were posted, counted by code from each comment's sources;
+- when synthesis ran: the synthesis model, and how many posted findings two or more models raised;
 - when the plain-language stage ran: its model, and the number of comments it rewrote.
 
-The judge returns its counts as JSON (`"stats": {"<label>": {"raw": N, "kept": M}}`), and code renders the table.
+The judge returns only `sources` for each comment. Code counts everything else, so the numbers do not depend on the model.
 This block replaces the "⚠️ N review job(s) failed" line that `orchestrator.run_reviews` adds to the body today.
 
 ### Tests
