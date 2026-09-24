@@ -16,6 +16,14 @@ def test_every_blocking_word_matches_its_own_display_word():
         assert w.instead
 
 
+def test_surfaced_bans_the_verb_but_not_the_noun():
+    rules = load_rules()
+    word = next(w for w in rules.blocking_words if w.word == "surfaced")
+    assert word.pattern.search("this bug surfaced in prod")
+    assert word.pattern.search("errors surfacing in the log")
+    assert not word.pattern.search("the API surfaces three methods")
+
+
 def test_repo_terms_are_not_on_the_list():
     rules = load_rules()
     for term in ("drift", "root", "state lock"):

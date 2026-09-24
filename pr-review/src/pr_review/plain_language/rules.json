@@ -44,7 +44,7 @@
     {"word": "bubble up", "pattern": "\\bbubbles? up\\b", "instead": "say \"is passed to the caller\""},
     {"word": "happy path", "pattern": "\\bhappy path\\b", "instead": "say \"the case where nothing fails\""},
     {"word": "gated", "pattern": "\\bgat(ed|ing)\\b", "instead": "say \"only runs when\""},
-    {"word": "surfaces", "pattern": "\\bsurfac(es|ed|ing)\\b", "instead": "say \"shows\" or \"reports\""},
+    {"word": "surfaced", "pattern": "\\bsurfac(ed|ing)\\b", "instead": "say \"shows\" or \"reports\""},
     {"word": "wedge", "pattern": "\\bwedg(e|es|ed|ing)\\b", "instead": "say \"hangs\""},
     {"word": "hermetic", "pattern": "\\bhermetic\\b", "instead": "say \"isolated\""},
     {"word": "baked in", "pattern": "\\bbake[sd]?[- ]in\\b", "instead": "say \"hard-coded\""},
