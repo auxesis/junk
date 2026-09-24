@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 27 files, one per `src/pr_review/` module (329 tests total):
+`tests/` holds 27 files, one per `src/pr_review/` module (330 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -150,7 +150,8 @@ fake, not the real subprocess.
   and warns "context filter returned no verdicts list; every finding is kept";
   and `answers_by_id` covers both top-level comments and every thread entry.
 - **test_output.py** — `decide_mode` across the print-only / post-without-prompting
-  / TTY matrix; `render` emits the body plus `path:line` comment anchors;
+  / TTY matrix; `render` emits the body plus `path:line` comment anchors, then each reply
+  under a "Reply to comment `<in_reply_to>`" heading;
   `post_review` builds the `gh api .../reviews --method POST --input` call via a
   fake runner and leaves the payload file on disk; the not-posted path writes the
   payload to a real temp file and names it in the hint; `dispatch` returns the exit

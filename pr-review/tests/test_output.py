@@ -33,6 +33,14 @@ def test_render_includes_body_and_comment_anchors():
     assert "**Gap:** x" in out
 
 
+def test_render_shows_replies_after_the_comments():
+    p = Payload(body="summary", comments=[Comment("a.py", 12, "**Gap:** x")],
+                replies=[Reply(10, "**Not used later.**", answer_id=11)])
+    out = render(p)
+    assert "### Reply to comment 10\n**Not used later.**" in out
+    assert out.index("a.py:12") < out.index("### Reply to comment 10")
+
+
 def test_post_review_builds_gh_api_command(tmp_path):
     calls = []
 

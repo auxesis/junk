@@ -41,6 +41,10 @@ def render(payload: Payload) -> str:
         lines.append(f"### {c.path}:{c.line}")
         lines.append(c.body)
         lines.append("")
+    for r in payload.replies:
+        lines.append(f"### Reply to comment {r.in_reply_to}")
+        lines.append(r.body)
+        lines.append("")
     return "\n".join(lines)
 
 
