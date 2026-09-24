@@ -39,3 +39,22 @@ def test_the_block_itself_writes_negatives_in_full():
     # The quoted examples of what not to write are the only contractions allowed.
     text = re.sub(r'"[^"]*"', "", writing_rules_block())
     assert not re.search(r"\b\w+n['']t\b", text)
+
+
+import pytest
+
+from pr_review.review_types import available, get_review_type
+
+
+@pytest.mark.parametrize("name", available())
+def test_every_review_type_includes_the_writing_rules(name):
+    assert get_review_type(name).instructions().endswith(writing_rules_block())
+
+
+@pytest.mark.parametrize("name", available())
+def test_no_review_type_keeps_the_old_comment_shape(name):
+    text = get_review_type(name).instructions()
+    assert "## Each inline comment must be self-contained" not in text
+    assert "**block:**" not in text
+    assert "**Gap:**" not in text
+    assert "**Impact:**" in text and "**Fix:**" in text

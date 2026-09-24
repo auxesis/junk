@@ -1,6 +1,7 @@
 """Test-coverage gap review type."""
 from __future__ import annotations
 
+from pr_review.plain_language.rules import writing_rules_block
 from pr_review.review_types.base import ReviewType, register
 
 _INSTRUCTIONS = r"""# Test Coverage Review
@@ -43,12 +44,14 @@ after the human confirms. Your only side effect is writing the payload file.
 When a gap mirrors a known anti-pattern ("AAD mismatch is tested but key
 mismatch is not"), say so — it grounds the recommendation.
 
-## Each inline comment must be self-contained
+## What goes in each comment
 
-1. One sentence stating the gap.
-2. A concrete test sketch (~5-20 lines) in the repo's language/framework that
-   the author can paste in.
-3. The expected pass/fail behaviour.
+- Finding line: the gap, for example **`seal()` has no test for an empty key.**
+- Impact: what could break without any test noticing.
+- Evidence: optional; for example, the test file you checked and what it covers.
+- Fix: a concrete test sketch (about 5-20 lines) in the repo's language and
+  framework that the author can paste in, then one sentence that says what the
+  test expects.
 
 Anchor each comment on a line that EXISTS in the diff (the added / RIGHT side),
 using the file's post-diff line number — not the @@ hunk number.
@@ -81,7 +84,7 @@ Write the PR review to the payload file named in the context above, as JSON:
     "body": "<markdown summary — verdict + any out-of-scope notes + overflow list>",
     "comments": [
       {"path": "relative/path", "line": N, "side": "RIGHT",
-       "body": "**Gap:** ...\n\n```<lang>\n<sketch>\n```\n\nExpected: ..."}
+       "body": "**<the gap>**\n\n**Impact:** ...\n\n**Fix:** ...\n\n```<lang>\n<sketch>\n```\n\n<what the test expects>"}
     ]
   }
 
@@ -95,7 +98,7 @@ class TestGapType(ReviewType):
     name = "test-gap"
 
     def instructions(self) -> str:
-        return _INSTRUCTIONS
+        return _INSTRUCTIONS + "\n" + writing_rules_block()
 
 
 register(TestGapType())

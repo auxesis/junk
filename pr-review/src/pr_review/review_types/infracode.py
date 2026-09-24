@@ -6,6 +6,7 @@ same JSON-payload output contract the other review types use.
 """
 from __future__ import annotations
 
+from pr_review.plain_language.rules import writing_rules_block
 from pr_review.review_types.base import ReviewType, register
 
 _INSTRUCTIONS = r"""# Infrastructure-as-Code Review
@@ -54,12 +55,14 @@ Hardcoded account ids, VPC / subnet / AMI ids, and region strings are
 region-coupled and break portability — flag them, especially if a sibling stack
 uses a different value without explanation.
 
-## Each inline comment must be self-contained
+## What goes in each comment
 
-1. One sentence naming the risk (downtime / blast radius / drift / scope creep).
-2. A concrete fix — ideally a one-line sketch (a `moved {}` block, a narrowed
-   ARN + `Condition`, a YAML anchor, `templatefile()`).
-3. The severity and why (see ladder below).
+- Finding line: the urgency phrase for its severity (see the ladder below), then
+  the risk: downtime, what else breaks, drift, or scope creep.
+- Impact: what breaks, for whom, and when.
+- Evidence: optional; the resource, plan output or command output that shows it.
+- Fix: a concrete fix, ideally a one-line sketch (a `moved {}` block, a narrowed
+  ARN + `Condition`, a YAML anchor, `templatefile()`).
 
 Anchor each comment on a line that EXISTS in the diff (the added / RIGHT side),
 using the file's post-diff line number — not the @@ hunk number.
@@ -99,7 +102,7 @@ Write the PR review to the payload file named in the context above, as JSON:
     "body": "<markdown — verdict + a short findings table + any overflow list>",
     "comments": [
       {"path": "relative/path", "line": N, "side": "RIGHT",
-       "body": "**block:** ...\n\n```hcl\n<sketch>\n```\n\nWhy: ..."}
+       "body": "**Fix before merge: <the risk>**\n\n**Impact:** ...\n\n**Evidence:** ...\n\n**Fix:** ...\n\n```hcl\n<sketch>\n```"}
     ]
   }
 
@@ -112,7 +115,7 @@ class InfracodeType(ReviewType):
     name = "infracode"
 
     def instructions(self) -> str:
-        return _INSTRUCTIONS
+        return _INSTRUCTIONS + "\n" + writing_rules_block()
 
 
 register(InfracodeType())

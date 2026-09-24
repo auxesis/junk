@@ -14,6 +14,7 @@ from, and the diff to read when re-syncing upstream.
 """
 from __future__ import annotations
 
+from pr_review.plain_language.rules import writing_rules_block
 from pr_review.review_types.base import ReviewType, register
 
 _INSTRUCTIONS = r"""# Go Review
@@ -89,13 +90,14 @@ human confirms. Your only side effect is writing the payload file.
    pointing at a local path or fork); a build tag that silently excludes the
    changed file from the default build.
 
-## Each inline comment must be self-contained
+## What goes in each comment
 
-1. One sentence naming the failure — what actually goes wrong at runtime (a
-   leaked goroutine, a hung request, a matcher that stops matching), not the
-   rule it violates.
-2. A concrete fix, ideally a short Go sketch.
-3. The severity and why (see ladder below).
+- Finding line: the urgency phrase for its severity (see the ladder below), then
+  what actually goes wrong at runtime (a goroutine that never exits, a request
+  that hangs, a matcher that stops matching), not the rule it violates.
+- Impact: what breaks, for whom, and when.
+- Evidence: optional; the line, call path or command output that shows it.
+- Fix: a concrete fix, ideally a short Go sketch.
 
 Anchor each comment on a line that EXISTS in the diff (the added / RIGHT side),
 using the file's post-diff line number — not the @@ hunk number.
@@ -138,7 +140,7 @@ Write the PR review to the payload file named in the context above, as JSON:
     "body": "<markdown — verdict + a short findings table + any overflow list>",
     "comments": [
       {"path": "relative/path", "line": N, "side": "RIGHT",
-       "body": "**block:** ...\n\n```go\n<sketch>\n```\n\nWhy: ..."}
+       "body": "**Fix before merge: <what goes wrong>**\n\n**Impact:** ...\n\n**Evidence:** ...\n\n**Fix:** ...\n\n```go\n<sketch>\n```"}
     ]
   }
 
@@ -151,7 +153,7 @@ class GolangType(ReviewType):
     name = "golang"
 
     def instructions(self) -> str:
-        return _INSTRUCTIONS
+        return _INSTRUCTIONS + "\n" + writing_rules_block()
 
 
 register(GolangType())

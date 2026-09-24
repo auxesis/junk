@@ -13,6 +13,7 @@ The upstream `SKILL.md` and its five `references/*.md` are vendored verbatim und
 """
 from __future__ import annotations
 
+from pr_review.plain_language.rules import writing_rules_block
 from pr_review.review_types.base import ReviewType, register
 
 _INSTRUCTIONS = r"""# TypeScript Review
@@ -86,13 +87,15 @@ side effect is writing the payload file.
    `skipLibCheck` or `allowJs` newly enabled; a declaration file that stopped
    being generated for a published package.
 
-## Each inline comment must be self-contained
+## What goes in each comment
 
-1. One sentence naming the failure — what actually goes wrong at runtime (a
-   crash on undefined, a silently-unchecked payload, a new union variant handled
-   nowhere), not the rule it violates.
-2. A concrete fix, ideally a short TypeScript sketch.
-3. The severity and why (see ladder below).
+- Finding line: the urgency phrase for its severity (see the ladder below), then
+  what actually goes wrong at runtime (a crash on undefined, a payload that is
+  never validated, a new union variant that no code handles), not the rule it
+  violates.
+- Impact: what breaks, for whom, and when.
+- Evidence: optional; the line, call path or command output that shows it.
+- Fix: a concrete fix, ideally a short TypeScript sketch.
 
 Anchor each comment on a line that EXISTS in the diff (the added / RIGHT side),
 using the file's post-diff line number — not the @@ hunk number.
@@ -136,7 +139,7 @@ Write the PR review to the payload file named in the context above, as JSON:
     "body": "<markdown — verdict + a short findings table + any overflow list>",
     "comments": [
       {"path": "relative/path", "line": N, "side": "RIGHT",
-       "body": "**block:** ...\n\n```ts\n<sketch>\n```\n\nWhy: ..."}
+       "body": "**Fix before merge: <what goes wrong>**\n\n**Impact:** ...\n\n**Evidence:** ...\n\n**Fix:** ...\n\n```ts\n<sketch>\n```"}
     ]
   }
 
@@ -149,7 +152,7 @@ class TypeScriptType(ReviewType):
     name = "typescript"
 
     def instructions(self) -> str:
-        return _INSTRUCTIONS
+        return _INSTRUCTIONS + "\n" + writing_rules_block()
 
 
 register(TypeScriptType())

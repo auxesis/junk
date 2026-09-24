@@ -13,6 +13,7 @@ The upstream `SKILL.md` and its five `references/*.md` are vendored verbatim und
 """
 from __future__ import annotations
 
+from pr_review.plain_language.rules import writing_rules_block
 from pr_review.review_types.base import ReviewType, register
 
 _INSTRUCTIONS = r"""# Python Review
@@ -89,13 +90,15 @@ the payload file.
    subpackage with no `__init__.py` where the project uses them; a console entry
    point or `py.typed` marker that the change should have updated.
 
-## Each inline comment must be self-contained
+## What goes in each comment
 
-1. One sentence naming the failure — what actually goes wrong at runtime (state
-   shared between calls, a swallowed error, a stalled event loop, a patch that
-   patches nothing), not the rule it violates.
-2. A concrete fix, ideally a short Python sketch.
-3. The severity and why (see ladder below).
+- Finding line: the urgency phrase for its severity (see the ladder below), then
+  what actually goes wrong at runtime (state shared between calls, an error that
+  is caught and ignored, an event loop that stops, a patch that patches nothing),
+  not the rule it violates.
+- Impact: what breaks, for whom, and when.
+- Evidence: optional; the line, call path or command output that shows it.
+- Fix: a concrete fix, ideally a short Python sketch.
 
 Anchor each comment on a line that EXISTS in the diff (the added / RIGHT side),
 using the file's post-diff line number — not the @@ hunk number.
@@ -140,7 +143,7 @@ Write the PR review to the payload file named in the context above, as JSON:
     "body": "<markdown — verdict + a short findings table + any overflow list>",
     "comments": [
       {"path": "relative/path", "line": N, "side": "RIGHT",
-       "body": "**block:** ...\n\n```python\n<sketch>\n```\n\nWhy: ..."}
+       "body": "**Fix before merge: <what goes wrong>**\n\n**Impact:** ...\n\n**Evidence:** ...\n\n**Fix:** ...\n\n```python\n<sketch>\n```"}
     ]
   }
 
@@ -153,7 +156,7 @@ class PythonType(ReviewType):
     name = "python"
 
     def instructions(self) -> str:
-        return _INSTRUCTIONS
+        return _INSTRUCTIONS + "\n" + writing_rules_block()
 
 
 register(PythonType())
