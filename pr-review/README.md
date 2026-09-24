@@ -22,7 +22,9 @@ tested, so new agents and review types are additive — see [Developing](#develo
 
 - [`mise`](https://mise.jdx.dev/) — provisions Python 3.14 and `uv` for the project.
 - [`git`](https://git-scm.com/)
-- [`gh`](https://cli.github.com/) — authenticated (`gh auth status` must pass).
+- [`gh`](https://cli.github.com/) — authenticated (`gh auth status` must pass), and
+  new enough to support `gh api --paginate --slurp` (used to read the pull
+  request's discussion and stack).
 - [`claude`](https://docs.claude.com/en/docs/claude-code) — the Claude Code CLI, on your `PATH`.
 - [`codex`](https://github.com/openai/codex) — the OpenAI Codex CLI, on your `PATH` (only needed to run a `--model codex` job).
 - [`glow`](https://github.com/charmbracelet/glow) — optional; if on your `PATH`, the review printed before the post prompt is rendered with it (`glow -p -w 100`).
@@ -261,9 +263,11 @@ mise run test          # == uv run pytest
 
 The suite covers the **pure logic** — target parsing, payload validation and the
 comment cap, collation, the posting-mode decision, prompt building, and command
-construction (with injected fake runners). The side-effecting shells (`git clone`,
-the `claude` call, the `gh api` post) are thin wrappers verified by a manual
-end-to-end run, not by the unit suite.
+construction. No test runs a real side effect: `git clone`, the `claude` CLI
+review, the `codex` CLI review and the `gh api` calls (reading the pull request
+context and posting) are never executed in the suite. The shells around them are
+tested through injected fake runners, and the true end-to-end path (real pull
+request → clone → review → post) is verified only by a manual run.
 
 ### Extending: add a reviewer (LLM backend)
 
