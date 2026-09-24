@@ -97,3 +97,4 @@ def test_replies_are_not_part_of_the_review_json():
     p = Payload(body="b", replies=[Reply(10, "no", sources=[Source("claude", "m", "t")])])
     assert "replies" not in p.to_dict()
     assert Reply(10, "no").to_dict() == {"body": "no"}
+    assert Reply(10, "no", answer_id=11).to_dict() == {"body": "no"}

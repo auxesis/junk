@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 27 files, one per `src/pr_review/` module (321 tests total):
+`tests/` holds 27 files, one per `src/pr_review/` module (323 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -35,8 +35,8 @@ fake, not the real subprocess.
   path and the `comments`-default; its validation rejections (invalid JSON,
   missing/non-string body, comment missing `path`, non-string body, non-integer
   `line`); `cap_comments` splitting at the 8-comment cap; `Source`, `Comment.sources`
-  (never in `to_dict`), and `payload_from_dict`; `Reply.to_dict` (body only) and
-  that `Payload.replies` never reaches `to_dict`.
+  (never in `to_dict`), and `payload_from_dict`; `Reply.to_dict` (body only, even
+  with an `answer_id`) and that `Payload.replies` never reaches `to_dict`.
 - **test_review_types.py** — the `ReviewType` registry: `test-gap` and `infracode`
   are registered, `get_review_type` returns the named instance, their instructions
   carry the required output-contract/cap markers, and an unknown name raises
@@ -128,7 +128,9 @@ fake, not the real subprocess.
   request is earlier, closed, unknown, or missing from the verdict entirely
   ("the verdict named no later pull request"); `already-raised` and `answered`
   drop with their link; a bad index or an unknown reason is ignored; a `reply`
-  to a comment the author posted becomes a `Reply`, while a `reply` to someone
+  to a review-thread comment the author posted becomes a `Reply` addressed to
+  the thread's top-level comment (GitHub rejects replies to replies) with
+  `answer_id` naming the author's entry, while a `reply` to someone
   else's comment or to an issue comment stays a posted comment with the
   author's answer added to its **Evidence** section via `_add_evidence` (which
   inserts before **Fix** when there is no Evidence yet, appends to existing
@@ -235,7 +237,7 @@ fake, not the real subprocess.
   true only when the reader call's result was parsed. Replies are treated as
   extra comments throughout: `check_payload` and `apply` check and rewrite
   them (a reply's hunk is `(the comment this replies to)` plus the `answers`
-  text for its `in_reply_to` id, never a diff hunk), `apply`'s `answers`
+  text for its `answer_id`, else its `in_reply_to` id, never a diff hunk), `apply`'s `answers`
   parameter feeds that text to the reader prompt, and the rewritten reply
   keeps its `in_reply_to` and `sources`; `format_report` lists a reply's
   remaining problems under "reply to comment `<in_reply_to>`" and counts

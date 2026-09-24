@@ -171,7 +171,8 @@ def apply_verdicts(payload: Payload, data: object, ctx: PullRequestContext) -> F
                 evidence_sentence = f"The author answered in [this comment]({target.url})."
                 kept.append(replace(c, body=_add_evidence(c.body, evidence_sentence)))
             elif len(replies) < MAX_REPLIES:
-                replies.append(Reply(target.id, body, sources=list(c.sources)))
+                replies.append(Reply(in_reply_to=target.in_reply_to or target.id, answer_id=target.id,
+                                     body=body, sources=list(c.sources)))
             else:
                 overflow.append(f"- [{_first_line(body)}]({target.url})")
         else:

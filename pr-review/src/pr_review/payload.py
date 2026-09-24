@@ -30,11 +30,16 @@ class Comment:
 
 @dataclass
 class Reply:
-    """A finding posted as a reply in an existing review thread."""
+    """A finding posted as a reply in an existing review thread.
+
+    `in_reply_to` is the thread's top-level comment, the only id GitHub accepts;
+    `answer_id` is the author's entry the finding answers, which may be a reply.
+    """
 
     in_reply_to: int
     body: str
     sources: list[Source] = field(default_factory=list)
+    answer_id: int | None = None
 
     def to_dict(self) -> dict:
         return {"body": self.body}

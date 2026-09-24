@@ -64,12 +64,21 @@ def test_an_unknown_reason_or_bad_index_is_ignored():
     assert len(out.payload.comments) == 1
 
 
-def test_a_reply_to_an_author_thread_comment_becomes_a_reply():
+def test_a_reply_to_an_author_thread_reply_posts_to_the_thread_root():
+    # GitHub accepts replies only to a thread's top-level comment: entry 11 replies to 10.
     out = apply_verdicts(payload(1), {"verdicts": [
         {"index": 0, "verdict": "reply", "in_reply_to": 11, "body": "**No later pull request calls it.**"}]}, ctx())
     assert out.payload.comments == []
-    assert [(r.in_reply_to, r.body, r.sources) for r in out.payload.replies] == [
-        (11, "**No later pull request calls it.**", [SRC])]
+    assert [(r.in_reply_to, r.answer_id, r.body, r.sources) for r in out.payload.replies] == [
+        (10, 11, "**No later pull request calls it.**", [SRC])]
+
+
+def test_a_reply_to_an_author_thread_root_posts_to_that_root():
+    c = ctx()
+    c.threads.append(Thread(Entry(20, "thread", "https://x/r20", "ada", True, "t", "On purpose.", "b.py", 2), []))
+    out = apply_verdicts(payload(1), {"verdicts": [
+        {"index": 0, "verdict": "reply", "in_reply_to": 20, "body": "**No.**"}]}, c)
+    assert [(r.in_reply_to, r.answer_id) for r in out.payload.replies] == [(20, 20)]
 
 
 def test_a_reply_to_someone_else_or_to_an_issue_comment_stays_a_comment_with_a_link():

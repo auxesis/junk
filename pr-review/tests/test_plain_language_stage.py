@@ -192,6 +192,15 @@ def test_replies_are_checked_and_rewritten_with_the_answer_as_context():
     assert result.payload.replies[0].sources == [SRC]
 
 
+def test_the_reader_sees_the_answer_named_by_answer_id():
+    p = payload(CLEAN)
+    p.replies = [Reply(10, JARGON, sources=[SRC], answer_id=11)]
+    runner = FakeRunner()
+    stage(runner).apply(p, answers={10: "The thread root.", 11: "The author's answer."})
+    assert "The author's answer." in runner.prompts[0]
+    assert "The thread root." not in runner.prompts[0]
+
+
 def test_check_payload_covers_replies():
     p = payload(CLEAN)
     p.replies = [Reply(10, JARGON)]

@@ -142,7 +142,7 @@ It returns JSON:
 | `drop` `fixed-later` | The code at a **later** pull request's head fixes it, and that pull request is not closed without merging. | Listed in the details block with the pull request number and the evidence. |
 | `drop` `already-raised` | The discussion already raises the same problem, from anyone, including an earlier pr-review run. | Listed in the details block with a link. |
 | `drop` `answered` | The author said it is deliberate or will be done later, and it is not a correctness or security bug with evidence in the code. The author also said it is done elsewhere, and the filter confirmed that. | Listed in the details block with a link. |
-| `reply` | The author answered, and the code proves the answer wrong. For example, the author said "used later in the stack", and no later pull request uses it. | Posted as a reply to the author's comment. |
+| `reply` | The author answered, and the code proves the answer wrong. For example, the author said "used later in the stack", and no later pull request uses it. | Posted as a reply in the thread of the author's comment. |
 
 Code checks every verdict before using it:
 
@@ -166,7 +166,8 @@ Gathering context and filtering can never stop a review from being produced.
 
 ### Payload
 
-`Payload` gains `replies: list[Reply]`, where `Reply(in_reply_to: int, body: str, sources: list[Source])`.
+`Payload` gains `replies: list[Reply]`, where `Reply(in_reply_to: int, body: str, sources: list[Source], answer_id: int | None)`.
+GitHub accepts a reply only to a thread's top-level comment, so `in_reply_to` is the root of the author's thread, and `answer_id` is the author's entry the reply answers (the root itself, or a reply in that thread).
 Replies go through the plain-language stage and get the attribution footer, like comments.
 The reader test sees each reply beside the answer it replies to, instead of a diff hunk.
 

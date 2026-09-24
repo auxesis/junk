@@ -88,7 +88,8 @@ class PlainLanguageStage:
             )
         n = len(payload.comments)
         for j, r in enumerate(payload.replies):
-            hunks[n + j] = f"(the comment this replies to)\n{(answers or {}).get(r.in_reply_to, '')}"
+            answer = r.answer_id if r.answer_id is not None else r.in_reply_to
+            hunks[n + j] = f"(the comment this replies to)\n{(answers or {}).get(answer, '')}"
 
         # The reader and rewrite calls get no repo access (spec: "no tools, no
         # repo access"), so they run in an empty sandbox, never the clone.
