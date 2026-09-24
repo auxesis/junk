@@ -7,14 +7,21 @@ from pr_review.target import Target
 def _patch_run(monkeypatch, *, payload, stage):
     """Patch main()'s side-effecting collaborators so it runs with no clone,
     no subprocess and no network, returning `payload` from run_reviews and
-    `stage` (or None to skip building one) as the plain-language stage."""
+    `stage` (or None to skip building one) as the plain-language stage.
+
+    Context gathering is patched to fail (no `gh`), so `ctx` stays None and
+    the context filter is never built."""
     import pr_review.cli as cli
     from pr_review.checkout import Checkout
     from pr_review.orchestrator import RunResult
 
     monkeypatch.setattr(
+        cli, "gather_context",
+        lambda gh, number: (_ for _ in ()).throw(RuntimeError("no gh in tests")),
+    )
+    monkeypatch.setattr(
         cli, "clone_pr",
-        lambda owner, repo, number: Checkout(workdir="/wd", base="base-sha", base_ref="main"),
+        lambda owner, repo, number, **kw: Checkout(workdir="/wd", base="base-sha", base_ref="main"),
     )
     monkeypatch.setattr(cli, "cleanup", lambda checkout: None)
     monkeypatch.setattr(
@@ -244,7 +251,7 @@ def test_a_stage_apply_exception_falls_back_to_the_check_only(monkeypatch, capsy
                        comments=[Comment("f.py", 1, "**X.**\n\n**Impact:** y\n\n**Fix:** z")])
 
     class RaisingStage:
-        def apply(self, payload):
+        def apply(self, payload, answers=None):
             raise RuntimeError("boom")
 
     cli = _patch_run(monkeypatch, payload=payload, stage=RaisingStage())
@@ -267,7 +274,7 @@ def test_the_plain_language_report_prints_after_show_review(monkeypatch, capsys)
                        comments=[Comment("f.py", 1, "**X.**\n\n**Impact:** y\n\n**Fix:** z")])
 
     class FakeStage:
-        def apply(self, payload):
+        def apply(self, payload, answers=None):
             return StageResult(payload=payload, remaining={0: []}, body_remaining=[],
                                warnings=["a plain-language warning"])
 
@@ -281,3 +288,30 @@ def test_the_plain_language_report_prints_after_show_review(monkeypatch, capsys)
     err = capsys.readouterr().err
     assert "SHOW_REVIEW_CALLED" in err and "a plain-language warning" in err
     assert err.index("SHOW_REVIEW_CALLED") < err.index("a plain-language warning")
+
+
+def test_config_context_defaults():
+    cfg = config_from_args(["org/repo#1"])
+    assert (cfg.no_context, cfg.no_context_filter, cfg.context_filter_model) == (False, False, None)
+
+
+def test_config_context_flags():
+    cfg = config_from_args(["--no-context", "--no-context-filter",
+                            "--context-filter-model", "codex=gpt-5", "org/repo#1"])
+    assert (cfg.no_context, cfg.no_context_filter, cfg.context_filter_model) == (True, True, ("codex", "gpt-5"))
+
+
+def test_context_filter_follows_the_synthesis_model_by_default():
+    from pr_review.cli import build_context_filter
+
+    cfg = config_from_args(["--synthesis-model", "codex=gpt-5", "org/repo#1"])
+    f = build_context_filter(cfg, workdir="/wd", context_path="/c.md")
+    assert f._command[:4] == ["codex", "exec", "--model", "gpt-5"]
+
+
+def test_no_context_filter_builds_no_filter():
+    from pr_review.cli import build_context_filter
+
+    for flag in ("--no-context-filter", "--no-context"):
+        cfg = config_from_args([flag, "org/repo#1"])
+        assert build_context_filter(cfg, workdir="/wd", context_path="/c.md") is None

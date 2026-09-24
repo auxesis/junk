@@ -7,8 +7,14 @@ import sys
 from dataclasses import dataclass
 
 from pr_review.attribution import RunRecord, finalize
-from pr_review.checkout import cleanup, clone_pr
+from pr_review.checkout import cleanup, clone_pr, write_context_file
 from pr_review.collate import Collator, DeterministicMergeCollator
+from pr_review.context.filter import ContextFilter, FilterResult, answers_by_id
+from pr_review.context.gather import gather_context
+from pr_review.context.github import GitHub
+from pr_review.context.render import (
+    describe_dropped, describe_loaded, describe_stack, prompt_summary, render_context_file,
+)
 from pr_review.orchestrator import ReviewJob, run_reviews
 from pr_review.plain_language.stage import PlainLanguageStage, check_payload, format_report
 from pr_review.reviewers import available as reviewers_available, get_reviewer
@@ -35,6 +41,9 @@ class RunConfig:
     no_synthesis: bool
     plain_language_model: tuple[str, str] | None
     no_plain_language: bool
+    no_context: bool
+    no_context_filter: bool
+    context_filter_model: tuple[str, str] | None
 
 
 def _split(value: str) -> list[str]:
@@ -136,6 +145,18 @@ def build_parser() -> argparse.ArgumentParser:
             "check still reports (default: false)"
         ),
     )
+    p.add_argument(
+        "--no-context", action="store_true",
+        help="review the diff only: no description, discussion, issues or stack (default: false)",
+    )
+    p.add_argument(
+        "--no-context-filter", action="store_true",
+        help="give reviewers the context but do not filter findings against it (default: false)",
+    )
+    p.add_argument(
+        "--context-filter-model", metavar="AGENT[=MODEL]", default=None,
+        help="agent/model for the context filter (default: the synthesis model)",
+    )
     return p
 
 
@@ -170,6 +191,11 @@ def config_from_args(argv: list[str]) -> RunConfig:
             if args.plain_language_model else None
         ),
         no_plain_language=args.no_plain_language,
+        no_context=args.no_context,
+        no_context_filter=args.no_context_filter,
+        context_filter_model=(
+            _parse_synthesis_model(args.context_filter_model) if args.context_filter_model else None
+        ),
     )
 
 
@@ -195,6 +221,14 @@ def build_plain_language_stage(cfg: RunConfig, *, workdir: str, base: str) -> Pl
     agent, model = _plain_language_pair(cfg)
     command = get_reviewer(agent).command(model, cfg.flags_by_agent.get(agent, []))
     return PlainLanguageStage(command=command, workdir=workdir, base=base)
+
+
+def build_context_filter(cfg: RunConfig, *, workdir: str, context_path: str) -> ContextFilter | None:
+    if cfg.no_context or cfg.no_context_filter:
+        return None
+    agent, model = cfg.context_filter_model or cfg.synthesis_model
+    command = get_reviewer(agent).command(model, cfg.flags_by_agent.get(agent, []))
+    return ContextFilter(command=command, workdir=workdir, context_path=context_path)
 
 
 def build_jobs(cfg: RunConfig) -> list[ReviewJob]:
@@ -252,35 +286,59 @@ def main(argv: list[str] | None = None) -> int:
     )
     jobs = build_jobs(cfg)  # validates agent/type names before any clone
 
-    checkout = clone_pr(cfg.target.owner, cfg.target.repo, cfg.target.number)
+    ctx = None
+    if not cfg.no_context:
+        try:
+            ctx = gather_context(GitHub(cfg.target.owner, cfg.target.repo), cfg.target.number)
+        except Exception as e:
+            print(f"pr-review: could not load the pull request context ({e}); "
+                  "reviewing the diff only.", file=sys.stderr)
+        for part in ctx.failed if ctx else []:
+            print(f"pr-review: context: could not load {part}.", file=sys.stderr)
+
+    checkout = clone_pr(cfg.target.owner, cfg.target.repo, cfg.target.number,
+                        stack=[e.number for e in ctx.stack] if ctx else [])
+    summary, context_path = "", ""
+    if ctx:
+        ctx.stack = [e for e in ctx.stack if e.number in checkout.stack_refs]
+        context_path = write_context_file(checkout.workdir, render_context_file(ctx))
+        summary = prompt_summary(ctx, context_path)
+
     print(
         f"pr-review: {cfg.target.slug}#{cfg.target.number} "
         f"base={checkout.base_ref}@{checkout.base[:12]} jobs={len(jobs)}",
         file=sys.stderr,
     )
-    collator = build_collator(cfg, workdir=checkout.workdir, base=checkout.base)
+    collator = build_collator(cfg, workdir=checkout.workdir, base=checkout.base, context=summary)
     stage = build_plain_language_stage(cfg, workdir=checkout.workdir, base=checkout.base)
+    context_filter = (
+        build_context_filter(cfg, workdir=checkout.workdir, context_path=context_path) if ctx else None
+    )
+    filtered = None
     staged = None
     try:
         result = run_reviews(
             jobs=jobs, workdir=checkout.workdir, base=checkout.base,
             owner=cfg.target.owner, repo=cfg.target.repo, number=cfg.target.number,
-            collator=collator,
+            collator=collator, context=summary,
         )
         # The stage reads diff hunks from the clone, so it runs before cleanup.
         if result.payload is not None:
+            filtered = (context_filter.apply(result.payload, ctx) if context_filter
+                        else FilterResult(result.payload))
+            answers = answers_by_id(ctx) if ctx else {}
             if stage is None:
-                staged = check_payload(result.payload)
+                staged = check_payload(filtered.payload)
             else:
                 try:
-                    staged = stage.apply(result.payload)
+                    staged = stage.apply(filtered.payload, answers=answers)
                 except Exception as e:
                     print(
                         f"pr-review: plain-language stage failed ({e}); "
                         "using the word-and-shape check only",
                         file=sys.stderr,
                     )
-                    staged = check_payload(result.payload)
+                    staged = check_payload(filtered.payload)
     finally:
         if cfg.keep:
             print(f"pr-review: kept checkout at {checkout.workdir}", file=sys.stderr)
@@ -297,6 +355,9 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
+    for warning in filtered.warnings:
+        print(f"pr-review: context filter: {warning}", file=sys.stderr)
+
     agent, model = _plain_language_pair(cfg)
     record = RunRecord(
         jobs=result.jobs,
@@ -305,6 +366,9 @@ def main(argv: list[str] | None = None) -> int:
         plain_language_model=(model or agent) if stage else None,
         rewritten=staged.rewritten,
         reader_ran=staged.reader_ran,
+        stack_line=describe_stack(ctx) if ctx else None,
+        context_line=describe_loaded(ctx) if ctx else None,
+        not_posted=[describe_dropped(d) for d in filtered.dropped],
     )
     payload = finalize(staged.payload, record)
 
