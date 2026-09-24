@@ -118,7 +118,14 @@ def test_the_report_lists_problems_left_and_warnings():
     runner = FakeRunner(fail={1})
     report = format_report(stage(runner).apply(payload(JARGON)))
     assert "pr-review: plain language: rewrite failed" in report
+    assert "0 of 1 comments rewritten; 1 still have problems:" in report
     assert "f0.py:1  blocking:" in report
+
+
+def test_the_report_when_rewrite_succeeds_with_nothing_left():
+    runner = FakeRunner(rewrite={"comments": [{"index": 0, "body": FIXED}]})
+    report = format_report(stage(runner).apply(payload(JARGON)))
+    assert "1 of 1 comments rewritten; no problems left." in report
 
 
 def test_the_report_is_empty_when_there_is_nothing_to_say():

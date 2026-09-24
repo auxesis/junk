@@ -141,8 +141,11 @@ def format_report(result: StageResult) -> str:
         for i, c in enumerate(result.payload.comments) for p in result.remaining.get(i, [])
     ] + [f"  review body  {p.level}: {p.detail}" for p in result.body_remaining]
     if left:
-        lines.append(f"pr-review: plain language: {result.rewritten} comment(s) rewritten; problems left:")
+        n = len(result.payload.comments)
+        k = len([i for i in range(len(result.payload.comments)) if result.remaining.get(i)]) + (1 if result.body_remaining else 0)
+        lines.append(f"pr-review: plain language: {result.rewritten} of {n} comments rewritten; {k} still have problems:")
         lines.extend(left)
     elif result.rewritten:
-        lines.append(f"pr-review: plain language: {result.rewritten} comment(s) rewritten; no problems left.")
+        n = len(result.payload.comments)
+        lines.append(f"pr-review: plain language: {result.rewritten} of {n} comments rewritten; no problems left.")
     return "\n".join(lines)
