@@ -1,16 +1,19 @@
 """Shared payload-file runner used by CLI-backed reviewers."""
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
 import tempfile
 import threading
 from collections.abc import Callable, Sequence
-from typing import IO
+from typing import IO, TypeVar
 
 from pr_review.payload import Payload, parse_payload
 from pr_review.review_types.base import ReviewType
+
+T = TypeVar("T")
 
 
 def _build_context(*, owner: str, repo: str, number: int, base: str, payload_path: str) -> str:
@@ -92,20 +95,20 @@ def run_agent(
     return proc.wait()
 
 
-def run_cli_payload(
+def run_cli_json(
     cmd_prefix: Sequence[str],
     build_prompt: Callable[[str], str],
     *,
     workdir: str,
+    parse: Callable[[str], T] = json.loads,
     runner: Callable[..., int] = run_agent,
-) -> Payload:
-    """Run an agent and read the payload it was told to write.
+) -> T:
+    """Run an agent and parse the file it was told to write.
 
-    The payload file, not the exit status, is the contract: agents have been seen
-    finishing a review, writing a valid payload, and only then dying on the way out
-    (see `run_agent`). Discarding a complete review over a tail-end crash costs the
-    whole job, so a non-zero status is only reported when the payload is missing or
-    unusable.
+    The file, not the exit status, is the contract: agents have been seen
+    finishing their work, writing a valid file, and only then dying on the way
+    out (see `run_agent`). A non-zero status is only reported when the file is
+    missing or unusable.
     """
     fd, payload_path = tempfile.mkstemp(prefix="pr-review-payload.", suffix=".json")
     os.close(fd)
@@ -122,7 +125,7 @@ def run_cli_payload(
                 f"{cmd_prefix[0]} produced an empty payload (exit status {status})"
             )
         try:
-            return parse_payload(raw)
+            return parse(raw)
         except ValueError as e:
             raise ValueError(f"{e} (exit status {status})") from None
     finally:
@@ -130,6 +133,17 @@ def run_cli_payload(
             os.unlink(payload_path)
         except FileNotFoundError:
             pass
+
+
+def run_cli_payload(
+    cmd_prefix: Sequence[str],
+    build_prompt: Callable[[str], str],
+    *,
+    workdir: str,
+    runner: Callable[..., int] = run_agent,
+) -> Payload:
+    return run_cli_json(cmd_prefix, build_prompt, workdir=workdir,
+                        parse=parse_payload, runner=runner)
 
 
 def run_cli_reviewer(

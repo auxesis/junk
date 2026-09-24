@@ -8,7 +8,7 @@ import sys
 import pytest
 
 from pr_review.payload import Payload
-from pr_review.reviewers._run import run_agent, run_cli_payload
+from pr_review.reviewers._run import run_agent, run_cli_payload, run_cli_json
 
 VALID = json.dumps({"body": "review body", "comments": []})
 
@@ -153,3 +153,36 @@ def test_the_agent_runs_in_the_workdir_with_mise_trust(tmp_path, monkeypatch):
     cwd, trusted = sink.getvalue().splitlines()
     assert os.path.realpath(cwd) == os.path.realpath(tmp_path)
     assert trusted == str(tmp_path)
+
+
+# --- run_cli_json: generic parser over run_cli_payload ---
+
+
+def test_run_cli_json_returns_the_parsed_file():
+    data = run_cli_json(["agent"], build, workdir="/tmp",
+                        runner=fake_runner(writes='{"verdicts": [1, 2]}'))
+    assert data == {"verdicts": [1, 2]}
+
+
+def test_run_cli_json_survives_a_nonzero_exit_status():
+    data = run_cli_json(["agent"], build, workdir="/tmp",
+                        runner=fake_runner(writes='{"ok": true}', status=101))
+    assert data == {"ok": True}
+
+
+def test_run_cli_json_reports_the_exit_status_for_bad_json():
+    with pytest.raises(ValueError, match="exit status 7"):
+        run_cli_json(["agent"], build, workdir="/tmp",
+                     runner=fake_runner(writes="{nope", status=7))
+
+
+def test_run_cli_json_reports_the_exit_status_for_an_empty_file():
+    with pytest.raises(RuntimeError, match="empty payload.*exit status 3"):
+        run_cli_json(["agent"], build, workdir="/tmp",
+                     runner=fake_runner(writes="", status=3))
+
+
+def test_run_cli_json_cleans_up_its_file():
+    seen = {}
+    run_cli_json(["agent"], build, workdir="/w", runner=fake_runner(writes="{}", seen=seen))
+    assert not os.path.exists(seen["path"])
