@@ -70,7 +70,7 @@ def test_all_jobs_failing_yields_no_payload():
     assert "kaboom" in err
 
 
-def test_partial_failure_keeps_successes_and_notes_failure():
+def test_partial_failure_keeps_successes_and_records_the_failure():
     jobs = [
         ReviewJob(FakeReviewer("claude"), FakeType("test-gap"), "m1", []),
         ReviewJob(BoomReviewer(), FakeType("infracode"), "m2", []),
@@ -78,6 +78,16 @@ def test_partial_failure_keeps_successes_and_notes_failure():
     result = _run(jobs)
     assert result.payload is not None
     assert "claude/test-gap" in result.payload.body
-    assert "excluded" in result.payload.body  # the failed job is noted in the body
+    assert "excluded" not in result.payload.body
     assert len(result.failures) == 1
     assert result.failures[0][0] == "boom (m2)"
+    assert [j.error is None for j in result.jobs] == [True, False]
+    assert "kaboom" in result.jobs[1].error
+
+
+def test_each_comment_carries_its_job_source():
+    from pr_review.payload import Source
+
+    result = _run([ReviewJob(FakeReviewer("claude"), FakeType("test-gap"), "m1", [])])
+    assert result.payload.comments[0].sources == [Source("claude", "m1", "test-gap")]
+    assert result.jobs[0].raw == 1

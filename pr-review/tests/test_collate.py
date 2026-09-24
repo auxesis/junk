@@ -31,4 +31,4 @@ def test_merge_reapplies_cap_and_lists_overflow():
     jobs = [_job("claude", "test-gap", 5), _job("codex", "test-gap", 5)]
     out = DeterministicMergeCollator().collate(jobs)
     assert len(out.comments) == 8
-    assert "## Additional coverage gaps not posted inline" in out.body
+    assert "## Other findings not posted as comments" in out.body

@@ -39,5 +39,5 @@ class DeterministicMergeCollator(Collator):
             extra = "\n".join(
                 f"- `{c.path}:{c.line}` — {_first_line(c.body)}" for c in overflow
             )
-            body += "\n\n---\n\n## Additional coverage gaps not posted inline\n\n" + extra
+            body += "\n\n---\n\n## Other findings not posted as comments\n\n" + extra
         return Payload(body=body, comments=kept)
