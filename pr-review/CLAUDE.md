@@ -25,7 +25,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 20 files, one per `src/pr_review/` module (254 tests total):
+`tests/` holds 20 files, one per `src/pr_review/` module (292 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -34,7 +34,8 @@ fake, not the real subprocess.
   path and the `comments`-default; its validation rejections (invalid JSON,
   missing/non-string body, comment missing `path`, non-string body, non-integer
   `line`); `cap_comments` splitting at the 8-comment cap; `Source`, `Comment.sources`
-  (never in `to_dict`), and `payload_from_dict`.
+  (never in `to_dict`), and `payload_from_dict`; `Reply.to_dict` (body only) and
+  that `Payload.replies` never reaches `to_dict`.
 - **test_review_types.py** — the `ReviewType` registry: `test-gap` and `infracode`
   are registered, `get_review_type` returns the named instance, their instructions
   carry the required output-contract/cap markers, and an unknown name raises
@@ -161,7 +162,14 @@ fake, not the real subprocess.
   rewrite; the body is rewritten; the stderr report; a non-empty diff that
   matches no comment's path/line warns; the reader and rewrite calls run in a
   fresh empty temp directory, never the clone's workdir; and `reader_ran` is
-  true only when the reader call's result was parsed.
+  true only when the reader call's result was parsed. Replies are treated as
+  extra comments throughout: `check_payload` and `apply` check and rewrite
+  them (a reply's hunk is `(the comment this replies to)` plus the `answers`
+  text for its `in_reply_to` id, never a diff hunk), `apply`'s `answers`
+  parameter feeds that text to the reader prompt, and the rewritten reply
+  keeps its `in_reply_to` and `sources`; `format_report` lists a reply's
+  remaining problems under "reply to comment `<in_reply_to>`" and counts
+  replies into both the numerator and denominator of the summary line.
 - **test_attribution.py** — the footer for one source, two agents, one agent
   with two models, two review types on one model, and no source; the "How this
   review was made" block lists every job with found/posted counts or "failed"
@@ -169,4 +177,5 @@ fake, not the real subprocess.
   synthesis and plain language only when they ran; the plain-language line
   reads "read every comment..." only when `RunRecord.reader_ran` is true, else
   "the reader test did not run; only the word-and-shape check was applied";
-  `finalize` appends both without changing its input.
+  `finalize` appends both without changing its input, and appends the same
+  footer to each reply while keeping its `in_reply_to`.

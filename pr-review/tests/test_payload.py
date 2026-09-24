@@ -4,6 +4,7 @@ from pr_review.payload import (
     MAX_INLINE_COMMENTS,
     Comment,
     Payload,
+    Reply,
     Source,
     cap_comments,
     parse_payload,
@@ -90,3 +91,9 @@ def test_payload_from_dict_matches_parse_payload():
 def test_payload_from_dict_rejects_a_non_object():
     with pytest.raises(ValueError, match="JSON object"):
         payload_from_dict(["not", "an", "object"])
+
+
+def test_replies_are_not_part_of_the_review_json():
+    p = Payload(body="b", replies=[Reply(10, "no", sources=[Source("claude", "m", "t")])])
+    assert "replies" not in p.to_dict()
+    assert Reply(10, "no").to_dict() == {"body": "no"}

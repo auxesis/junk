@@ -1,6 +1,6 @@
 import os
 
-from pr_review.payload import Comment, Payload, Source
+from pr_review.payload import Comment, Payload, Reply, Source
 from pr_review.plain_language.stage import PlainLanguageStage, check_payload, format_report
 
 CLEAN = "**`f()` returns the wrong value.**\n\n**Impact:** Callers get zero.\n\n**Fix:** Return `x`."
@@ -178,3 +178,30 @@ def test_the_report_when_rewrite_succeeds_with_nothing_left():
 
 def test_the_report_is_empty_when_there_is_nothing_to_say():
     assert format_report(check_payload(payload(CLEAN))) == ""
+
+
+def test_replies_are_checked_and_rewritten_with_the_answer_as_context():
+    p = payload(CLEAN)
+    p.replies = [Reply(10, JARGON, sources=[SRC])]
+    runner = FakeRunner(rewrite={"comments": [{"index": 1, "body": FIXED}]})
+    result = stage(runner).apply(p, answers={10: "Used in the next pull request."})
+    assert "Used in the next pull request." in runner.prompts[0]
+    assert "### Comment 1: reply to comment 10" in runner.prompts[1]
+    assert result.payload.replies[0].body == FIXED
+    assert result.payload.replies[0].in_reply_to == 10
+    assert result.payload.replies[0].sources == [SRC]
+
+
+def test_check_payload_covers_replies():
+    p = payload(CLEAN)
+    p.replies = [Reply(10, JARGON)]
+    assert any('"inert"' in x.detail for x in check_payload(p).remaining[1])
+
+
+def test_the_report_lists_a_reply_problem_and_counts_it():
+    p = payload(CLEAN)
+    p.replies = [Reply(10, JARGON)]
+    runner = FakeRunner(fail={1})
+    report = format_report(stage(runner).apply(p, answers={10: "context"}))
+    assert "reply to comment 10  blocking:" in report
+    assert "0 of 2 comments rewritten; 1 still have problems:" in report

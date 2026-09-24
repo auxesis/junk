@@ -29,10 +29,23 @@ class Comment:
 
 
 @dataclass
+class Reply:
+    """A finding posted as a reply in an existing review thread."""
+
+    in_reply_to: int
+    body: str
+    sources: list[Source] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {"body": self.body}
+
+
+@dataclass
 class Payload:
     body: str
     comments: list[Comment] = field(default_factory=list)
     event: str = "COMMENT"
+    replies: list[Reply] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {

@@ -1,5 +1,5 @@
 from pr_review.attribution import JobRecord, RunRecord, attribution, finalize, render_details
-from pr_review.payload import Comment, Payload, Source
+from pr_review.payload import Comment, Payload, Reply, Source
 
 OPUS = Source("claude", "claude-opus-5", "test-gap")
 OPUS_INFRA = Source("claude", "claude-opus-5", "infracode")
@@ -76,3 +76,10 @@ def test_finalize_appends_footers_and_details_without_changing_the_input():
     assert out.body.startswith("Verdict.\n\n<details>")
     assert p.comments[0].body == "**X.**"
     assert (out.comments[0].path, out.comments[0].line) == ("a", 1)
+
+
+def test_finalize_adds_the_footer_to_replies():
+    p = Payload(body="V.", replies=[Reply(10, "**X.**", sources=[OPUS])])
+    out = finalize(p, RunRecord(jobs=[JobRecord(OPUS, raw=1)]))
+    assert out.replies[0].body == "**X.**\n\n<sub>Found by 1 model: claude</sub>"
+    assert out.replies[0].in_reply_to == 10

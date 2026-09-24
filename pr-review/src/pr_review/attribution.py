@@ -80,5 +80,9 @@ def finalize(payload: Payload, record: RunRecord) -> Payload:
         replace(c, body=f"{c.body.rstrip()}\n\n{attribution(c.sources)}")
         for c in payload.comments
     ]
+    replies = [
+        replace(r, body=f"{r.body.rstrip()}\n\n{attribution(r.sources)}")
+        for r in payload.replies
+    ]
     body = f"{payload.body.rstrip()}\n\n{render_details(record, payload.comments)}"
-    return Payload(body=body, comments=comments, event=payload.event)
+    return Payload(body=body, comments=comments, event=payload.event, replies=replies)

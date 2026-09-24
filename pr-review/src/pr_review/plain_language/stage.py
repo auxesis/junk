@@ -5,7 +5,7 @@ import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 
-from pr_review.payload import Payload
+from pr_review.payload import Comment, Payload
 from pr_review.plain_language.check import BLOCKING, MINOR, Problem, check_body, check_comment
 from pr_review.plain_language.hunks import git_diff, hunk_for
 from pr_review.plain_language.reader import Verdict, build_reader_prompt, parse_reader_result
@@ -25,10 +25,22 @@ class StageResult:
     reader_ran: bool = False
 
 
+def _units(payload: Payload) -> list[Comment]:
+    return list(payload.comments) + [
+        Comment(f"reply to comment {r.in_reply_to}", 0, r.body, sources=r.sources) for r in payload.replies
+    ]
+
+
+def _rebuild(payload: Payload, units: list[Comment], body: str) -> Payload:
+    n = len(payload.comments)
+    replies = [replace(r, body=u.body) for r, u in zip(payload.replies, units[n:])]
+    return Payload(body=body, comments=units[:n], event=payload.event, replies=replies)
+
+
 def check_payload(payload: Payload) -> StageResult:
     return StageResult(
         payload=payload,
-        remaining={i: check_comment(c.body) for i, c in enumerate(payload.comments)},
+        remaining={i: check_comment(c.body) for i, c in enumerate(_units(payload))},
         body_remaining=check_body(payload.body),
     )
 
@@ -60,7 +72,8 @@ class PlainLanguageStage:
         self._runner = runner
         self._diff = diff
 
-    def apply(self, payload: Payload) -> StageResult:
+    def apply(self, payload: Payload, answers: dict[int, str] | None = None) -> StageResult:
+        units = _units(payload)
         checked = check_payload(payload)
         warnings: list[str] = []
         try:
@@ -73,6 +86,9 @@ class PlainLanguageStage:
             warnings.append(
                 "no comment matched a line in the diff; the reader test sees no diff lines"
             )
+        n = len(payload.comments)
+        for j, r in enumerate(payload.replies):
+            hunks[n + j] = f"(the comment this replies to)\n{(answers or {}).get(r.in_reply_to, '')}"
 
         # The reader and rewrite calls get no repo access (spec: "no tools, no
         # repo access"), so they run in an empty sandbox, never the clone.
@@ -83,7 +99,7 @@ class PlainLanguageStage:
                     self._command,
                     lambda path: build_reader_prompt(
                         payload_path=path,
-                        comments=[(i, c, hunks[i]) for i, c in enumerate(payload.comments)],
+                        comments=[(i, c, hunks[i]) for i, c in enumerate(units)],
                         body=payload.body,
                     ),
                     workdir=sandbox,
@@ -93,12 +109,12 @@ class PlainLanguageStage:
 
             problems = {
                 i: checked.remaining[i] + _reader_problems(reader.comments.get(i) if reader else None)
-                for i in range(len(payload.comments))
+                for i in range(len(units))
             }
             body_problems = checked.body_remaining + _reader_problems(reader.body if reader else None)
             items = [
                 RewriteItem(i, c, hunks[i], _blocking(problems[i]))
-                for i, c in enumerate(payload.comments) if _blocking(problems[i])
+                for i, c in enumerate(units) if _blocking(problems[i])
             ]
             body_blocking = _blocking(body_problems)
             if not items and not body_blocking:
@@ -118,18 +134,18 @@ class PlainLanguageStage:
                 return StageResult(payload, problems, body_problems, 0, warnings,
                                    reader_ran=reader is not None)
 
-        comments = list(payload.comments)
+        units = list(units)
         rewritten = 0
         for item in items:
             text = new_bodies.get(item.index)
             if text is None:
                 continue
-            original = comments[item.index]
+            original = units[item.index]
             reason = guard(original.body, text)
             if reason:
                 warnings.append(f"{original.path}:{original.line}: the rewrite {reason}; kept the original")
                 continue
-            comments[item.index] = replace(original, body=text)
+            units[item.index] = replace(original, body=text)
             problems[item.index] = check_comment(text)
             rewritten += 1
 
@@ -141,23 +157,32 @@ class PlainLanguageStage:
             else:
                 body, body_problems = new_body, check_body(new_body)
 
-        return StageResult(Payload(body=body, comments=comments, event=payload.event),
+        return StageResult(_rebuild(payload, units, body),
                            problems, body_problems, rewritten, warnings,
                            reader_ran=reader is not None)
 
 
 def format_report(result: StageResult) -> str:
     lines = [f"pr-review: plain language: {w}" for w in result.warnings]
+    n_comments = len(result.payload.comments)
+    replies = result.payload.replies
     left = [
         f"  {c.path}:{c.line}  {p.level}: {p.detail}"
         for i, c in enumerate(result.payload.comments) for p in result.remaining.get(i, [])
+    ] + [
+        f"  reply to comment {r.in_reply_to}  {p.level}: {p.detail}"
+        for j, r in enumerate(replies) for p in result.remaining.get(n_comments + j, [])
     ] + [f"  review body  {p.level}: {p.detail}" for p in result.body_remaining]
     if left:
-        n = len(result.payload.comments)
-        k = len([i for i in range(len(result.payload.comments)) if result.remaining.get(i)]) + (1 if result.body_remaining else 0)
+        n = n_comments + len(replies)
+        k = (
+            len([i for i in range(n_comments) if result.remaining.get(i)])
+            + len([j for j in range(len(replies)) if result.remaining.get(n_comments + j)])
+            + (1 if result.body_remaining else 0)
+        )
         lines.append(f"pr-review: plain language: {result.rewritten} of {n} comments rewritten; {k} still have problems:")
         lines.extend(left)
     elif result.rewritten:
-        n = len(result.payload.comments)
+        n = n_comments + len(replies)
         lines.append(f"pr-review: plain language: {result.rewritten} of {n} comments rewritten; no problems left.")
     return "\n".join(lines)
