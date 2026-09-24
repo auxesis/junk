@@ -83,3 +83,21 @@ def test_finalize_adds_the_footer_to_replies():
     out = finalize(p, RunRecord(jobs=[JobRecord(OPUS, raw=1)]))
     assert out.replies[0].body == "**X.**\n\n<sub>Found by 1 model: claude</sub>"
     assert out.replies[0].in_reply_to == 10
+
+
+def test_details_include_stack_context_and_findings_not_posted():
+    record = RunRecord(jobs=[JobRecord(OPUS, raw=1)], stack_line="Stack: position 1 of 2 (#7, #8).",
+                       context_line="Context loaded: the description.",
+                       not_posted=["**No lock.** Fixed in #8 (refs/stack/8:a.tf)."])
+    text = render_details(record, [])
+    assert "Stack: position 1 of 2 (#7, #8)." in text
+    assert "Context loaded: the description." in text
+    assert "**Findings not posted:**\n\n- **No lock.** Fixed in #8 (refs/stack/8:a.tf)." in text
+
+
+def test_replies_are_included_in_posted_count():
+    record = RunRecord(jobs=[JobRecord(OPUS, raw=2)])
+    comment = Comment("a", 1, "**X.**", sources=[OPUS])
+    reply = Reply(10, "**Y.**", sources=[OPUS])
+    text = render_details(record, [comment, reply])
+    assert "| claude | claude-opus-5 | test-gap | 2 found, 2 posted |" in text

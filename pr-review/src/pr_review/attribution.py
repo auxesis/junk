@@ -21,6 +21,9 @@ class RunRecord:
     plain_language_model: str | None = None
     rewritten: int = 0
     reader_ran: bool = False
+    stack_line: str | None = None
+    context_line: str | None = None
+    not_posted: list[str] = field(default_factory=list)
 
 
 def _models(sources: list[Source]) -> list[tuple[str, str]]:
@@ -37,7 +40,7 @@ def attribution(sources: list[Source]) -> str:
     return f"<sub>Found by {len(models)} {noun}: {', '.join(names)}</sub>"
 
 
-def render_details(record: RunRecord, comments: list[Comment]) -> str:
+def render_details(record: RunRecord, comments: list) -> str:
     lines = [
         "<details>", "<summary>How this review was made</summary>", "",
         "| Agent | Model | Review type | Result |", "|---|---|---|---|",
@@ -71,6 +74,11 @@ def render_details(record: RunRecord, comments: list[Comment]) -> str:
                 "only the word-and-shape check was applied."
             )
         lines += ["", note]
+    for line in (record.stack_line, record.context_line):
+        if line:
+            lines += ["", line]
+    if record.not_posted:
+        lines += ["", "**Findings not posted:**", ""] + [f"- {item}" for item in record.not_posted]
     lines += ["", "</details>"]
     return "\n".join(lines)
 
@@ -84,5 +92,5 @@ def finalize(payload: Payload, record: RunRecord) -> Payload:
         replace(r, body=f"{r.body.rstrip()}\n\n{attribution(r.sources)}")
         for r in payload.replies
     ]
-    body = f"{payload.body.rstrip()}\n\n{render_details(record, payload.comments)}"
+    body = f"{payload.body.rstrip()}\n\n{render_details(record, [*payload.comments, *payload.replies])}"
     return Payload(body=body, comments=comments, event=payload.event, replies=replies)

@@ -100,3 +100,12 @@ def describe_loaded(ctx: PullRequestContext) -> str:
     line = (f"Context loaded: the description, {len(ctx.issues)} linked issue(s) "
             f"and {entries} discussion entries.")
     return line + (f" Not loaded: {', '.join(ctx.failed)}." if ctx.failed else "")
+
+
+def describe_dropped(d) -> str:
+    if d.reason == "fixed-later":
+        where = f" ({d.evidence})" if d.evidence else ""
+        return f"{d.finding} Fixed in {d.link}{where}."
+    if d.reason == "already-raised":
+        return f"{d.finding} Already raised in [this thread]({d.link})."
+    return f"{d.finding} Answered by the author in [this reply]({d.link})."

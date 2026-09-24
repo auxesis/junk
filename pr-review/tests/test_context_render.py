@@ -1,6 +1,7 @@
+from pr_review.context.filter import Dropped
 from pr_review.context.model import Entry, Issue, PullRequestContext, StackEntry, Thread
 from pr_review.context.render import (
-    describe_loaded, describe_stack, prompt_summary, render_context_file, stack_map,
+    describe_dropped, describe_loaded, describe_stack, prompt_summary, render_context_file, stack_map,
 )
 
 
@@ -76,3 +77,12 @@ def test_describe_stack_and_loaded():
         "Context loaded: the description, 1 linked issue(s) and 3 discussion entries. "
         "Not loaded: issue #9."
     )
+
+
+def test_describe_dropped_says_why_and_links():
+    assert describe_dropped(Dropped("**A.**", "fixed-later", "#8", "refs/stack/8:a.tf")) == (
+        "**A.** Fixed in #8 (refs/stack/8:a.tf).")
+    assert describe_dropped(Dropped("**B.**", "already-raised", "https://x/r1")) == (
+        "**B.** Already raised in [this thread](https://x/r1).")
+    assert describe_dropped(Dropped("**C.**", "answered", "https://x/c1")) == (
+        "**C.** Answered by the author in [this reply](https://x/c1).")
