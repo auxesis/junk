@@ -30,6 +30,28 @@ _Avoid_: provenance, origin, author
 The small line at the end of a comment that names the models that found it.
 _Avoid_: label, tag, badge
 
+### Pull request context
+
+**Pull request context**:
+What pr-review knows about a pull request beyond its diff: its description, its discussion, its linked GitHub issues, and the other pull requests in its stack.
+_Avoid_: metadata, background, PR info
+
+**Stack**:
+An ordered series of pull requests where each one targets the one below it, as GitHub's stacked pull requests define it.
+_Avoid_: chain, series, train
+
+**Later pull request**:
+A pull request above the reviewed one in its stack, which may fix what the reviewed one leaves out.
+_Avoid_: child PR, downstream PR, follow-up PR
+
+**Discussion**:
+Everything people and agents have already written on the pull request: comments, review bodies, review threads and their replies.
+_Avoid_: conversation, thread, history
+
+**Context filter**:
+The step after collation that drops a finding when a later pull request fixes it, when the discussion already raised it, or when the author has answered or deferred it.
+_Avoid_: dedupe, suppression, triage
+
 ### Plain language
 
 **Target reader**:
