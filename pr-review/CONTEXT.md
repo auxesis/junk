@@ -22,6 +22,14 @@ _Avoid_: run, pass, task
 The step where one model merges the findings of several jobs into one review, removes duplicates and drops findings it cannot confirm in the code.
 _Avoid_: judging, consolidation
 
+**Source**:
+The agent, model and review type of the job that raised a finding.
+_Avoid_: provenance, origin, author
+
+**Attribution footer**:
+The small line at the end of a comment that names the models that found it.
+_Avoid_: label, tag, badge
+
 ### Plain language
 
 **Target reader**:

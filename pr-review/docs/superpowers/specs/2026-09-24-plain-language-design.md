@@ -1,4 +1,4 @@
-# pr-review — plain-language review text (design)
+# pr-review — plain-language review text and attribution (design)
 
 **Date:** 2026-09-24
 **Status:** Approved, ready for implementation planning
@@ -55,7 +55,8 @@ Both are copyrighted, so pr-review paraphrases their rules and cites clause numb
 | Repo terms | Keep the word, define it once if the diff shows its meaning, never swap it for another term | Spike lesson 4. |
 | Reader-test input | Each comment beside its diff hunk; no tools, no repo access | The reader stands in for a person reading the pull request on GitHub. |
 | Batching | One reader-test call for all comments and the body; one rewrite call for all comments with a blocking problem | Two calls at most, whatever the comment count. The 8-comment cap limits the risk of one comment's context affecting another's verdict. |
-| Review stats | Moved into a collapsed `<details>` block at the end of the body; not checked | Stats describe how pr-review works, not the pull request. |
+| Review stats | Moved into a collapsed "How this review was made" `<details>` block at the end of the body, on every run; not checked | Stats, review types and failed jobs describe how pr-review works, not the pull request. |
+| Model attribution | A `<sub>` footer at the end of each comment, written by code, not by a model | The reader needs the finding first. Code keeps the format the same every run. |
 
 ## Comment shape
 
@@ -79,15 +80,14 @@ DEPLOY_REGION = "ap-southeast-2"
 - **Evidence** (optional): how the reviewer knows. Leave it out when the finding line says everything, for example "no test calls `seal()` with an empty key".
 - **Fix** (required): what to change. Code goes here, and only here.
 - **test-gap:** the gap is the finding line. Impact is what could break without anyone noticing. Fix is the test sketch followed by the expected result, which replaces the old `Expected:` line.
-- Model attribution (a separate design) goes in a `<sub>` line after Fix. The plain-language check ignores it.
+- The attribution footer (see **Attribution**) goes in a `<sub>` line after Fix. Code adds it after the plain-language stage, so the stage never sees it.
 
 ## Review body shape
 
 1. **Verdict:** one or two plain sentences on whether the pull request can merge as it is, and what must change first.
 2. Any out-of-scope notes the review type allows, written to the same rules.
 3. **Overflow findings** (above the 8-comment cap): a bullet for each, with the finding line and `path:line`. A bare `path:line` is not allowed.
-4. A note on failed jobs, as today.
-5. `<details><summary>Review stats</summary> … </details>`, which is only present when synthesis ran.
+4. `<details><summary>How this review was made</summary> … </details>`, on every run (see **Attribution**). Failed jobs are listed here, not in a line in the body.
 
 ## Writing rules
 
@@ -130,7 +130,7 @@ The implementation must not add clause numbers that nobody has checked against t
 
 ### Deterministic check
 
-Before counting, it removes fenced code, inline code, the `<sub>` attribution line and the `<details>` stats block.
+Before counting, it removes fenced code and inline code. The attribution footer and the "How this review was made" block are added after the stage, so the check never sees them.
 
 | Problem | Level |
 |---|---|
@@ -225,14 +225,14 @@ The stage can never stop a review from being produced.
 ### Prompt changes
 
 - `review_types/*`: the "Each inline comment must be self-contained" section is replaced by the rendered writing rules and comment shape. The type-specific content rules stay (test-gap's sketch requirement, the severity ladders).
-- `synthesis.py`: the rendered block is added. The payload example uses the new shape. The confidence label moves out of the comment's first line; a separate design decides its new form. `## Review stats` goes into `<details>`.
+- `synthesis.py`: the rendered block is added. The payload example uses the new shape. The `[N models: …]` / `[single-source: …]` prefix is removed from the instructions, and the judge returns `sources` and `stats` as JSON (see **Attribution**). The judge no longer writes a `## Review stats` section.
 - `collate.DeterministicMergeCollator`: the overflow list uses finding lines (it already does, via `_first_line`), and its heading becomes "Other findings not posted as comments".
 
 ## Testing
 
 Following `CLAUDE.md`: no model or subprocess runs in the suite.
 
-- **test_plain_language_check.py**: each blocking and minor problem is found; code fences, inline code, `<sub>` and `<details>` are excluded; before/after fixtures written in the style of the spike's pairs, with invented code and paths, not text copied from reviewed repositories (a "before" fails, an "after" with no problems passes); repo terms such as "drift" and "root" pass.
+- **test_plain_language_check.py**: each blocking and minor problem is found; code fences and inline code are excluded; before/after fixtures written in the style of the spike's pairs, with invented code and paths, not text copied from reviewed repositories (a "before" fails, an "after" with no problems passes); repo terms such as "drift" and "root" pass.
 - **test_plain_language_rules.py**: `rules.json` loads; the rendered block names every label and threshold; every registered review type's `instructions()` contains the rendered block (so a new type cannot skip it); the synthesis prompt contains it.
 - **test_plain_language_stage.py**, with a fake runner:
   - no blocking problems means no rewrite call;
@@ -249,9 +249,53 @@ Following `CLAUDE.md`: no model or subprocess runs in the suite.
 
 A manual check after implementation: run pr-review on one of the spike's pull requests and compare the posted text with the spike's "before".
 
+## Attribution
+
+Model attribution is a detail of how pr-review works. It must not be the first thing the reader sees.
+
+### Sources
+
+A **source** is one job's agent, model and review type: `Source(agent, model, review_type)`.
+`Comment` gains `sources: list[Source]`. It is used only inside pr-review: `Comment.to_dict()`, which builds the GitHub post, leaves it out, and reviewers never write it.
+
+- **Single job and deterministic merge:** the orchestrator gives each comment the source of the job that produced it.
+- **Synthesis:** each comment in the judge's JSON gains `"sources": ["<label>", …]`. The labels are the exact source labels used in "Findings to consolidate". Code maps each label back to its job and drops any label it does not know. If no known label is left, the footer says `Found by pr-review` and a warning goes to stderr. Code never guesses a source.
+
+### Footer
+
+`attribution(sources) -> str` is a pure function. It lists agent names, and adds the model only when one agent appears more than once:
+
+```
+<sub>Found by 2 models: claude, codex</sub>
+<sub>Found by 2 models: claude (claude-opus-5), claude (claude-sonnet-5)</sub>
+<sub>Found by 1 model: claude</sub>
+```
+
+The footer appears on every path, including single-job runs, so the reader always knows a model wrote the comment.
+It does not name the review type.
+Code appends it as the last step before output, after the plain-language stage.
+Overflow bullets in the body get no footer.
+
+### "How this review was made"
+
+A collapsed `<details>` block at the end of the body, on every run, built by code from the run's data:
+
+- a table with one row for each job: agent, model, review type, and whether the job succeeded or failed;
+- when synthesis ran: the synthesis model, and for each source the number of findings it raised and the number that were kept, plus how many kept findings two or more models raised;
+- when the plain-language stage ran: its model, and the number of comments it rewrote.
+
+The judge returns its counts as JSON (`"stats": {"<label>": {"raw": N, "kept": M}}`), and code renders the table.
+This block replaces the "⚠️ N review job(s) failed" line that `orchestrator.run_reviews` adds to the body today.
+
+### Tests
+
+- **test_attribution.py**: `attribution()` for one source, two agents, and one agent with two models; the details block for single-job, deterministic-merge, synthesis and partial-failure runs.
+- **test_orchestrator.py**: each comment has its job's source.
+- **test_synthesis.py**: judge labels map back to jobs; an unknown label is dropped; no known label gives `Found by pr-review` and a warning; the prompt no longer asks for a prefix.
+- **test_payload.py**: `to_dict()` leaves out `sources`.
+
 ## Out of scope
 
-- Model attribution format and position.
 - Using stacked pull requests and existing comments as context.
 - A controlled STE dictionary. The word list bans known problems; it does not restrict the reader to approved words.
 - Checking the terminal output that pr-review prints for itself.
