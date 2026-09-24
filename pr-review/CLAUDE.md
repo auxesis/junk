@@ -16,8 +16,9 @@ accurate map of what is covered.
 
 ## Testing principle
 
-Pure logic is unit-tested directly. The four real side effects — `git clone`,
-the `claude` CLI review, the `codex` CLI review, and the `gh api` post — are never executed in the suite:
+Pure logic is unit-tested directly. The real side effects — `git clone` and
+fetch, the `claude` and `codex` CLI runs, and every `gh api` call (context
+reads, the review post and reply posts) — are never executed in the suite:
 the shells around them are tested through injected fake runners, and the true
 end-to-end path (real PR → clone → claude → post) is verified only by a manual
 run. When you touch a side-effecting module, test its command construction with a
@@ -25,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 20 files, one per `src/pr_review/` module (292 tests total):
+`tests/` holds 27 files, one per `src/pr_review/` module (321 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -55,10 +56,11 @@ fake, not the real subprocess.
 - **test_reviewers.py** — the `Reviewer` registry (`claude` and `codex` registered,
   each with a `default_model`, unknown raises), `Reviewer.command` argv for both
   agents (codex omits `--model` when empty), the shared `build_review_prompt`
-  (including that it names the base as a bare commit, never `origin/<ref>`), and
-  `_review_env` (trusts the clone's `mise.toml`). The `review()` calls shell out to
-  `claude`/`codex` and are not unit-tested; the shell around them is covered by
-  **test_run.py**.
+  (including that it names the base as a bare commit, never `origin/<ref>`, and
+  that a passed-in context summary sits before the instructions while its
+  absence leaves the prompt unchanged), and `_review_env` (trusts the clone's
+  `mise.toml`). The `review()` calls shell out to `claude`/`codex` and are not
+  unit-tested; the shell around them is covered by **test_run.py**.
 - **test_run.py** — the shared agent runner in `reviewers/_run.py`. `run_cli_payload`
   with an injected fake runner: the payload file, not the exit status, is the
   contract — a valid payload survives a non-zero exit (the `codex` EAGAIN panic:
@@ -80,21 +82,85 @@ fake, not the real subprocess.
   <base-sha>` / `git checkout --detach` sequence with the right `cwd`, via an
   injected `FakeRunner` + `mkdtemp` (no network); that the returned `base` is a
   commit and not a branch name (so merged PRs still diff); that unresolvable PR
-  metadata raises; and `cleanup` removes the workdir.
+  metadata raises; `cleanup` removes the workdir; each pull request in the stack
+  is fetched into `refs/stack/<n>` after the base, and a stack ref that cannot be
+  fetched is left out of `Checkout.stack_refs` rather than failing the clone; and
+  `write_context_file` writes inside `.git/pr-review/` in the clone.
+- **test_context_github.py** — `GitHub.get`, `get_all` (`--paginate --slurp`,
+  pages flattened) and `graphql` (typed `-F` variables) build the right `gh api`
+  argv through a fake runner.
+- **test_context_discussion.py** — issue comments and non-empty review bodies
+  merge in time order (an empty review body is dropped); the author is marked
+  on every entry; review comments group into threads with their path and line
+  (an outdated comment keeps its original line); and a reply whose root comment
+  is missing becomes a root itself.
+- **test_context_issues.py** — `#N` references in a body are found once each,
+  including a closing keyword and a markdown link, excluding the pull request's
+  own number, a colour literal and a URL fragment; a referenced pull request is
+  skipped, not loaded as an issue; and a failed issue read is reported in
+  `failed` rather than raising.
+- **test_context_stack.py** — a native (GitHub) stack uses its own order and
+  position, and marks entries before the current pull request as earlier and
+  after as later; with no native stack, the chain is discovered by walking base
+  branches down to the repository's default branch and head branches up through
+  every child, keeping every branch of a tree; a pull request already on the
+  default branch with no children has no stack; the walk stops at `MAX_DEPTH`;
+  and branch names are URL-encoded in the `gh api` path.
+- **test_context_gather.py** — `gather_context` assembles the description,
+  linked issues, discussion and stack from fakes; a failed part (discussion,
+  an issue) is left out and named in `failed` rather than raising; and a failed
+  read of the pull request itself raises, since there is no review without it.
+- **test_context_render.py** — `stack_map` orders earlier/this/later pull
+  requests with their state, position and `refs/stack/<n>` ref, and reports
+  "not part of a stack" when there is none; `render_context_file` includes
+  every part with comment/thread ids and `(author)` marks, and writes "(none)"
+  under "Other pull requests in the stack" when it is empty; `prompt_summary`
+  opens with the context-file path and the stack map and description, and
+  carries both reviewer instructions ("Before you report that something is
+  missing" / "Before you report anything, read the discussion"); and
+  `describe_stack`, `describe_loaded` and `describe_dropped` build the
+  **How this review was made** block's stack line, context-loaded line, and
+  one line per dropped finding (naming the fix, the thread or the reply it was
+  answered in).
+- **test_context_filter.py** — `apply_verdicts` for every verdict kind: `keep`
+  and a missing verdict both keep the finding; `fixed-later` drops it and
+  records the pull request, but is kept (with a warning) when the named pull
+  request is earlier, closed, unknown, or missing from the verdict entirely
+  ("the verdict named no later pull request"); `already-raised` and `answered`
+  drop with their link; a bad index or an unknown reason is ignored; a `reply`
+  to a comment the author posted becomes a `Reply`, while a `reply` to someone
+  else's comment or to an issue comment stays a posted comment with the
+  author's answer added to its **Evidence** section via `_add_evidence` (which
+  inserts before **Fix** when there is no Evidence yet, appends to existing
+  Evidence, and appends at the end when there is no **Fix**); replies beyond
+  `MAX_REPLIES` (3) go to the body's overflow list instead; `build_filter_prompt`
+  names the payload and context file paths, the stack's refs and states, each
+  finding and each author mark; a failed filter call keeps every finding, and a
+  response with no `verdicts` list (or a non-object response) does the same
+  and warns "context filter returned no verdicts list; every finding is kept";
+  and `answers_by_id` covers both top-level comments and every thread entry.
 - **test_output.py** — `decide_mode` across the print-only / post-without-prompting
   / TTY matrix; `render` emits the body plus `path:line` comment anchors;
   `post_review` builds the `gh api .../reviews --method POST --input` call via a
   fake runner and leaves the payload file on disk; the not-posted path writes the
   payload to a real temp file and names it in the hint; `dispatch` returns the exit
   code and, when the post fails, keeps the payload and names it in the retry hint
-  (so a tail-end 403 doesn't cost the review); and `show_review` renders via `glow`
-  when present (else plain text), with a fake `which`/`run`.
+  (so a tail-end 403 does not cost the review); `show_review` renders via `glow`
+  when present (else plain text), with a fake `which`/`run`; replies post one at
+  a time after the review, each to `.../comments/<id>/replies`, and a posted
+  reply's temp file is removed; a failed reply does not stop the others, keeps
+  its own file, and is named in the retry hint, while the review and any
+  already-posted replies still count as posted; a failed review posts no
+  replies at all and keeps every payload file; the review-only path writes a
+  file (with a retry command) for every reply as well as the review; and the
+  confirm prompt names both the inline comment count and the reply count.
 - **test_orchestrator.py** — `run_reviews` with in-process `FakeReviewer`/`FakeType`
   (no subprocess): single-job passthrough, two-job merge (model in label),
   empty-model label, and graceful failure — a raising job is captured in
   `RunResult.failures` (not raised); partial failures keep the successes and are
   recorded in `RunResult.jobs`; every comment carries its job's `Source`; and an
-  all-failed run yields `payload=None`.
+  all-failed run yields `payload=None`; and a context summary passed to
+  `run_reviews` reaches every job's `review()` call.
 - **test_cli.py** — `config_from_args` option parsing (`--model agent[=models]`
   repeatable → `(agent, model)` pairs, `--review-type` lists, per-agent
   `--claude-flags`/`--codex-flags`, the booleans), `build_jobs` (the
@@ -103,7 +169,10 @@ fake, not the real subprocess.
   the `help` word aliasing to `--help`, plus `--synthesis-model` / `--no-synthesis`
   parsing and `build_collator` (synthesis vs deterministic, judge command);
   `--plain-language-model` (defaults to the synthesis model) / `--no-plain-language`
-  and `build_plain_language_stage`; `main()`, with `clone_pr`/`run_reviews`/
+  and `build_plain_language_stage`; `--no-context` / `--no-context-filter` /
+  `--context-filter-model` parsing and `build_context_filter` (follows the
+  synthesis model by default; builds none under either `--no-context` or
+  `--no-context-filter`); `main()`, with `clone_pr`/`gather_context`/`run_reviews`/
   `cleanup`/the stage all faked (no clone, no subprocess, no network): a
   `stage.apply` exception is caught, warned on stderr, and falls back to
   `check_payload` rather than losing the review; and the plain-language report
@@ -118,7 +187,8 @@ fake, not the real subprocess.
   works.
 - **test_synthesis.py** — `serialize_findings` (sources labelled `<agent> (<model>)
   [<type>]` with counts) and `build_synthesis_prompt` (context + findings +
-  instructions); `LLMSynthesisCollator.collate` with an injected fake runner:
+  instructions), including that a pull request context summary passed in sits
+  before the synthesis instructions, so the judge sees it too; `LLMSynthesisCollator.collate` with an injected fake runner:
   single-job passthrough, judge runs for >1 job, fall-back to the deterministic
   merge when the judge raises, the judge's `sources` labels map back to jobs
   (unknown labels dropped, none left warns), `ran` is true only when the judge's
@@ -177,5 +247,8 @@ fake, not the real subprocess.
   synthesis and plain language only when they ran; the plain-language line
   reads "read every comment..." only when `RunRecord.reader_ran` is true, else
   "the reader test did not run; only the word-and-shape check was applied";
-  `finalize` appends both without changing its input, and appends the same
-  footer to each reply while keeping its `in_reply_to`.
+  the block also carries `RunRecord.stack_line` and `context_line` when set,
+  and a `not_posted` list under a **Findings not posted** heading; posted
+  counts include replies as well as comments; `finalize` appends both without
+  changing its input, and appends the same footer to each reply while keeping
+  its `in_reply_to`.

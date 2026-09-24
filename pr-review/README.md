@@ -134,6 +134,26 @@ you confirm the post. The rules and word list are in
 - `--plain-language-model AGENT[=MODEL]` — the reader and rewriter (default: the synthesis model).
 - `--no-plain-language` — skip the reader test and rewrite; the word-and-shape check still reports.
 
+### Pull request context
+
+Before reviewing, pr-review reads the pull request's description, the GitHub
+issues it links to, its discussion (comments, review bodies and review threads),
+and the other pull requests in its stack — GitHub's stacked pull requests, or a
+chain of pull requests whose base is the branch below. Each pull request in the
+stack is fetched into the clone as `refs/stack/<n>`.
+
+Reviewers are told to check later pull requests before reporting something
+missing, and the discussion before reporting anything. Then a context filter
+checks every finding: it drops findings a later pull request fixes, that the
+discussion already raised, or that the author answered or deferred, and lists
+them under **Findings not posted** in the review's collapsed record. When the
+code proves an author's answer wrong, the finding is posted as a reply in that
+thread (at most 3 per run).
+
+- `--no-context` — review the diff only.
+- `--no-context-filter` — give reviewers the context, but do not filter findings.
+- `--context-filter-model AGENT[=MODEL]` — the filter's model (default: the synthesis model).
+
 ### Posting behaviour
 
 By default `pr-review` **reviews and prints, then asks** before posting to the PR:
@@ -145,6 +165,10 @@ By default `pr-review` **reviews and prints, then asks** before posting to the P
 | Review only — never post, never prompt | `--print-only` |
 | Review only (falls back automatically) | no terminal available and `--post-without-prompting` not set |
 
+Replies post after the review, one at a time. If one fails, the others still
+post; pr-review keeps the failed reply's file, prints a command to post it,
+and exits 1.
+
 ### Options
 
 | Option | Effect | Default |
@@ -155,6 +179,9 @@ By default `pr-review` **reviews and prints, then asks** before posting to the P
 | `--no-synthesis` | Skip synthesis; raw-merge multi-job results | off |
 | `--plain-language-model agent[=model]` | Reader test and rewrite model | the synthesis model |
 | `--no-plain-language` | Skip the reader test and rewrite | off |
+| `--no-context` | Review the diff only | off |
+| `--no-context-filter` | Do not filter findings against the context | off |
+| `--context-filter-model agent[=model]` | Context filter model | the synthesis model |
 | `--post-without-prompting` | Post without prompting | off |
 | `--print-only` | Review and print only; never post | off |
 | `--claude-flags="<flags>"` | Extra flags appended to the `claude` invocation | empty |
