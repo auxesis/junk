@@ -84,6 +84,20 @@ def test_a_rewrite_that_drops_inline_code_keeps_the_original():
     assert any("f0.py:1: the rewrite dropped `y`; kept the original" in w for w in result.warnings)
 
 
+def test_a_nonempty_diff_that_matches_no_comment_warns():
+    runner = FakeRunner()
+    other_file_diff = (
+        "diff --git a/other.py b/other.py\n--- a/other.py\n+++ b/other.py\n"
+        "@@ -1 +1 @@\n-x\n+y\n"
+    )
+    s = PlainLanguageStage(command=["judge"], workdir="/wd", base="b", runner=runner,
+                           diff=lambda workdir, base: other_file_diff)
+    result = s.apply(payload(CLEAN))
+    assert any(
+        "no comment matched a line in the diff" in w for w in result.warnings
+    )
+
+
 def test_a_failed_reader_call_still_rewrites_on_the_check():
     runner = FakeRunner(rewrite={"comments": [{"index": 0, "body": FIXED}]}, fail={0})
     result = stage(runner).apply(payload(JARGON))

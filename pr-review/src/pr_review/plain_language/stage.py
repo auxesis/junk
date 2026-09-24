@@ -67,6 +67,10 @@ class PlainLanguageStage:
             warnings.append(f"could not read the diff ({e}); the reader test sees no diff lines")
             diff = ""
         hunks = {i: hunk_for(diff, c.path, c.line) for i, c in enumerate(payload.comments)}
+        if diff and payload.comments and not any(hunks.values()):
+            warnings.append(
+                "no comment matched a line in the diff; the reader test sees no diff lines"
+            )
 
         reader = None
         try:

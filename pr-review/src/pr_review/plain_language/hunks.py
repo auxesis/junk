@@ -51,8 +51,14 @@ def hunk_for(diff: str, path: str, line: int, context: int = 20) -> str:
 
 
 def git_diff(workdir: str, base: str, runner=subprocess.run) -> str:
+    # Pin the flags the user's git config can otherwise override: with
+    # diff.noprefix=true headers would read "+++ src/a.py" and hunk_for would
+    # find nothing; color.ui=always or diff.external would break parsing too.
     res = runner(
-        ["git", "diff", f"{base}...HEAD"],
+        [
+            "git", "diff", "--no-color", "--no-ext-diff",
+            "--src-prefix=a/", "--dst-prefix=b/", f"{base}...HEAD",
+        ],
         cwd=workdir, capture_output=True, text=True, check=True,
     )
     return res.stdout

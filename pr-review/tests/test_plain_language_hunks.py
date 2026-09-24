@@ -65,5 +65,8 @@ def test_git_diff_runs_a_three_dot_diff_in_the_workdir():
 
     assert git_diff("/wd", "abc123", runner=runner) == "DIFF"
     cmd, kw = calls[0]
-    assert cmd == ["git", "diff", "abc123...HEAD"]
+    assert cmd == [
+        "git", "diff", "--no-color", "--no-ext-diff",
+        "--src-prefix=a/", "--dst-prefix=b/", "abc123...HEAD",
+    ]
     assert kw["cwd"] == "/wd"
