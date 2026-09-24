@@ -8,14 +8,26 @@ def _where(e: StackEntry) -> str:
     return "later" if e.later else "earlier"
 
 
+def _stack_line(e: StackEntry) -> str:
+    parts = [f"{e.state}, {_where(e)}"]
+    if e.position is not None:
+        parts.append(f"position {e.position}")
+    parts.append(f"ref `refs/stack/{e.number}`")
+    return f"- #{e.number} {e.title} ({'; '.join(parts)})"
+
+
 def stack_map(ctx: PullRequestContext) -> str:
     if not ctx.stack:
         return "This pull request is not part of a stack."
-    line = lambda e: f"- #{e.number} {e.title} ({e.state}, {_where(e)}; ref `refs/stack/{e.number}`)"
+    reviewed_line = f"- #{ctx.number} {ctx.title} (this pull request"
+    if ctx.stack_position:
+        pos, size = ctx.stack_position
+        reviewed_line += f", position {pos} of {size}"
+    reviewed_line += ")"
     return "\n".join(
-        [line(e) for e in ctx.stack if not e.later]
-        + [f"- #{ctx.number} {ctx.title} (this pull request)"]
-        + [line(e) for e in ctx.stack if e.later]
+        [_stack_line(e) for e in ctx.stack if not e.later]
+        + [reviewed_line]
+        + [_stack_line(e) for e in ctx.stack if e.later]
     )
 
 
@@ -42,6 +54,8 @@ def render_context_file(ctx: PullRequestContext) -> str:
     out += ["## Other pull requests in the stack", ""]
     for e in ctx.stack:
         out += [f"### #{e.number} {e.title} ({e.state}, {_where(e)})", "", e.body, ""]
+    if not ctx.stack:
+        out += ["(none)", ""]
     return "\n".join(out)
 
 

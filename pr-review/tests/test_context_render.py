@@ -23,14 +23,25 @@ LATER = StackEntry(8, "Locking", "b8", "open", "s8", True, 3)
 def test_stack_map_orders_earlier_this_later_and_names_refs():
     text = stack_map(ctx([EARLIER, LATER], (2, 3)))
     assert text.splitlines() == [
-        "- #6 Base work (merged, earlier; ref `refs/stack/6`)",
-        "- #7 Add widgets (this pull request)",
-        "- #8 Locking (open, later; ref `refs/stack/8`)",
+        "- #6 Base work (merged, earlier; position 1; ref `refs/stack/6`)",
+        "- #7 Add widgets (this pull request, position 2 of 3)",
+        "- #8 Locking (open, later; position 3; ref `refs/stack/8`)",
     ]
 
 
 def test_stack_map_without_a_stack():
     assert stack_map(ctx()) == "This pull request is not part of a stack."
+
+
+def test_stack_map_without_positions_or_stack_position():
+    unpositioned_earlier = StackEntry(6, "Base work", "b6", "merged", "s6", False)
+    unpositioned_later = StackEntry(8, "Locking", "b8", "open", "s8", True)
+    text = stack_map(ctx([unpositioned_earlier, unpositioned_later]))
+    assert text.splitlines() == [
+        "- #6 Base work (merged, earlier; ref `refs/stack/6`)",
+        "- #7 Add widgets (this pull request)",
+        "- #8 Locking (open, later; ref `refs/stack/8`)",
+    ]
 
 
 def test_context_file_has_every_part_with_ids_and_author_marks():
@@ -40,6 +51,12 @@ def test_context_file_has_every_part_with_ids_and_author_marks():
                      "thread 10 by bot — https://x/r10", "on `a.tf:4`", "reply 11 by ada (author)",
                      "## Other pull requests in the stack", "### #8 Locking (open, later)"):
         assert expected in text, expected
+
+
+def test_context_file_shows_none_for_empty_stack():
+    text = render_context_file(ctx())
+    assert "## Other pull requests in the stack" in text
+    assert "(none)" in text
 
 
 def test_prompt_summary_has_the_map_description_path_and_both_instructions():
