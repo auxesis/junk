@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 27 files, one per `src/pr_review/` module (333 tests total):
+`tests/` holds 27 files, one per `src/pr_review/` module (334 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -103,7 +103,8 @@ fake, not the real subprocess.
   `failed` rather than raising.
 - **test_context_stack.py** — a native (GitHub) stack uses its own order and
   position, and marks entries before the current pull request as earlier and
-  after as later; with no native stack, the chain is discovered by walking base
+  after as later; a native stack whose GraphQL read fails falls back to the
+  branch chain; with no native stack, the chain is discovered by walking base
   branches down to the repository's default branch and head branches up through
   every child, keeping every branch of a tree; a pull request already on the
   default branch with no children has no stack; the walk stops at `MAX_DEPTH`;

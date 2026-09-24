@@ -70,3 +70,15 @@ def test_branch_names_are_url_encoded():
     gh = FakeGitHub([])
     discover_stack(gh, rest_pr(1, "feature/x y", "main"))
     assert gh.paths == ["pulls?base=feature%2Fx%20y&state=all"]
+
+
+def test_a_failed_native_stack_falls_back_to_the_branch_chain():
+    class NoGraphQL(FakeGitHub):
+        def graphql(self, query, **variables):
+            raise RuntimeError("stack field unknown")
+
+    prs = [rest_pr(11, "b", "main"), rest_pr(12, "c", "b")]
+    pr = prs[0] | {"stack": {"number": 5, "position": 1, "size": 2}}
+    entries, position = discover_stack(NoGraphQL(prs), pr)
+    assert [(e.number, e.later) for e in entries] == [(12, True)]
+    assert position is None

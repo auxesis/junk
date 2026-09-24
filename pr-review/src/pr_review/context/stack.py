@@ -70,5 +70,8 @@ def _chain(gh, pr: dict) -> list[StackEntry]:
 def discover_stack(gh, pr: dict) -> tuple[list[StackEntry], tuple[int, int] | None]:
     native = pr.get("stack")
     if isinstance(native, dict) and native.get("size"):
-        return _native(gh, pr["number"])
+        try:
+            return _native(gh, pr["number"])
+        except Exception:
+            pass
     return _chain(gh, pr), None
