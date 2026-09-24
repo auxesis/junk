@@ -31,5 +31,6 @@ class GitHub:
     def graphql(self, query: str, **variables: object) -> object:
         cmd = ["gh", "api", "graphql", "-f", f"query={query}"]
         for key, value in variables.items():
-            cmd += ["-F", f"{key}={value}"]
+            flag = "-F" if isinstance(value, int) and not isinstance(value, bool) else "-f"
+            cmd += [flag, f"{key}={value}"]
         return json.loads(self._runner(cmd).stdout)

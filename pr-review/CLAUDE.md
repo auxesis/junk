@@ -87,7 +87,8 @@ fake, not the real subprocess.
   fetched is left out of `Checkout.stack_refs` rather than failing the clone; and
   `write_context_file` writes inside `.git/pr-review/` in the clone.
 - **test_context_github.py** — `GitHub.get`, `get_all` (`--paginate --slurp`,
-  pages flattened) and `graphql` (typed `-F` variables) build the right `gh api`
+  pages flattened) and `graphql` (integers as typed `-F` variables,
+  strings and booleans as raw `-f` ones) build the right `gh api`
   argv through a fake runner.
 - **test_context_discussion.py** — issue comments and non-empty review bodies
   merge in time order (an empty review body is dropped); the author is marked

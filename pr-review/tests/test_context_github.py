@@ -25,7 +25,9 @@ def test_get_all_paginates_and_flattens_pages():
     assert runner.calls == [["gh", "api", "--paginate", "--slurp", "repos/acme/widgets/issues/7/comments"]]
 
 
-def test_graphql_passes_the_query_and_typed_variables():
+def test_graphql_passes_integers_typed_and_strings_raw():
+    # -F would turn a repository named "123" or "true" into a number or a boolean.
     runner = Runner('{"data": {}}')
-    GitHub("acme", "widgets", runner=runner).graphql("query { x }", n=7, o="acme")
-    assert runner.calls == [["gh", "api", "graphql", "-f", "query=query { x }", "-F", "n=7", "-F", "o=acme"]]
+    GitHub("acme", "widgets", runner=runner).graphql("query { x }", n=7, o="acme", r="123", b=True)
+    assert runner.calls == [["gh", "api", "graphql", "-f", "query=query { x }",
+                             "-F", "n=7", "-f", "o=acme", "-f", "r=123", "-f", "b=True"]]
