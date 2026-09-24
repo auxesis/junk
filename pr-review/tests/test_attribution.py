@@ -42,12 +42,24 @@ def test_details_list_every_job_with_found_and_posted_counts():
 
 def test_details_mention_synthesis_and_plain_language_when_they_ran():
     record = RunRecord(jobs=[JobRecord(OPUS, raw=1), JobRecord(CODEX, raw=1)],
-                       synthesis_model="claude-opus-5", plain_language_model="claude-opus-5", rewritten=2)
+                       synthesis_model="claude-opus-5", plain_language_model="claude-opus-5",
+                       rewritten=2, reader_ran=True)
     comments = [Comment("b", 2, "y", sources=[OPUS, CODEX])]
     text = render_details(record, comments)
     assert "Synthesis: `claude-opus-5`" in text
     assert "1 posted finding(s) were raised by two or more models." in text
     assert "Plain language: `claude-opus-5`" in text and "rewrote 2" in text
+
+
+def test_details_note_the_reader_test_did_not_run():
+    record = RunRecord(jobs=[JobRecord(OPUS, raw=1)],
+                       plain_language_model="claude-opus-5", rewritten=1, reader_ran=False)
+    text = render_details(record, [])
+    assert (
+        "Plain language: the reader test did not run; "
+        "only the word-and-shape check was applied." in text
+    )
+    assert "read every comment as a new reader would" not in text
 
 
 def test_a_pipe_in_an_error_does_not_break_the_table():

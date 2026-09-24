@@ -105,6 +105,19 @@ def test_a_failed_reader_call_still_rewrites_on_the_check():
     result = stage(runner).apply(payload(JARGON))
     assert result.payload.comments[0].body == FIXED
     assert any("reader test failed" in w for w in result.warnings)
+    assert result.reader_ran is False
+
+
+def test_reader_ran_is_true_when_the_reader_call_succeeds():
+    runner = FakeRunner(rewrite={"comments": [{"index": 0, "body": FIXED}]})
+    result = stage(runner).apply(payload(JARGON))
+    assert result.reader_ran is True
+
+
+def test_reader_ran_is_false_when_no_rewrite_is_needed_and_the_reader_failed():
+    runner = FakeRunner(fail={0})
+    result = stage(runner).apply(payload(CLEAN))
+    assert result.reader_ran is False
 
 
 def test_a_failed_rewrite_call_posts_the_review_as_written():

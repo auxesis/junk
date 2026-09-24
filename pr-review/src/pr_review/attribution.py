@@ -20,6 +20,7 @@ class RunRecord:
     synthesis_model: str | None = None
     plain_language_model: str | None = None
     rewritten: int = 0
+    reader_ran: bool = False
 
 
 def _models(sources: list[Source]) -> list[tuple[str, str]]:
@@ -62,10 +63,17 @@ def render_details(record: RunRecord, comments: list[Comment]) -> str:
             "finding(s) were raised by two or more models."
         )]
     if record.plain_language_model:
-        lines += ["", (
-            f"Plain language: `{record.plain_language_model}` read every comment as a new "
-            f"reader would, and rewrote {record.rewritten} of them."
-        )]
+        if record.reader_ran:
+            note = (
+                f"Plain language: `{record.plain_language_model}` read every comment as a new "
+                f"reader would, and rewrote {record.rewritten} of them."
+            )
+        else:
+            note = (
+                "Plain language: the reader test did not run; "
+                "only the word-and-shape check was applied."
+            )
+        lines += ["", note]
     lines += ["", "</details>"]
     return "\n".join(lines)
 

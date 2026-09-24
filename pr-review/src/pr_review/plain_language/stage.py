@@ -22,6 +22,7 @@ class StageResult:
     body_remaining: list[Problem]
     rewritten: int = 0
     warnings: list[str] = field(default_factory=list)
+    reader_ran: bool = False
 
 
 def check_payload(payload: Payload) -> StageResult:
@@ -101,7 +102,8 @@ class PlainLanguageStage:
             ]
             body_blocking = _blocking(body_problems)
             if not items and not body_blocking:
-                return StageResult(payload, problems, body_problems, 0, warnings)
+                return StageResult(payload, problems, body_problems, 0, warnings,
+                                   reader_ran=reader is not None)
 
             try:
                 new_bodies, new_body = parse_rewrite_result(self._runner(
@@ -113,7 +115,8 @@ class PlainLanguageStage:
                 ))
             except Exception as e:
                 warnings.append(f"rewrite failed ({e}); posting the review as written")
-                return StageResult(payload, problems, body_problems, 0, warnings)
+                return StageResult(payload, problems, body_problems, 0, warnings,
+                                   reader_ran=reader is not None)
 
         comments = list(payload.comments)
         rewritten = 0
@@ -139,7 +142,8 @@ class PlainLanguageStage:
                 body, body_problems = new_body, check_body(new_body)
 
         return StageResult(Payload(body=body, comments=comments, event=payload.event),
-                           problems, body_problems, rewritten, warnings)
+                           problems, body_problems, rewritten, warnings,
+                           reader_ran=reader is not None)
 
 
 def format_report(result: StageResult) -> str:

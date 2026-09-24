@@ -296,6 +296,7 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(collator, "ran", False) else None,
         plain_language_model=(model or agent) if stage else None,
         rewritten=staged.rewritten,
+        reader_ran=staged.reader_ran,
     )
     payload = finalize(staged.payload, record)
 
