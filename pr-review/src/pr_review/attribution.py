@@ -1,11 +1,14 @@
 """Model attribution: a footer on each comment and a collapsed record of the run."""
 from __future__ import annotations
 
+import re
 from collections import Counter
 from dataclasses import dataclass, field, replace
 
 from pr_review.payload import Comment, Payload, Source
 from pr_review.plain_language.recommendation import recommend
+
+_RECOMMENDATION_HEADING = re.compile(r"^#{1,6}\s*Recommendation\b")
 
 
 @dataclass
@@ -89,6 +92,19 @@ def render_details(record: RunRecord, comments: list) -> str:
     return "\n".join(lines)
 
 
+def _drop_existing_recommendation(body: str) -> str:
+    lines = body.splitlines(keepends=True)
+    i = 0
+    while i < len(lines) and not lines[i].strip():
+        i += 1
+    if i >= len(lines) or not _RECOMMENDATION_HEADING.match(lines[i].strip()):
+        return body
+    i += 1
+    while i < len(lines) and not lines[i].strip():
+        i += 1
+    return "".join(lines[i:])
+
+
 def finalize(payload: Payload, record: RunRecord) -> Payload:
     comments = [
         replace(c, body=f"{c.body.rstrip()}\n\n{attribution(c.sources)}")
@@ -101,5 +117,5 @@ def finalize(payload: Payload, record: RunRecord) -> Payload:
     failed = sum(1 for j in record.jobs if j.error is not None)
     heading = recommend(payload, failed_jobs=failed, total_jobs=len(record.jobs))
     details = render_details(record, [*payload.comments, *payload.replies])
-    body = f"{heading}\n\n{payload.body.rstrip()}\n\n{details}"
+    body = f"{heading}\n\n{_drop_existing_recommendation(payload.body).rstrip()}\n\n{details}"
     return Payload(body=body, comments=comments, event=payload.event, replies=replies)

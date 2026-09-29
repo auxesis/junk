@@ -79,6 +79,14 @@ def test_finalize_appends_footers_and_details_without_changing_the_input():
     assert (out.comments[0].path, out.comments[0].line) == ("a", 1)
 
 
+def test_finalize_removes_a_model_written_recommendation_heading():
+    p = Payload(body="## Recommendation: 🟢 merge as it is\n\nText.",
+                comments=[Comment("a", 1, "**Fix before merge: x.**", sources=[OPUS])])
+    out = finalize(p, RunRecord(jobs=[JobRecord(OPUS, raw=1)]))
+    assert out.body.count("Recommendation:") == 1
+    assert out.body.startswith("## Recommendation: 🔴 fix before merging\n\nText.")
+
+
 def test_finalize_names_failed_jobs_in_the_heading():
     p = Payload(body="Verdict.")
     out = finalize(p, RunRecord(jobs=[JobRecord(OPUS, raw=0), JobRecord(CODEX, error="boom")]))
