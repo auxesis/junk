@@ -43,12 +43,13 @@ def test_details_list_every_job_with_found_and_posted_counts():
 def test_details_mention_synthesis_and_plain_language_when_they_ran():
     record = RunRecord(jobs=[JobRecord(OPUS, raw=1), JobRecord(CODEX, raw=1)],
                        synthesis_model="claude-opus-5", plain_language_model="claude-opus-5",
-                       rewritten=2, reader_ran=True)
+                       rewritten=2, reader_ran=True, needed_rewrite=2)
     comments = [Comment("b", 2, "y", sources=[OPUS, CODEX])]
     text = render_details(record, comments)
     assert "Synthesis: `claude-opus-5`" in text
     assert "1 posted finding(s) were raised by two or more models." in text
-    assert "Plain language: `claude-opus-5`" in text and "rewrote 2" in text
+    assert "Plain language: `claude-opus-5`" in text
+    assert "2 comment(s) had a problem that stopped the reader acting; it rewrote 2." in text
 
 
 def test_details_note_the_reader_test_did_not_run():
@@ -99,6 +100,13 @@ def test_details_include_stack_context_and_findings_not_posted():
     assert "Stack: position 1 of 2 (:asterisk: #7, #8). :asterisk: marks this pull request." in text
     assert "Context loaded: the description." in text
     assert "**Findings not posted:**\n\n- **No lock.** Fixed in #8 (refs/stack/8:a.tf)." in text
+
+
+def test_details_say_no_rewrite_was_needed():
+    record = RunRecord(jobs=[JobRecord(OPUS, raw=1)], plain_language_model="claude-opus-5",
+                       reader_ran=True, needed_rewrite=0)
+    assert ("No comment had a problem that stopped the reader acting, so none was rewritten."
+            in render_details(record, []))
 
 
 def test_replies_are_included_in_posted_count():

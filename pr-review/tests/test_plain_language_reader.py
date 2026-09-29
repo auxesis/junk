@@ -46,3 +46,11 @@ def test_parse_ignores_malformed_entries():
 def test_parse_rejects_a_non_object():
     with pytest.raises(ValueError):
         parse_reader_result([])
+
+
+def test_the_reader_is_told_three_cases_are_always_blocking():
+    prompt = build_reader_prompt(payload_path="/p", comments=[], body="")
+    assert "These are always blocking:" in prompt
+    assert "open a link or another file" in prompt
+    assert "covers only part of what the comment says must change" in prompt
+    assert "uses a name that neither the diff lines nor the comment defines" in prompt

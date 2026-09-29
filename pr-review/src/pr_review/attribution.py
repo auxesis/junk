@@ -22,6 +22,7 @@ class RunRecord:
     plain_language_model: str | None = None
     rewritten: int = 0
     reader_ran: bool = False
+    needed_rewrite: int = 0
     stack_line: str | None = None
     context_line: str | None = None
     not_posted: list[str] = field(default_factory=list)
@@ -65,10 +66,14 @@ def render_details(record: RunRecord, comments: list) -> str:
         )]
     if record.plain_language_model:
         if record.reader_ran:
-            note = (
-                f"Plain language: `{record.plain_language_model}` read every comment as a new "
-                f"reader would, and rewrote {record.rewritten} of them."
-            )
+            if record.needed_rewrite == 0:
+                note = (f"Plain language: `{record.plain_language_model}` read every comment as a new "
+                        "reader would. No comment had a problem that stopped the reader acting, "
+                        "so none was rewritten.")
+            else:
+                note = (f"Plain language: `{record.plain_language_model}` read every comment as a new "
+                        f"reader would. {record.needed_rewrite} comment(s) had a problem that stopped "
+                        f"the reader acting; it rewrote {record.rewritten}.")
         else:
             note = (
                 "Plain language: the reader test did not run; "

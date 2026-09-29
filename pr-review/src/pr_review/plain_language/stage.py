@@ -23,6 +23,7 @@ class StageResult:
     rewritten: int = 0
     warnings: list[str] = field(default_factory=list)
     reader_ran: bool = False
+    needed_rewrite: int = 0
 
 
 def _units(payload: Payload) -> list[Comment]:
@@ -133,7 +134,7 @@ class PlainLanguageStage:
             except Exception as e:
                 warnings.append(f"rewrite failed ({e}); posting the review as written")
                 return StageResult(payload, problems, body_problems, 0, warnings,
-                                   reader_ran=reader is not None)
+                                   reader_ran=reader is not None, needed_rewrite=len(items))
 
         units = list(units)
         rewritten = 0
@@ -160,7 +161,7 @@ class PlainLanguageStage:
 
         return StageResult(_rebuild(payload, units, body),
                            problems, body_problems, rewritten, warnings,
-                           reader_ran=reader is not None)
+                           reader_ran=reader is not None, needed_rewrite=len(items))
 
 
 def format_report(result: StageResult) -> str:
@@ -175,15 +176,22 @@ def format_report(result: StageResult) -> str:
         for j, r in enumerate(replies) for p in result.remaining.get(n_comments + j, [])
     ] + [f"  review body  {p.level}: {p.detail}" for p in result.body_remaining]
     if left:
-        n = n_comments + len(replies)
         k = (
             len([i for i in range(n_comments) if result.remaining.get(i)])
             + len([j for j in range(len(replies)) if result.remaining.get(n_comments + j)])
             + (1 if result.body_remaining else 0)
         )
-        lines.append(f"pr-review: plain language: {result.rewritten} of {n} comments rewritten; {k} still have problems:")
+        n_blocking = sum(1 for line in left if "  blocking: " in line)
+        n_minor = len(left) - n_blocking
+        if result.needed_rewrite == 0 and n_blocking == 0:
+            head = (f"no comment needed a rewrite. {k} comment(s) have minor problems, "
+                    "which are reported, not rewritten:")
+        else:
+            head = (f"rewrote {result.rewritten} of the {result.needed_rewrite} comment(s) that "
+                    f"needed it; {k} comment(s) still have problems ({n_blocking} blocking, {n_minor} minor):")
+        lines.append(f"pr-review: plain language: {head}")
         lines.extend(left)
     elif result.rewritten:
-        n = n_comments + len(replies)
-        lines.append(f"pr-review: plain language: {result.rewritten} of {n} comments rewritten; no problems left.")
+        lines.append(f"pr-review: plain language: rewrote {result.rewritten} of the "
+                     f"{result.needed_rewrite} comment(s) that needed it; no problems left.")
     return "\n".join(lines)

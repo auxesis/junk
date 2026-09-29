@@ -21,6 +21,11 @@ For each comment, answer from the comment and its diff lines alone:
 Then list its problems:
 - "blocking": you could not answer one of the three questions, or you had to
   guess what a word or phrase means to answer it. Name the phrase and say why.
+  These are always blocking:
+  - you would have to open a link or another file to know whether the point
+    still stands;
+  - the Fix covers only part of what the comment says must change;
+  - suggested code uses a name that neither the diff lines nor the comment defines.
 - "minor": the comment was harder to read than it needed to be, but you could
   still act on it.
 Exact technical names (identifiers, commands, file paths, product names and real

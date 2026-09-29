@@ -166,14 +166,14 @@ def test_the_report_lists_problems_left_and_warnings():
     runner = FakeRunner(fail={1})
     report = format_report(stage(runner).apply(payload(JARGON)))
     assert "pr-review: plain language: rewrite failed" in report
-    assert "0 of 1 comments rewritten; 1 still have problems:" in report
+    assert "rewrote 0 of the 1 comment(s) that needed it; 1 comment(s) still have problems (" in report
     assert "f0.py:1  blocking:" in report
 
 
 def test_the_report_when_rewrite_succeeds_with_nothing_left():
     runner = FakeRunner(rewrite={"comments": [{"index": 0, "body": FIXED}]})
     report = format_report(stage(runner).apply(payload(JARGON)))
-    assert "1 of 1 comments rewritten; no problems left." in report
+    assert "rewrote 1 of the 1 comment(s) that needed it; no problems left." in report
 
 
 def test_the_report_is_empty_when_there_is_nothing_to_say():
@@ -213,4 +213,18 @@ def test_the_report_lists_a_reply_problem_and_counts_it():
     runner = FakeRunner(fail={1})
     report = format_report(stage(runner).apply(p, answers={10: "context"}))
     assert "reply to comment 10  blocking:" in report
-    assert "0 of 2 comments rewritten; 1 still have problems:" in report
+    assert "rewrote 0 of the 1 comment(s) that needed it; 1 comment(s) still have problems (" in report
+
+
+def test_only_minor_problems_say_no_rewrite_was_needed():
+    runner = FakeRunner(reader={"comments": [{"index": 0, "minor": ["a little long"]}], "body": {}})
+    result = stage(runner).apply(payload(CLEAN))
+    assert result.needed_rewrite == 0
+    report = format_report(result)
+    assert ("no comment needed a rewrite. 1 comment(s) have minor problems, "
+            "which are reported, not rewritten:") in report
+
+
+def test_needed_rewrite_counts_blocking_units():
+    runner = FakeRunner(rewrite={"comments": [{"index": 1, "body": FIXED}]})
+    assert stage(runner).apply(payload(CLEAN, JARGON)).needed_rewrite == 1

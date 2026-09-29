@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 28 files, one per `src/pr_review/` module (348 tests total):
+`tests/` holds 28 files, one per `src/pr_review/` module (352 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -245,8 +245,11 @@ fake, not the real subprocess.
   --src-prefix=a/ --dst-prefix=b/` flags that keep it parseable regardless of
   the user's git config.
 - **test_plain_language_reader.py** — the reader prompt shows each comment
-  beside its diff lines and asks the three questions; parsing keeps
-  blocking/minor per comment and for the body and ignores malformed entries.
+  beside its diff lines and asks the three questions, and tells the reader
+  that needing a link/another file, a Fix that covers only part of what must
+  change, or an undefined name in suggested code are always blocking; parsing
+  keeps blocking/minor per comment and for the body and ignores malformed
+  entries.
 - **test_plain_language_rewrite.py** — the rewrite prompt lists problems and
   the writing rules and asks for null when the body needs no rewrite; parsing;
   guards reject a changed code block, a dropped inline code span or an empty
@@ -266,8 +269,16 @@ fake, not the real subprocess.
   text for its `answer_id`, else its `in_reply_to` id, never a diff hunk), `apply`'s `answers`
   parameter feeds that text to the reader prompt, and the rewritten reply
   keeps its `in_reply_to` and `sources`; `format_report` lists a reply's
-  remaining problems under "reply to comment `<in_reply_to>`" and counts
-  replies into both the numerator and denominator of the summary line.
+  remaining problems under "reply to comment `<in_reply_to>`"; `StageResult.needed_rewrite`
+  counts the units (comments and replies) that had a blocking problem, and is
+  0 on the no-items-to-rewrite return; `format_report`'s header reads "rewrote
+  `<rewritten>` of the `<needed_rewrite>` comment(s) that needed it; `<k>`
+  comment(s) still have problems (`<n_blocking>` blocking, `<n_minor>`
+  minor):" when something is left, "rewrote `<rewritten>` of the
+  `<needed_rewrite>` comment(s) that needed it; no problems left." when
+  nothing is, and "no comment needed a rewrite. `<k>` comment(s) have minor
+  problems, which are reported, not rewritten:" when every remaining problem
+  is minor and none needed a rewrite.
 - **test_recommendation.py** — `recommend`: no findings, or only "Fix in a
   follow-up"/"Optional" ones, is 🟢 merge as it is; any "Change before merge"
   is 🟡 merge after changes; any "Fix before merge" wins over the rest and is
@@ -280,10 +291,13 @@ fake, not the real subprocess.
   with two models, two review types on one model, and no source; the "How this
   review was made" block lists every job with found/posted counts or "failed"
   (never the raw error text, which can name local paths), and mentions
-  synthesis and plain language only when they ran; the plain-language line
-  reads "read every comment..." only when `RunRecord.reader_ran` is true, else
-  "the reader test did not run; only the word-and-shape check was applied";
-  the block also carries `RunRecord.stack_line` and `context_line` when set,
+  synthesis and plain language only when they ran; when `RunRecord.reader_ran`
+  is true, the plain-language line reads "`<N>` comment(s) had a problem that
+  stopped the reader acting; it rewrote `<rewritten>`." when
+  `RunRecord.needed_rewrite` is nonzero, or "No comment had a problem that
+  stopped the reader acting, so none was rewritten." when it is 0; when
+  `reader_ran` is false it reads "the reader test did not run; only the
+  word-and-shape check was applied"; the block also carries `RunRecord.stack_line` and `context_line` when set,
   and a `not_posted` list under a **Findings not posted** heading; posted
   counts include replies as well as comments; `finalize` appends both without
   changing its input, appends the same footer to each reply while keeping its
