@@ -313,7 +313,7 @@ The body starts with a heading that code writes:
 - **Code decides, not a model.** `recommend(payload, *, failed_jobs, total_jobs)` reads the urgency phrase at the start of every posted finding: each comment's finding line, each reply's finding line, and each bullet in the body's "Other findings not posted as comments" and "Other replies not posted" lists. The most severe state wins.
 - **A finding with no recognised phrase counts as "Change before merge".** test-gap has no severity ladder, so its findings land here. A missing phrase can raise the state but never lower it.
 - **Findings the context filter dropped do not count;** they are not posted.
-- **A failed job is named in the heading:** `## Recommendation: 🟢 merge as it is (1 of 2 review jobs failed)`. Failures in the context filter or the plain-language stage do not change the heading; they do not change what was found.
+- **A failed job is named in the heading:** `## Recommendation: 🟢 merge as it is (1 of 2 review job(s) failed)`. Failures in the context filter or the plain-language stage do not change the heading; they do not change what was found.
 - The state names and emoji live in `rules.json`.
 - The heading is added by `finalize`, after the plain-language stage, so the stage never checks or rewrites it.
 - The writing rules tell the model the mapping, and tell it not to write its own recommendation heading; the model writes only the sentences under it.

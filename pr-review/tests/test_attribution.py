@@ -101,7 +101,7 @@ def test_finalize_removes_a_model_written_recommendation_heading():
 def test_finalize_names_failed_jobs_in_the_heading():
     p = Payload(body="Verdict.")
     out = finalize(p, RunRecord(jobs=[JobRecord(OPUS, raw=0), JobRecord(CODEX, error="boom")]))
-    assert out.body.startswith("## Recommendation: 🟢 merge as it is (1 of 2 review jobs failed)\n\n")
+    assert out.body.startswith("## Recommendation: 🟢 merge as it is (1 of 2 review job(s) failed)\n\n")
 
 
 def test_finalize_adds_the_footer_to_replies():

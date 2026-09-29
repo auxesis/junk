@@ -71,4 +71,4 @@ def test_replies_and_overflow_replies_count():
 
 def test_failed_jobs_are_named():
     assert recommend(Payload(body="b"), failed_jobs=1, total_jobs=2) == (
-        "## Recommendation: 🟢 merge as it is (1 of 2 review jobs failed)")
+        "## Recommendation: 🟢 merge as it is (1 of 2 review job(s) failed)")

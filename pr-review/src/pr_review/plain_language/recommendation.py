@@ -36,5 +36,5 @@ def recommend(payload: Payload, *, failed_jobs: int = 0, total_jobs: int = 0) ->
     levels = {_level(line, rules.urgency) for line in _finding_lines(payload)}
     state = "red" if "block" in levels else "yellow" if "request-changes" in levels else "green"
     emoji, text = rules.recommendation[state]
-    note = f" ({failed_jobs} of {total_jobs} review jobs failed)" if failed_jobs else ""
+    note = f" ({failed_jobs} of {total_jobs} review job(s) failed)" if failed_jobs else ""
     return f"## Recommendation: {emoji} {text}{note}"
