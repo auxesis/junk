@@ -6,7 +6,7 @@ import re
 from pr_review.payload import Payload
 from pr_review.plain_language.rules import load_rules
 
-_OVERFLOW_HEADINGS = ("## Other findings not posted as comments", "## Other replies not posted")
+_OVERFLOW_HEADING = re.compile(r"^#{2,3}\s+Other (findings not posted as comments|replies not posted)\b")
 
 _BULLET_PREFIX = re.compile(r"^(?:`[^`]*`\s+—\s+)?\[?\*{0,2}")
 
@@ -15,8 +15,8 @@ def _finding_lines(payload: Payload) -> list[str]:
     lines = [u.body.strip().splitlines()[0] for u in [*payload.comments, *payload.replies] if u.body.strip()]
     in_overflow = False
     for line in payload.body.splitlines():
-        if line.startswith("## "):
-            in_overflow = line.strip() in _OVERFLOW_HEADINGS
+        if line.startswith("#"):
+            in_overflow = bool(_OVERFLOW_HEADING.match(line.strip()))
         elif in_overflow and line.startswith("- "):
             lines.append(line[2:])
     return lines

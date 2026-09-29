@@ -51,6 +51,12 @@ def test_synthesis_cap_payload_overflow_bullet_can_be_red():
     assert recommend(out) == "## Recommendation: 🔴 fix before merging"
 
 
+def test_overflow_heading_matches_level_3_and_trailing_text():
+    body = ("Verdict.\n\n---\n\n### Other findings not posted as comments (1)\n\n"
+            "- `a.py:3` — **Fix before merge: the lock is never released.**")
+    assert recommend(Payload(body=body)) == "## Recommendation: 🔴 fix before merging"
+
+
 def test_bullets_outside_the_overflow_list_do_not_count():
     body = "Verdict.\n\n- Fix before merge: this is only an example in the prose."
     assert recommend(Payload(body=body)) == "## Recommendation: 🟢 merge as it is"
