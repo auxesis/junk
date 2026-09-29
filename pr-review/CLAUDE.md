@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 28 files, one per `src/pr_review/` module (352 tests total):
+`tests/` holds 28 files, one per `src/pr_review/` module (359 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -278,15 +278,24 @@ fake, not the real subprocess.
   `<needed_rewrite>` comment(s) that needed it; no problems left." when
   nothing is, and "no comment needed a rewrite. `<k>` comment(s) have minor
   problems, which are reported, not rewritten:" when every remaining problem
-  is minor and none needed a rewrite.
+  is minor and none needed a rewrite, and "`<k>` comment(s) have problems
+  (`<n_blocking>` blocking, `<n_minor>` minor):" when `needed_rewrite` is 0
+  but a blocking problem is left (the `check_payload` path, with no rewrite
+  attempted at all); `StageResult.body_rewritten` is true only when the body
+  rewrite ran and passed its guard, false when no rewrite was needed and when
+  the guard rejected it.
 - **test_recommendation.py** — `recommend`: no findings, or only "Fix in a
   follow-up"/"Optional" ones, is 🟢 merge as it is; any "Change before merge"
   is 🟡 merge after changes; any "Fix before merge" wins over the rest and is
-  🔴 fix before merging; a finding with no urgency phrase counts as 🟡; bullets
-  under the "Other findings not posted as comments" / "Other replies not
-  posted" overflow headings count, but a bullet elsewhere in the body's prose
-  does not; replies (posted and overflowed) count the same as comments; and a
-  failed review job is named in the heading as "(N of M review jobs failed)".
+  🔴 fix before merging; a finding with no urgency phrase counts as 🟡; an
+  overflow bullet built by `DeterministicMergeCollator` or synthesis's
+  `_cap_payload` (a backtick `path:line`, an em dash, then the finding line)
+  or by the context filter's reply overflow (`[finding line](url)`) both
+  match their urgency phrase; the overflow heading matches at "##" or "###"
+  with trailing text, but a bullet elsewhere in the body's prose does not
+  count; replies (posted and overflowed) count the same as comments; and a
+  failed review job is named in the heading as "(N of M review job(s)
+  failed)".
 - **test_attribution.py** — the footer for one source, two agents, one agent
   with two models, two review types on one model, and no source; the "How this
   review was made" block lists every job with found/posted counts or "failed"
@@ -295,11 +304,14 @@ fake, not the real subprocess.
   is true, the plain-language line reads "`<N>` comment(s) had a problem that
   stopped the reader acting; it rewrote `<rewritten>`." when
   `RunRecord.needed_rewrite` is nonzero, or "No comment had a problem that
-  stopped the reader acting, so none was rewritten." when it is 0; when
+  stopped the reader acting, so none was rewritten." when it is 0, with
+  " It also rewrote the review body." appended when `RunRecord.body_rewritten`
+  is true; when
   `reader_ran` is false it reads "the reader test did not run; only the
   word-and-shape check was applied"; the block also carries `RunRecord.stack_line` and `context_line` when set,
   and a `not_posted` list under a **Findings not posted** heading; posted
   counts include replies as well as comments; `finalize` appends both without
   changing its input, appends the same footer to each reply while keeping its
-  `in_reply_to`, and puts the Recommendation heading first, naming any failed
-  jobs.
+  `in_reply_to`, puts the Recommendation heading first, naming any failed
+  jobs, and removes a model-written "Recommendation" heading (any level,
+  after leading blank lines) from the body before adding its own.
