@@ -1,5 +1,7 @@
+from pr_review.collate import DeterministicMergeCollator
 from pr_review.payload import Comment, Payload, Reply
 from pr_review.plain_language.recommendation import recommend
+from pr_review.synthesis import _cap_payload
 
 
 def c(first_line):
@@ -30,10 +32,23 @@ def test_a_finding_with_no_phrase_is_yellow():
     assert recommend(p) == "## Recommendation: 🟡 merge after changes"
 
 
-def test_overflow_bullets_count():
-    body = ("Verdict.\n\n---\n\n## Other findings not posted as comments\n\n"
-            "- Fix before merge: the lock is never released. `a.py:3`")
-    assert recommend(Payload(body=body)) == "## Recommendation: 🔴 fix before merging"
+def test_collate_overflow_bullet_can_be_red():
+    kept = [Comment("k.py", i, f"Some finding {i}.") for i in range(8)]
+    overflow = [Comment("a.py", 3, "**Fix before merge: the lock is never released.**")]
+    jobs = [("claude", "test-gap", Payload(body="b", comments=kept)),
+            ("codex", "test-gap", Payload(body="b", comments=overflow))]
+    out = DeterministicMergeCollator().collate(jobs)
+    assert "## Other findings not posted as comments" in out.body
+    assert recommend(out) == "## Recommendation: 🔴 fix before merging"
+
+
+def test_synthesis_cap_payload_overflow_bullet_can_be_red():
+    comments = [Comment("k.py", i, f"Some finding {i}.") for i in range(8)] + [
+        Comment("a.py", 3, "**Fix before merge: the lock is never released.**")
+    ]
+    out = _cap_payload(Payload(body="b", comments=comments))
+    assert "## Other findings not posted as comments" in out.body
+    assert recommend(out) == "## Recommendation: 🔴 fix before merging"
 
 
 def test_bullets_outside_the_overflow_list_do_not_count():

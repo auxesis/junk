@@ -1,10 +1,14 @@
 """The Recommendation heading, worked out from the findings that were posted."""
 from __future__ import annotations
 
+import re
+
 from pr_review.payload import Payload
 from pr_review.plain_language.rules import load_rules
 
 _OVERFLOW_HEADINGS = ("## Other findings not posted as comments", "## Other replies not posted")
+
+_BULLET_PREFIX = re.compile(r"^(?:`[^`]*`\s+—\s+)?\[?\*{0,2}")
 
 
 def _finding_lines(payload: Payload) -> list[str]:
@@ -19,7 +23,7 @@ def _finding_lines(payload: Payload) -> list[str]:
 
 
 def _level(line: str, urgency: dict[str, str]) -> str:
-    text = line.strip().lstrip("[*").strip()
+    text = _BULLET_PREFIX.sub("", line.strip()).strip()
     for level, phrase in urgency.items():
         if text.startswith(f"{phrase}:"):
             return level
