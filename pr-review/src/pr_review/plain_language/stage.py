@@ -186,6 +186,8 @@ def format_report(result: StageResult) -> str:
         if result.needed_rewrite == 0 and n_blocking == 0:
             head = (f"no comment needed a rewrite. {k} comment(s) have minor problems, "
                     "which are reported, not rewritten:")
+        elif result.needed_rewrite == 0:
+            head = f"{k} comment(s) have problems ({n_blocking} blocking, {n_minor} minor):"
         else:
             head = (f"rewrote {result.rewritten} of the {result.needed_rewrite} comment(s) that "
                     f"needed it; {k} comment(s) still have problems ({n_blocking} blocking, {n_minor} minor):")

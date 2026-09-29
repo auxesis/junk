@@ -180,6 +180,12 @@ def test_the_report_is_empty_when_there_is_nothing_to_say():
     assert format_report(check_payload(payload(CLEAN))) == ""
 
 
+def test_the_report_names_unattempted_blocking_problems_without_a_rewrite_count():
+    report = format_report(check_payload(payload(JARGON)))
+    assert "1 comment(s) have problems (" in report
+    assert "0 of the 0" not in report
+
+
 def test_replies_are_checked_and_rewritten_with_the_answer_as_context():
     p = payload(CLEAN)
     p.replies = [Reply(10, JARGON, sources=[SRC])]
