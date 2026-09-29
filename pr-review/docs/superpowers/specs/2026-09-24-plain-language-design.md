@@ -85,10 +85,11 @@ DEPLOY_REGION = "ap-southeast-2"
 
 ## Review body shape
 
-1. **Verdict:** one or two plain sentences on whether the pull request can merge as it is, and what must change first.
-2. Any out-of-scope notes the review type allows, written to the same rules.
-3. **Overflow findings** (above the 8-comment cap): a bullet for each, with the finding line and `path:line`. A bare `path:line` is not allowed.
-4. `<details><summary>How this review was made</summary> … </details>`, on every run (see **Attribution**). Failed jobs are listed here, not in a line in the body.
+1. **Recommendation heading**, written by code (see **Recommendation**).
+2. **Verdict:** one or two plain sentences that say what must change before merging, if anything, and what can wait.
+3. Any out-of-scope notes the review type allows, written to the same rules.
+4. **Overflow findings** (above the 8-comment cap): a bullet for each, with the finding line and `path:line`. A bare `path:line` is not allowed.
+5. `<details><summary>How this review was made</summary> … </details>`, on every run (see **Attribution**). Failed jobs are listed here, not in a line in the body.
 
 ## Writing rules
 
@@ -295,6 +296,32 @@ This block replaces the "⚠️ N review job(s) failed" line that `orchestrator.
 - **test_orchestrator.py**: each comment has its job's source.
 - **test_synthesis.py**: judge labels map back to jobs; an unknown label is dropped; no known label gives `Found by pr-review` and a warning; the prompt no longer asks for a prefix.
 - **test_payload.py**: `to_dict()` leaves out `sources`.
+
+## Recommendation
+
+Added 2026-09-29, after the first reviews posted with this design.
+
+A reader should see at once whether a pull request can merge.
+The body starts with a heading that code writes:
+
+| State | Heading | When |
+|---|---|---|
+| red | `## Recommendation: 🔴 fix before merging` | any posted finding is "Fix before merge" |
+| yellow | `## Recommendation: 🟡 merge after changes` | no "Fix before merge", and at least one posted finding is "Change before merge" or has no recognised urgency phrase |
+| green | `## Recommendation: 🟢 merge as it is` | every posted finding is "Fix in a follow-up" or "Optional", or there are none |
+
+- **Code decides, not a model.** `recommend(payload, *, failed_jobs, total_jobs)` reads the urgency phrase at the start of every posted finding: each comment's finding line, each reply's finding line, and each bullet in the body's "Other findings not posted as comments" and "Other replies not posted" lists. The most severe state wins.
+- **A finding with no recognised phrase counts as "Change before merge".** test-gap has no severity ladder, so its findings land here. A missing phrase can raise the state but never lower it.
+- **Findings the context filter dropped do not count;** they are not posted.
+- **A failed job is named in the heading:** `## Recommendation: 🟢 merge as it is (1 of 2 review jobs failed)`. Failures in the context filter or the plain-language stage do not change the heading; they do not change what was found.
+- The state names and emoji live in `rules.json`.
+- The heading is added by `finalize`, after the plain-language stage, so the stage never checks or rewrites it.
+- The writing rules tell the model the mapping, and tell it not to write its own recommendation heading; the model writes only the sentences under it.
+
+### Tests
+
+- **test_recommendation.py**: each state; the most severe finding wins; an unphrased finding gives yellow; overflow bullets and replies count; no findings gives green; the failed-jobs note.
+- **test_attribution.py**: `finalize` puts the heading first.
 
 ## Out of scope
 

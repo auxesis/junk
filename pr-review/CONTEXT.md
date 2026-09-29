@@ -30,6 +30,10 @@ _Avoid_: provenance, origin, author
 The small line at the end of a comment that names the models that found it.
 _Avoid_: label, tag, badge
 
+**Recommendation**:
+The heading at the top of a review that says whether the pull request can merge: fix before merging, merge after changes, or merge as it is. Code works it out from the urgency of the findings that were posted.
+_Avoid_: verdict, status, score
+
 ### Pull request context
 
 **Pull request context**:
