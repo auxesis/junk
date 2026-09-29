@@ -16,6 +16,11 @@
     "follow-up": "Fix in a follow-up",
     "minor": "Optional"
   },
+  "recommendation": {
+    "red": {"emoji": "🔴", "text": "fix before merging"},
+    "yellow": {"emoji": "🟡", "text": "merge after changes"},
+    "green": {"emoji": "🟢", "text": "merge as it is"}
+  },
   "blocking_words": [
     {"word": "silently", "pattern": "\\bsilently\\b", "instead": "say \"with no error or log message\""},
     {"word": "swallow", "pattern": "\\bswallow(s|ed|ing)?\\b", "instead": "say \"catches and ignores\""},

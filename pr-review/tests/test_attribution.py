@@ -73,9 +73,15 @@ def test_finalize_appends_footers_and_details_without_changing_the_input():
     p = Payload(body="Verdict.", comments=[Comment("a", 1, "**X.**", sources=[OPUS, CODEX])])
     out = finalize(p, RunRecord(jobs=[JobRecord(OPUS, raw=1), JobRecord(CODEX, raw=1)]))
     assert out.comments[0].body == "**X.**\n\n<sub>Found by 2 models: claude, codex</sub>"
-    assert out.body.startswith("Verdict.\n\n<details>")
+    assert out.body.startswith("## Recommendation: 🟡 merge after changes\n\nVerdict.\n\n<details>")
     assert p.comments[0].body == "**X.**"
     assert (out.comments[0].path, out.comments[0].line) == ("a", 1)
+
+
+def test_finalize_names_failed_jobs_in_the_heading():
+    p = Payload(body="Verdict.")
+    out = finalize(p, RunRecord(jobs=[JobRecord(OPUS, raw=0), JobRecord(CODEX, error="boom")]))
+    assert out.body.startswith("## Recommendation: 🟢 merge as it is (1 of 2 review jobs failed)\n\n")
 
 
 def test_finalize_adds_the_footer_to_replies():

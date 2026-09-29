@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 27 files, one per `src/pr_review/` module (336 tests total):
+`tests/` holds 28 files, one per `src/pr_review/` module (348 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -228,7 +228,10 @@ fake, not the real subprocess.
   for 8-10), rule 10 also bans a term only defined elsewhere, and the block
   writes its own negatives in full (the contraction regex covers both the
   ASCII `'` and the typographic `’`); every registered review type ends with
-  the block and no longer has the old comment shape.
+  the block and no longer has the old comment shape; `rules.json` also carries
+  the three recommendation states (emoji + text, keyed red/yellow/green), and
+  the block tells the model not to write its own recommendation heading and
+  names all three states' text.
 - **test_plain_language_check.py** — the deterministic check: a plain comment
   passes; contractions, listed words, sentences over 35 words, a missing bold
   finding line and missing Impact/Fix are blocking; 26–35 words is minor;
@@ -264,6 +267,14 @@ fake, not the real subprocess.
   keeps its `in_reply_to` and `sources`; `format_report` lists a reply's
   remaining problems under "reply to comment `<in_reply_to>`" and counts
   replies into both the numerator and denominator of the summary line.
+- **test_recommendation.py** — `recommend`: no findings, or only "Fix in a
+  follow-up"/"Optional" ones, is 🟢 merge as it is; any "Change before merge"
+  is 🟡 merge after changes; any "Fix before merge" wins over the rest and is
+  🔴 fix before merging; a finding with no urgency phrase counts as 🟡; bullets
+  under the "Other findings not posted as comments" / "Other replies not
+  posted" overflow headings count, but a bullet elsewhere in the body's prose
+  does not; replies (posted and overflowed) count the same as comments; and a
+  failed review job is named in the heading as "(N of M review jobs failed)".
 - **test_attribution.py** — the footer for one source, two agents, one agent
   with two models, two review types on one model, and no source; the "How this
   review was made" block lists every job with found/posted counts or "failed"
@@ -274,5 +285,6 @@ fake, not the real subprocess.
   the block also carries `RunRecord.stack_line` and `context_line` when set,
   and a `not_posted` list under a **Findings not posted** heading; posted
   counts include replies as well as comments; `finalize` appends both without
-  changing its input, and appends the same footer to each reply while keeping
-  its `in_reply_to`.
+  changing its input, appends the same footer to each reply while keeping its
+  `in_reply_to`, and puts the Recommendation heading first, naming any failed
+  jobs.

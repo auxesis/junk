@@ -88,3 +88,18 @@ def test_no_review_type_keeps_the_old_comment_shape(name):
     assert "**block:**" not in text
     assert "**Gap:**" not in text
     assert "**Impact:**" in text and "**Fix:**" in text
+
+
+def test_rules_carry_the_recommendation_states():
+    assert load_rules().recommendation == {
+        "red": ("🔴", "fix before merging"),
+        "yellow": ("🟡", "merge after changes"),
+        "green": ("🟢", "merge as it is"),
+    }
+
+
+def test_the_block_tells_the_model_not_to_write_a_heading():
+    block = writing_rules_block()
+    assert "Do not write your own recommendation heading." in block
+    for text in ("fix before merging", "merge after changes", "merge as it is"):
+        assert text in block

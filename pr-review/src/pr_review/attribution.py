@@ -5,6 +5,7 @@ from collections import Counter
 from dataclasses import dataclass, field, replace
 
 from pr_review.payload import Comment, Payload, Source
+from pr_review.plain_language.recommendation import recommend
 
 
 @dataclass
@@ -92,5 +93,8 @@ def finalize(payload: Payload, record: RunRecord) -> Payload:
         replace(r, body=f"{r.body.rstrip()}\n\n{attribution(r.sources)}")
         for r in payload.replies
     ]
-    body = f"{payload.body.rstrip()}\n\n{render_details(record, [*payload.comments, *payload.replies])}"
+    failed = sum(1 for j in record.jobs if j.error is not None)
+    heading = recommend(payload, failed_jobs=failed, total_jobs=len(record.jobs))
+    details = render_details(record, [*payload.comments, *payload.replies])
+    body = f"{heading}\n\n{payload.body.rstrip()}\n\n{details}"
     return Payload(body=body, comments=comments, event=payload.event, replies=replies)

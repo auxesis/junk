@@ -133,6 +133,11 @@ comments that reader could not act on. Anything left is listed on stderr before
 you confirm the post. The rules and word list are in
 `src/pr_review/plain_language/rules.json`.
 
+Every review starts with a **Recommendation** heading that pr-review works out
+from the posted findings: 🔴 fix before merging (any finding marked "Fix before
+merge"), 🟡 merge after changes (any "Change before merge", or a finding with no
+urgency), or 🟢 merge as it is. A failed review job is named in the heading.
+
 - `--plain-language-model AGENT[=MODEL]` — the reader and rewriter (default: the synthesis model).
 - `--no-plain-language` — skip the reader test and rewrite; the word-and-shape check still reports.
 

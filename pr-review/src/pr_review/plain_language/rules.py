@@ -22,6 +22,7 @@ class Rules:
     labels: dict[str, str]
     required_labels: tuple[str, ...]
     urgency: dict[str, str]
+    recommendation: dict[str, tuple[str, str]]
     blocking_words: tuple[BlockingWord, ...]
 
 
@@ -34,6 +35,7 @@ def load_rules() -> Rules:
         labels=dict(data["labels"]),
         required_labels=tuple(data["required_labels"]),
         urgency=dict(data["urgency"]),
+        recommendation={k: (v["emoji"], v["text"]) for k, v in data["recommendation"].items()},
         blocking_words=tuple(
             BlockingWord(w["word"], re.compile(w["pattern"], re.IGNORECASE), w["instead"])
             for w in data["blocking_words"]
@@ -47,6 +49,8 @@ def writing_rules_block() -> str:
     impact, evidence, fix = r.labels["impact"], r.labels["evidence"], r.labels["fix"]
     urgency = "\n".join(f'  - {level}: "{phrase}:"' for level, phrase in r.urgency.items())
     words = "\n".join(f'- "{w.word}": {w.instead}' for w in r.blocking_words)
+    red, yellow, green = (r.recommendation[k][1] for k in ("red", "yellow", "green"))
+    block_phrase, change_phrase = r.urgency["block"], r.urgency["request-changes"]
     return f"""## How to write each comment (REQUIRED)
 
 Write every comment, and the review body, for this reader: an engineer on the
@@ -98,6 +102,10 @@ Technical English):
 Never use these words and phrases; write the plain words instead:
 {words}
 
-The review body starts with a verdict: one or two sentences that say whether the
-pull request can merge as it is, and what must change first.
+pr-review adds a Recommendation heading above the review body. It is
+"{red}" if any finding starts with "{block_phrase}:"; otherwise "{yellow}" if
+any finding starts with "{change_phrase}:" or has no urgency phrase; otherwise
+"{green}". Do not write your own recommendation heading. Start the body with
+one or two sentences that say what must change before merging, if anything,
+and what can wait.
 """
