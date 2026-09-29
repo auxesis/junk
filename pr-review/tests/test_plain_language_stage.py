@@ -160,6 +160,22 @@ def test_the_body_is_rewritten_when_it_has_a_blocking_problem():
     result = stage(runner).apply(p)
     assert result.payload.body == "It does not merge yet."
     assert result.body_remaining == []
+    assert result.body_rewritten is True
+
+
+def test_body_rewritten_is_false_when_the_body_needs_no_rewrite():
+    runner = FakeRunner()
+    result = stage(runner).apply(payload(CLEAN))
+    assert result.body_rewritten is False
+
+
+def test_body_rewritten_is_false_when_the_body_rewrite_is_guarded_off():
+    p = payload(CLEAN)
+    p.body = "It doesn't merge."
+    runner = FakeRunner(rewrite={"comments": [], "body": ""})
+    result = stage(runner).apply(p)
+    assert result.payload.body == "It doesn't merge."
+    assert result.body_rewritten is False
 
 
 def test_the_report_lists_problems_left_and_warnings():

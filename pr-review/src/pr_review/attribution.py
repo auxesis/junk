@@ -26,6 +26,7 @@ class RunRecord:
     rewritten: int = 0
     reader_ran: bool = False
     needed_rewrite: int = 0
+    body_rewritten: bool = False
     stack_line: str | None = None
     context_line: str | None = None
     not_posted: list[str] = field(default_factory=list)
@@ -77,6 +78,8 @@ def render_details(record: RunRecord, comments: list) -> str:
                 note = (f"Plain language: `{record.plain_language_model}` read every comment as a new "
                         f"reader would. {record.needed_rewrite} comment(s) had a problem that stopped "
                         f"the reader acting; it rewrote {record.rewritten}.")
+            if record.body_rewritten:
+                note += " It also rewrote the review body."
         else:
             note = (
                 "Plain language: the reader test did not run; "

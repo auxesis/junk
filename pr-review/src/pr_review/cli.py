@@ -370,6 +370,7 @@ def main(argv: list[str] | None = None) -> int:
         rewritten=staged.rewritten,
         reader_ran=staged.reader_ran,
         needed_rewrite=staged.needed_rewrite,
+        body_rewritten=staged.body_rewritten,
         stack_line=describe_stack(ctx, missing=missing) if ctx else None,
         context_line=describe_loaded(ctx) if ctx else None,
         not_posted=[describe_dropped(d) for d in filtered.dropped],

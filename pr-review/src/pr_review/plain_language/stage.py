@@ -24,6 +24,7 @@ class StageResult:
     warnings: list[str] = field(default_factory=list)
     reader_ran: bool = False
     needed_rewrite: int = 0
+    body_rewritten: bool = False
 
 
 def _units(payload: Payload) -> list[Comment]:
@@ -152,16 +153,19 @@ class PlainLanguageStage:
             rewritten += 1
 
         body = payload.body
+        body_rewritten = False
         if body_blocking and new_body is not None:
             reason = guard(payload.body, new_body)
             if reason:
                 warnings.append(f"review body: the rewrite {reason}; kept the original")
             else:
                 body, body_problems = new_body, check_body(new_body)
+                body_rewritten = True
 
         return StageResult(_rebuild(payload, units, body),
                            problems, body_problems, rewritten, warnings,
-                           reader_ran=reader is not None, needed_rewrite=len(items))
+                           reader_ran=reader is not None, needed_rewrite=len(items),
+                           body_rewritten=body_rewritten)
 
 
 def format_report(result: StageResult) -> str:

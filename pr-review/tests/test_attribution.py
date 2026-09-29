@@ -50,6 +50,17 @@ def test_details_mention_synthesis_and_plain_language_when_they_ran():
     assert "1 posted finding(s) were raised by two or more models." in text
     assert "Plain language: `claude-opus-5`" in text
     assert "2 comment(s) had a problem that stopped the reader acting; it rewrote 2." in text
+    assert "It also rewrote the review body." not in text
+
+
+def test_details_note_the_body_was_rewritten():
+    record = RunRecord(jobs=[JobRecord(OPUS, raw=1)], plain_language_model="claude-opus-5",
+                       reader_ran=True, needed_rewrite=0, body_rewritten=True)
+    text = render_details(record, [])
+    assert (
+        "No comment had a problem that stopped the reader acting, so none was rewritten. "
+        "It also rewrote the review body." in text
+    )
 
 
 def test_details_note_the_reader_test_did_not_run():
