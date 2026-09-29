@@ -127,10 +127,11 @@ fake, not the real subprocess.
   report that something is missing" / "Before you report anything, read the
   discussion") and the `UNTRUSTED_RULE`; and
   `describe_stack`, `describe_loaded` and `describe_dropped` build the
-  **How this review was made** block's stack line (which adds "Some pull
-  requests in the stack could not be fetched." when `missing` is set), context-loaded line, and
-  one line per dropped finding (naming the fix, the thread or the reply it was
-  answered in).
+  **How this review was made** block's stack line (which marks the reviewed pull
+  request with `:asterisk: #<n>`, appends " :asterisk: marks this pull request.",
+  and adds "Some pull requests in the stack could not be fetched." when `missing`
+  is set), context-loaded line, and one line per dropped finding (naming the fix,
+  the thread or the reply it was answered in).
 - **test_context_filter.py** — `apply_verdicts` for every verdict kind: `keep`
   and a missing verdict both keep the finding; `fixed-later` drops it and
   records the pull request, but is kept (with a warning) when the named pull

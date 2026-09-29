@@ -92,11 +92,11 @@ def test_finalize_adds_the_footer_to_replies():
 
 
 def test_details_include_stack_context_and_findings_not_posted():
-    record = RunRecord(jobs=[JobRecord(OPUS, raw=1)], stack_line="Stack: position 1 of 2 (#7, #8).",
+    record = RunRecord(jobs=[JobRecord(OPUS, raw=1)], stack_line="Stack: position 1 of 2 (:asterisk: #7, #8). :asterisk: marks this pull request.",
                        context_line="Context loaded: the description.",
                        not_posted=["**No lock.** Fixed in #8 (refs/stack/8:a.tf)."])
     text = render_details(record, [])
-    assert "Stack: position 1 of 2 (#7, #8)." in text
+    assert "Stack: position 1 of 2 (:asterisk: #7, #8). :asterisk: marks this pull request." in text
     assert "Context loaded: the description." in text
     assert "**Findings not posted:**\n\n- **No lock.** Fixed in #8 (refs/stack/8:a.tf)." in text
 

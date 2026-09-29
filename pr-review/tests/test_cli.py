@@ -427,7 +427,7 @@ def test_main_with_context_prunes_the_stack_and_threads_it_through(monkeypatch):
     assert seen["filtered"] is reviewed
     assert seen["stage"] == (filtered, {11: "Done in #8."})
     record = seen["record"]
-    assert record.stack_line == ("Stack: 0 earlier and 1 later pull request(s) (#8). "
+    assert record.stack_line == ("Stack: 0 earlier and 1 later pull request(s) (:asterisk: #7, #8). :asterisk: marks this pull request. "
                                  "Some pull requests in the stack could not be fetched.")
     assert record.context_line == ("Context loaded: the description, 0 linked issue(s) "
                                    "and 1 discussion entries.")

@@ -86,8 +86,10 @@ def test_prompt_summary_has_the_map_description_path_and_both_instructions():
 
 
 def test_describe_stack_and_loaded():
-    assert describe_stack(ctx([EARLIER, LATER], (2, 3))) == "Stack: position 2 of 3 (#6, #7, #8)."
-    assert describe_stack(ctx([LATER])) == "Stack: 0 earlier and 1 later pull request(s) (#8)."
+    assert describe_stack(ctx([EARLIER, LATER], (2, 3))) == (
+        "Stack: position 2 of 3 (#6, :asterisk: #7, #8). :asterisk: marks this pull request.")
+    assert describe_stack(ctx([LATER])) == (
+        "Stack: 0 earlier and 1 later pull request(s) (:asterisk: #7, #8). :asterisk: marks this pull request.")
     assert describe_stack(ctx()) == "Stack: not part of a stack."
     assert describe_loaded(ctx(failed=["issue #9"])) == (
         "Context loaded: the description, 1 linked issue(s) and 3 discussion entries. "
@@ -97,9 +99,10 @@ def test_describe_stack_and_loaded():
 
 def test_describe_stack_says_when_pull_requests_could_not_be_fetched():
     assert describe_stack(ctx([LATER]), missing=1) == (
-        "Stack: 0 earlier and 1 later pull request(s) (#8). "
+        "Stack: 0 earlier and 1 later pull request(s) (:asterisk: #7, #8). :asterisk: marks this pull request. "
         "Some pull requests in the stack could not be fetched.")
-    assert describe_stack(ctx([LATER]), missing=0) == "Stack: 0 earlier and 1 later pull request(s) (#8)."
+    assert describe_stack(ctx([LATER]), missing=0) == (
+        "Stack: 0 earlier and 1 later pull request(s) (:asterisk: #7, #8). :asterisk: marks this pull request.")
 
 
 def test_describe_dropped_says_why_and_links():
