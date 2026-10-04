@@ -41,11 +41,9 @@ def fetch_live_models() -> list[str]:
 
 class CodexReviewer(Reviewer):
     name = "codex"
-    # terra is codex's balanced agentic-coding model; the rest are the ChatGPT-auth
-    # fallback when the live model list can't be fetched. Override per run with
-    # `--model codex=<id>`. An empty model falls through to codex's own default.
-    default_model = "gpt-5.6-terra"
-    known_models = ["gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.6-luna", "gpt-5.5"]
+    # sol is codex's "workhorse" tier (reaches ultra reasoning effort), the closest analogue to claude Opus.
+    default_model = "gpt-5.6-sol"
+    known_models = ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5"]
 
     def available_models(self) -> list[str]:
         try:
