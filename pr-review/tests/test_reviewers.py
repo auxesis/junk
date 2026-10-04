@@ -11,7 +11,7 @@ def test_claude_is_registered():
 
 
 def test_claude_default_model():
-    assert get_reviewer("claude").default_model == "claude-opus-5"
+    assert get_reviewer("claude").default_model == "claude-opus-5-5"
 
 
 def test_unknown_reviewer_raises():

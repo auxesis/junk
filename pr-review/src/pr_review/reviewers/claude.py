@@ -33,8 +33,8 @@ def fetch_live_models() -> list[str]:
 
 class ClaudeReviewer(Reviewer):
     name = "claude"
-    default_model = "claude-opus-5"
-    known_models = ["claude-opus-5", "claude-sonnet-5", "claude-fable-5", "claude-haiku-4-5"]
+    default_model = "claude-opus-5-5"
+    known_models = ["claude-opus-5-5", "claude-opus-5", "claude-sonnet-5", "claude-fable-5", "claude-haiku-4-5"]
 
     def available_models(self) -> list[str]:
         try:
