@@ -35,6 +35,44 @@ def _patch_run(monkeypatch, *, payload, stage):
     return cli
 
 
+def test_list_models_shows_live_models_and_marks_the_default(monkeypatch):
+    import pr_review.reviewers.claude as cl
+    import pr_review.reviewers.codex as cx
+    from pr_review.cli import list_models
+
+    monkeypatch.setattr(cl, "fetch_live_models", lambda: ["claude-opus-5", "claude-zzz"])
+    monkeypatch.setattr(cx, "fetch_live_models", lambda: ["gpt-5.6-terra", "gpt-9-zzz"])
+    out = list_models()
+    assert "claude:" in out and "codex:" in out
+    assert "claude-opus-5 (default)" in out and "claude-zzz" in out
+    assert "gpt-5.6-terra (default)" in out and "gpt-9-zzz" in out
+
+
+def test_list_models_falls_back_to_known_when_the_api_fails(monkeypatch):
+    import pr_review.reviewers.claude as cl
+    import pr_review.reviewers.codex as cx
+    from pr_review.cli import list_models
+
+    monkeypatch.setattr(cl, "fetch_live_models", lambda: (_ for _ in ()).throw(RuntimeError()))
+    monkeypatch.setattr(cx, "fetch_live_models", lambda: (_ for _ in ()).throw(RuntimeError()))
+    out = list_models()
+    assert "claude-sonnet-5" in out and "gpt-5.5" in out  # static fallback shown
+
+
+def test_main_list_models_returns_zero_and_prints(monkeypatch, capsys):
+    import pr_review.cli as cli
+
+    monkeypatch.setattr(cli, "list_models", lambda: "FAKE MODELS LIST")
+    assert cli.main(["--list-models"]) == 0
+    assert "FAKE MODELS LIST" in capsys.readouterr().out
+
+
+def test_list_models_appears_in_help(capsys):
+    with pytest.raises(SystemExit):
+        config_from_args(["--help"])
+    assert "--list-models" in capsys.readouterr().out
+
+
 def test_config_defaults():
     cfg = config_from_args(["org/repo#3"])
     assert cfg.target == Target("org", "repo", 3)

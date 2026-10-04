@@ -93,6 +93,69 @@ def test_codex_command_includes_model_when_given():
     assert cmd[-1] == "--oss"
 
 
+def test_claude_known_models_include_the_default():
+    r = get_reviewer("claude")
+    assert r.default_model in r.known_models
+    assert "claude-sonnet-5" in r.known_models
+
+
+def test_codex_known_models_include_the_default():
+    r = get_reviewer("codex")
+    assert r.default_model in r.known_models
+
+
+def test_claude_available_models_uses_the_live_api(monkeypatch):
+    import pr_review.reviewers.claude as cl
+
+    monkeypatch.setattr(cl, "fetch_live_models", lambda: ["claude-opus-5", "claude-new"])
+    assert get_reviewer("claude").available_models() == ["claude-opus-5", "claude-new"]
+
+
+def test_claude_available_models_falls_back_when_the_api_fails(monkeypatch):
+    import pr_review.reviewers.claude as cl
+
+    def boom():
+        raise RuntimeError("no network")
+
+    monkeypatch.setattr(cl, "fetch_live_models", boom)
+    r = get_reviewer("claude")
+    assert r.available_models() == r.known_models
+
+
+def test_claude_available_models_falls_back_when_the_api_is_empty(monkeypatch):
+    import pr_review.reviewers.claude as cl
+
+    monkeypatch.setattr(cl, "fetch_live_models", lambda: [])
+    r = get_reviewer("claude")
+    assert r.available_models() == r.known_models
+
+
+def test_codex_available_models_uses_the_live_api(monkeypatch):
+    import pr_review.reviewers.codex as cx
+
+    monkeypatch.setattr(cx, "fetch_live_models", lambda: ["gpt-5.6-terra", "gpt-5.9-x"])
+    assert get_reviewer("codex").available_models() == ["gpt-5.6-terra", "gpt-5.9-x"]
+
+
+def test_codex_available_models_falls_back_when_the_api_fails(monkeypatch):
+    import pr_review.reviewers.codex as cx
+
+    def boom():
+        raise RuntimeError("no network")
+
+    monkeypatch.setattr(cx, "fetch_live_models", boom)
+    r = get_reviewer("codex")
+    assert r.available_models() == r.known_models
+
+
+def test_codex_available_models_falls_back_when_the_api_is_empty(monkeypatch):
+    import pr_review.reviewers.codex as cx
+
+    monkeypatch.setattr(cx, "fetch_live_models", lambda: [])
+    r = get_reviewer("codex")
+    assert r.available_models() == r.known_models
+
+
 def test_cli_default_model_tracks_the_claude_reviewer():
     """cli.DEFAULT_MODEL (the no---model default and the synthesis judge) must not
     be a second copy of the claude reviewer's default that can drift from it."""

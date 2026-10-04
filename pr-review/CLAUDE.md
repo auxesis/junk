@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 28 files, one per `src/pr_review/` module (359 tests total):
+`tests/` holds 28 files, one per `src/pr_review/` module (371 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -55,7 +55,11 @@ fake, not the real subprocess.
   and neither of the two old headings is still there.
 - **test_reviewers.py** — the `Reviewer` registry (`claude` and `codex` registered,
   each with a `default_model`, unknown raises), `Reviewer.command` argv for both
-  agents (codex omits `--model` when empty), the shared `build_review_prompt`
+  agents (codex omits `--model` when empty), each reviewer's `known_models`
+  contains its `default_model`, `available_models` for both agents (each queries
+  a live endpoint via an injected `fetch_live_models` — claude's `/v1/models`,
+  codex's `backend-api/codex/models` — and falls back to `known_models` when it
+  raises or returns empty), the shared `build_review_prompt`
   (including that it names the base as a bare commit, never `origin/<ref>`, and
   that a passed-in context summary sits before the instructions while its
   absence leaves the prompt unchanged), and `_review_env` (trusts the clone's
@@ -180,7 +184,11 @@ fake, not the real subprocess.
   `run_reviews` reaches every job's `review()` call.
 - **test_cli.py** — `config_from_args` option parsing (`--model agent[=models]`
   repeatable → `(agent, model)` pairs, `--review-type` lists, per-agent
-  `--claude-flags`/`--codex-flags`, the booleans), `build_jobs` (the
+  `--claude-flags`/`--codex-flags`, the booleans), `list_models` (prints each
+  registered agent's `available_models` under a `<agent>:` header, marking the
+  `default_model` "(default)"; the live-vs-fallback split is exercised by
+  monkeypatching each reviewer's `fetch_live_models`) and `main(["--list-models"])`
+  (prints and returns 0, `--list-models` documented in `--help`), `build_jobs` (the
   `(agent,model) × review_type` matrix with per-agent flags), `resolve_agent_models`
   and `resolve_review_types` (explicit / prompt on TTY / exit-2 without one), and
   the `help` word aliasing to `--help`, plus `--synthesis-model` / `--no-synthesis`

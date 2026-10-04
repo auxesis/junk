@@ -13,10 +13,16 @@ _REGISTRY: dict[str, "Reviewer"] = {}
 class Reviewer(ABC):
     name: str
     default_model: str
+    # Static fallback for `available_models`; default_model must be in it.
+    known_models: list[str]
 
     @abstractmethod
     def command(self, model: str, extra_flags: list[str]) -> list[str]:
         """The CLI argv (with the model baked in) that runs this agent headless."""
+
+    def available_models(self) -> list[str]:
+        """Models for `--list-models`. Override to query the backend live."""
+        return list(self.known_models)
 
     def review(
         self,

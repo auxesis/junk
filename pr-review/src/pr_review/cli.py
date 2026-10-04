@@ -80,6 +80,18 @@ def _parse_agent_models(values: list[str]) -> list[tuple[str, str]]:
     return pairs
 
 
+def list_models() -> str:
+    blocks = []
+    for name in reviewers_available():
+        reviewer = get_reviewer(name)
+        lines = [
+            f"  {m}" + (" (default)" if m == reviewer.default_model else "")
+            for m in reviewer.available_models()
+        ]
+        blocks.append(f"{name}:\n" + "\n".join(lines))
+    return "\n\n".join(blocks)
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="pr-review",
@@ -115,6 +127,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--codex-flags", default="",
         help='Extra flags for codex jobs, e.g. --codex-flags="--oss" (default: "")',
+    )
+    p.add_argument(
+        "--list-models", action="store_true",
+        help="list each agent's available models (shells out to each backend) and exit",
     )
     p.add_argument(
         "--keep-clone", action="store_true",
@@ -277,7 +293,11 @@ def resolve_review_types(
 
 
 def main(argv: list[str] | None = None) -> int:
-    cfg = config_from_args(sys.argv[1:] if argv is None else argv)
+    argv = sys.argv[1:] if argv is None else argv
+    if "--list-models" in argv:
+        print(list_models())
+        return 0
+    cfg = config_from_args(argv)
     cfg.agent_models = resolve_agent_models(
         cfg.agent_models, has_tty=output.tty_available()
     )
