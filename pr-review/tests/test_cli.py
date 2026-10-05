@@ -105,6 +105,31 @@ def test_model_comma_separated_bare_agents():
     assert cfg.agent_models == [("claude", "claude-opus-5-5"), ("codex", "gpt-5.6-sol")]
 
 
+def test_model_bare_agents_then_explicit_agent_in_one_value():
+    cfg = config_from_args(["--model", "claude,codex=gpt-5.6-terra", "org/repo#1"])
+    assert cfg.agent_models == [("claude", "claude-opus-5-5"), ("codex", "gpt-5.6-terra")]
+
+
+def test_model_several_explicit_agents_in_one_value():
+    cfg = config_from_args([
+        "--model", "claude=claude-opus-4-8,claude-fable-5,codex=gpt-5,gpt-5.5", "org/repo#1",
+    ])
+    assert cfg.agent_models == [
+        ("claude", "claude-opus-4-8"), ("claude", "claude-fable-5"),
+        ("codex", "gpt-5"), ("codex", "gpt-5.5"),
+    ]
+
+
+def test_model_empty_model_in_mixed_value_uses_default():
+    cfg = config_from_args(["--model", "claude=,codex=gpt-5", "org/repo#1"])
+    assert cfg.agent_models == [("claude", "claude-opus-5-5"), ("codex", "gpt-5")]
+
+
+def test_model_unknown_agent_in_mixed_value_raises():
+    with pytest.raises(ValueError):
+        config_from_args(["--model", "claude,ghost=x", "org/repo#1"])
+
+
 def test_model_unknown_agent_raises():
     with pytest.raises(ValueError):
         config_from_args(["--model", "ghost=x", "org/repo#1"])

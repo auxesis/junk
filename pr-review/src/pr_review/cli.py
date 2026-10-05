@@ -66,17 +66,23 @@ def _parse_agent_models(values: list[str]) -> list[tuple[str, str]]:
             pairs.append((agent, model))
 
     for value in values:
-        agent_part, sep, models_str = value.partition("=")
-        if sep:
-            # "agent=model[,model...]" — one agent, comma-separated models.
-            agent = agent_part.strip()
+        # "agent=model" opens an agent; a bare token after one is another model
+        # for that agent, a bare token before any "=" is an agent on its default.
+        groups: list[tuple[str, list[str]]] = []
+        seen_eq = False
+        for token in _split(value):
+            head, sep, model = (s.strip() for s in token.partition("="))
+            if sep:
+                seen_eq = True
+                groups.append((head, [model] if model else []))
+            elif seen_eq:
+                groups[-1][1].append(token)
+            else:
+                groups.append((token, []))
+        for agent, models in groups:
             reviewer = get_reviewer(agent)  # validates agent; raises ValueError
-            for model in _split(models_str) or [reviewer.default_model]:
+            for model in models or [reviewer.default_model]:
                 add(agent, model)
-        else:
-            # bare "agent[,agent...]" — each agent uses its default model.
-            for agent in _split(agent_part):
-                add(agent, get_reviewer(agent).default_model)
     return pairs
 
 

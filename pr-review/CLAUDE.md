@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 28 files, one per `src/pr_review/` module (371 tests total):
+`tests/` holds 28 files, one per `src/pr_review/` module (375 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -183,7 +183,8 @@ fake, not the real subprocess.
   all-failed run yields `payload=None`; and a context summary passed to
   `run_reviews` reaches every job's `review()` call.
 - **test_cli.py** — `config_from_args` option parsing (`--model agent[=models]`
-  repeatable → `(agent, model)` pairs, `--review-type` lists, per-agent
+  repeatable → `(agent, model)` pairs, including one value that mixes bare
+  agents with `agent=models` groups, `--review-type` lists, per-agent
   `--claude-flags`/`--codex-flags`, the booleans), `list_models` (prints each
   registered agent's `available_models` under a `<agent>:` header, marking the
   `default_model` "(default)"; the live-vs-fallback split is exercised by

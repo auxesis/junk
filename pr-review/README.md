@@ -86,8 +86,11 @@ pr-review <target> --review-type test-gap,rust \
   (model availability depends on your codex auth — e.g. a ChatGPT-account login
   can't use `gpt-5-codex`; `codex --model` lists what yours actually offers).
 - A bare value can name several agents: `--model claude,codex` runs both with
-  their default models (equivalent to `--model claude --model codex`). With `=`,
-  the comma separates *models* for that one agent (`--model claude=opus,fable`).
+  their default models (equivalent to `--model claude --model codex`). After an
+  `agent=`, the comma separates *models* for that agent (`--model claude=opus,fable`)
+  until the next `agent=`. One value can mix both: `--model claude,codex=gpt-5.6-terra`
+  runs claude on its default and codex on `gpt-5.6-terra`. Bare agents go first —
+  a bare name after an `agent=` is read as a model.
 - Model ids are passed **verbatim** to the agent's CLI — give real ids
   (`claude-opus-5`, not `opus-5`).
 - A failing job (bad model, auth, etc.) doesn't abort the run: surviving jobs
