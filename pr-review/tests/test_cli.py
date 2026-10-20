@@ -41,11 +41,11 @@ def test_list_models_shows_live_models_and_marks_the_default(monkeypatch):
     from pr_review.cli import list_models
 
     monkeypatch.setattr(cl, "fetch_live_models", lambda: ["claude-opus-5-5", "claude-zzz"])
-    monkeypatch.setattr(cx, "fetch_live_models", lambda: ["gpt-5.6-sol", "gpt-9-zzz"])
+    monkeypatch.setattr(cx, "fetch_live_models", lambda: ["gpt-5.6-terra", "gpt-9-zzz"])
     out = list_models()
     assert "claude:" in out and "codex:" in out
     assert "claude-opus-5-5 (default)" in out and "claude-zzz" in out
-    assert "gpt-5.6-sol (default)" in out and "gpt-9-zzz" in out
+    assert "gpt-5.6-terra (default)" in out and "gpt-9-zzz" in out
 
 
 def test_list_models_falls_back_to_known_when_the_api_fails(monkeypatch):
@@ -84,7 +84,7 @@ def test_config_defaults():
 
 def test_model_bare_agent_uses_default_model():
     cfg = config_from_args(["--model", "codex", "org/repo#1"])
-    assert cfg.agent_models == [("codex", "gpt-5.6-sol")]
+    assert cfg.agent_models == [("codex", "gpt-5.6-terra")]
 
 
 def test_model_explicit_and_repeatable():
@@ -102,7 +102,7 @@ def test_model_explicit_and_repeatable():
 
 def test_model_comma_separated_bare_agents():
     cfg = config_from_args(["--model", "claude,codex", "org/repo#1"])
-    assert cfg.agent_models == [("claude", "claude-opus-5-5"), ("codex", "gpt-5.6-sol")]
+    assert cfg.agent_models == [("claude", "claude-opus-5-5"), ("codex", "gpt-5.6-terra")]
 
 
 def test_model_bare_agents_then_explicit_agent_in_one_value():

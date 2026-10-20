@@ -58,7 +58,7 @@ def test_codex_is_registered():
 
 
 def test_codex_default_model():
-    assert get_reviewer("codex").default_model == "gpt-5.6-sol"
+    assert get_reviewer("codex").default_model == "gpt-5.6-terra"
 
 
 def test_review_env_trusts_the_clone_for_mise(monkeypatch):
