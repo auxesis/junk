@@ -81,7 +81,7 @@ pr-review <target> --review-type test-gap,rust \
   --model codex=gpt-5.6-terra,gpt-5.6-sol
 ```
 
-- `--model claude` (no `=`) uses claude's default model (`claude-opus-5`);
+- `--model claude` (no `=`) uses claude's default model (`claude-opus-5-5`);
   `--model codex` uses `gpt-5.6-terra`. Override per run with `--model codex=<id>`
   (model availability depends on your codex auth — e.g. a ChatGPT-account login
   can't use `gpt-5-codex`; `codex --model` lists what yours actually offers).
@@ -119,7 +119,7 @@ each comment ends with a small footer naming the models that found it
 **How this review was made** block listing every job, its review type, how many
 findings it raised and how many were posted.
 
-- `--synthesis-model AGENT[=MODEL]` — the judge (default `claude=claude-opus-5`;
+- `--synthesis-model AGENT[=MODEL]` — the judge (default `claude=claude-sonnet-5-5`;
   e.g. `--synthesis-model codex=gpt-5.6-terra`).
 - `--no-synthesis` — skip it and raw-merge the jobs (today's behaviour).
 - A single job skips synthesis; if the judge run fails, pr-review falls back to
@@ -192,9 +192,9 @@ and exits 1.
 
 | Option | Effect | Default |
 |--------|--------|---------|
-| `--model agent[=models]` | Per-agent models (repeatable) | `claude=claude-opus-5` |
+| `--model agent[=models]` | Per-agent models (repeatable) | `claude=claude-opus-5-5` |
 | `--codex-flags="<flags>"` | Extra flags appended to the `codex` invocation | empty |
-| `--synthesis-model agent[=model]` | Judge that de-dupes/verifies findings across jobs | `claude=claude-opus-5` |
+| `--synthesis-model agent[=model]` | Judge that de-dupes/verifies findings across jobs | `claude=claude-sonnet-5-5` |
 | `--no-synthesis` | Skip synthesis; raw-merge multi-job results | off |
 | `--plain-language-model agent[=model]` | Reader test and rewrite model | the synthesis model |
 | `--no-plain-language` | Skip the reader test and rewrite | off |

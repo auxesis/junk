@@ -228,7 +228,7 @@ def test_resolve_agent_models_errors_without_tty(capsys):
 
 def test_config_synthesis_defaults():
     cfg = config_from_args(["org/repo#1"])
-    assert cfg.synthesis_model == ("claude", "claude-opus-5-5")
+    assert cfg.synthesis_model == ("claude", "claude-sonnet-5-5")
     assert cfg.no_synthesis is False
 
 
@@ -239,7 +239,7 @@ def test_config_synthesis_model_override():
 
 def test_config_synthesis_bare_agent_uses_default():
     cfg = config_from_args(["--synthesis-model", "claude", "org/repo#1"])
-    assert cfg.synthesis_model == ("claude", "claude-opus-5-5")
+    assert cfg.synthesis_model == ("claude", "claude-sonnet-5-5")
 
 
 def test_config_no_synthesis_flag():

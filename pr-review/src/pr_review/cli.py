@@ -23,9 +23,10 @@ from pr_review.synthesis import LLMSynthesisCollator
 from pr_review.target import Target, parse_target
 from pr_review import output, prompts
 
-# The no---model default and the synthesis judge both key off claude; read it
-# from the registry so bumping the reviewer bumps these too.
+# The no---model default keys off claude; read it from the registry so bumping
+# the reviewer bumps it too.
 DEFAULT_MODEL = get_reviewer("claude").default_model
+DEFAULT_SYNTHESIS_MODEL = "claude-sonnet-5-5"
 
 
 @dataclass
@@ -54,8 +55,9 @@ def _parse_synthesis_model(value: str) -> tuple[str, str]:
     agent, sep, model = value.partition("=")
     agent = agent.strip()
     reviewer = get_reviewer(agent)  # validates the agent; raises ValueError
-    model = model.strip() if (sep and model.strip()) else reviewer.default_model
-    return (agent, model)
+    if sep and model.strip():
+        return (agent, model.strip())
+    return (agent, DEFAULT_SYNTHESIS_MODEL if agent == "claude" else reviewer.default_model)
 
 
 def _parse_agent_models(values: list[str]) -> list[tuple[str, str]]:
@@ -146,7 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--synthesis-model", metavar="AGENT[=MODEL]", default=None,
         help=(
             "judge agent/model that de-dupes and verifies findings across jobs "
-            f"(default: claude={DEFAULT_MODEL})"
+            f"(default: claude={DEFAULT_SYNTHESIS_MODEL})"
         ),
     )
     p.add_argument(
@@ -205,7 +207,7 @@ def config_from_args(argv: list[str]) -> RunConfig:
         keep=args.keep_clone,
         synthesis_model=(
             _parse_synthesis_model(args.synthesis_model)
-            if args.synthesis_model else ("claude", DEFAULT_MODEL)
+            if args.synthesis_model else ("claude", DEFAULT_SYNTHESIS_MODEL)
         ),
         no_synthesis=args.no_synthesis,
         plain_language_model=(
