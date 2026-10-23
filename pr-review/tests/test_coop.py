@@ -67,3 +67,13 @@ def test_preflight_raises_when_binary_exits_nonzero():
 def test_preflight_raises_when_no_template():
     with pytest.raises(CoopUnavailable, match="coop setup"):
         preflight(runner=_runner(images="  \n"))
+
+
+def test_preflight_raises_when_proxy_status_fails():
+    def runner(cmd, **kw):
+        if cmd[:2] == ["coop", "proxy"]:
+            return SimpleNamespace(returncode=1, stdout="")
+        return SimpleNamespace(returncode=0, stdout="default\n")
+
+    with pytest.raises(CoopUnavailable, match="coop proxy setup"):
+        preflight(runner=runner)

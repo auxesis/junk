@@ -38,8 +38,11 @@ def preflight(*, runner: Callable[..., object] = subprocess.run) -> None:
     if images.returncode != 0 or not (images.stdout or "").strip():
         raise CoopUnavailable("coop has no template image. Run: coop setup")
 
-    proxy = run(["coop", "proxy", "status"]).stdout or ""
-    if any("anthropic" in line and "off" in line for line in proxy.lower().splitlines()):
+    status = run(["coop", "proxy", "status"])
+    proxy = status.stdout or ""
+    if status.returncode != 0 or any(
+        "anthropic" in line and "off" in line for line in proxy.lower().splitlines()
+    ):
         raise CoopUnavailable(
             "the coop Anthropic proxy is off. Run: claude setup-token, "
             "then: coop proxy setup"
