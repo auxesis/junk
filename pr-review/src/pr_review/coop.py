@@ -5,6 +5,7 @@ import re
 import secrets
 import shlex
 import subprocess
+import sys
 import threading
 from collections.abc import Callable, Sequence
 from typing import TypeVar
@@ -132,8 +133,6 @@ def _ssh_agent_runner(cmd: Sequence[str], prompt: str, *, workdir: str) -> int:
     our shared stdout/stderr, or a sibling job's O_NONBLOCK flag leaks into it.
     `workdir` is a host path and is ignored: the agent runs in the guest.
     """
-    import sys
-
     proc = subprocess.Popen(
         list(cmd), text=True,
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -152,11 +151,15 @@ def _ssh_agent_runner(cmd: Sequence[str], prompt: str, *, workdir: str) -> int:
 
 
 def _ssh_cat(name: str, path: str) -> str:
-    """Return the contents of guest file `path`, or "" if it cannot be read."""
+    """Return the contents of guest file `path`; raise if ssh or cat fails."""
     result = subprocess.run(
         ["ssh", f"coop-{name}", "cat", path], capture_output=True, text=True
     )
-    return result.stdout if result.returncode == 0 else ""
+    if result.returncode != 0:
+        detail = (result.stderr or "").strip()
+        message = f"ssh cat {path} on coop-{name} failed with exit status {result.returncode}"
+        raise RuntimeError(f"{message}: {detail}" if detail else message)
+    return result.stdout
 
 
 class HostExecutor:
@@ -199,7 +202,8 @@ class CoopExecutor:
         guest_payload = f"{GUEST_PAYLOAD_DIR}/payload.{secrets.token_hex(8)}.json"
         prompt = build_prompt(guest_payload)
         remote = (
-            f"cd {GUEST_WORKDIR} && mkdir -p {GUEST_PAYLOAD_DIR} && MISE_TRUSTED_CONFIG_PATHS={GUEST_WORKDIR} "
+            f"mkdir -p {GUEST_PAYLOAD_DIR} && cd {GUEST_WORKDIR} && "
+            f"MISE_TRUSTED_CONFIG_PATHS={GUEST_WORKDIR} "
             + shlex.join(command)
         )
         argv = ["ssh", f"coop-{self.name}", remote]

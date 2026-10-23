@@ -214,3 +214,60 @@ def test_host_executor_delegates_to_run_cli_json(monkeypatch):
     monkeypatch.setattr(coop, "run_cli_json", fake)
     assert coop.HostExecutor().run_json(["x"], lambda p: p, workdir="/w") == "ok"
     assert seen["command"] == ["x"] and seen["workdir"] == "/w"
+
+
+def test_coop_executor_remote_command_creates_dir_before_cd():
+    from pr_review.coop import CoopExecutor
+
+    seen = []
+    ex = CoopExecutor(
+        "vm",
+        agent_runner=lambda cmd, prompt, *, workdir: seen.append(cmd) or 0,
+        cat_runner=lambda name, path: "{}",
+    )
+    ex.run_json(["claude", "--print", "a b"], lambda p: p, workdir="/x")
+    assert seen[0][:2] == ["ssh", "coop-vm"]
+    assert seen[0][2] == (
+        "mkdir -p /workspace/.git/pr-review && cd /workspace && "
+        "MISE_TRUSTED_CONFIG_PATHS=/workspace claude --print 'a b'"
+    )
+
+
+def test_coop_executor_payload_wins_over_nonzero_status():
+    from pr_review.coop import CoopExecutor
+
+    ex = CoopExecutor("vm", agent_runner=lambda *a, **k: 101,
+                      cat_runner=lambda name, path: '{"ok": true}')
+    assert ex.run_json(["codex"], lambda p: p, workdir="/x") == {"ok": True}
+
+
+def test_coop_executor_applies_custom_parse():
+    from pr_review.coop import CoopExecutor
+
+    ex = CoopExecutor("vm", agent_runner=lambda *a, **k: 0,
+                      cat_runner=lambda name, path: "  raw text \n")
+    assert ex.run_json(["x"], lambda p: p, workdir="/x", parse=str.strip) == "raw text"
+
+
+def test_ssh_cat_raises_with_stderr_on_failure(monkeypatch):
+    import subprocess
+    import pytest
+    from pr_review import coop
+
+    monkeypatch.setattr(
+        coop.subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, 255, "", "connection refused\n"),
+    )
+    with pytest.raises(RuntimeError, match="exit status 255: connection refused"):
+        coop._ssh_cat("vm", "/workspace/p.json")
+
+
+def test_ssh_cat_returns_stdout_on_success(monkeypatch):
+    import subprocess
+    from pr_review import coop
+
+    monkeypatch.setattr(
+        coop.subprocess, "run",
+        lambda *a, **k: subprocess.CompletedProcess(a, 0, "data", ""),
+    )
+    assert coop._ssh_cat("vm", "/p") == "data"
