@@ -17,11 +17,12 @@ from pr_review.context.render import (
 )
 from pr_review.orchestrator import ReviewJob, run_reviews
 from pr_review.plain_language.stage import PlainLanguageStage, check_payload, format_report
+from pr_review.reviewers._run import run_cli_json
 from pr_review.reviewers import available as reviewers_available, get_reviewer
 from pr_review.review_types import available as types_available, get_review_type
 from pr_review.synthesis import LLMSynthesisCollator
 from pr_review.target import Target, parse_target
-from pr_review import output, prompts
+from pr_review import coop, output, prompts
 
 # The no---model default keys off claude; read it from the registry so bumping
 # the reviewer bumps it too.
@@ -45,6 +46,7 @@ class RunConfig:
     no_context: bool
     no_context_filter: bool
     context_filter_model: tuple[str, str] | None
+    isolation: bool = True
 
 
 def _split(value: str) -> list[str]:
@@ -181,6 +183,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--context-filter-model", metavar="AGENT[=MODEL]", default=None,
         help="agent/model for the context filter (default: the synthesis model)",
     )
+    p.add_argument(
+        "--no-isolation", action="store_true",
+        help=(
+            "run the agents on this machine instead of in a throwaway coop VM; "
+            "isolation is the default (default: false)"
+        ),
+    )
     return p
 
 
@@ -220,10 +229,12 @@ def config_from_args(argv: list[str]) -> RunConfig:
         context_filter_model=(
             _parse_synthesis_model(args.context_filter_model) if args.context_filter_model else None
         ),
+        isolation=not args.no_isolation,
     )
 
 
-def build_collator(cfg: RunConfig, *, workdir: str, base: str, context: str = "") -> Collator:
+def build_collator(cfg: RunConfig, *, workdir: str, base: str, context: str = "",
+                   runner=run_cli_json) -> Collator:
     if cfg.no_synthesis:
         return DeterministicMergeCollator()
     agent, model = cfg.synthesis_model
@@ -231,7 +242,7 @@ def build_collator(cfg: RunConfig, *, workdir: str, base: str, context: str = ""
     return LLMSynthesisCollator(
         command=command, workdir=workdir,
         owner=cfg.target.owner, repo=cfg.target.repo, number=cfg.target.number, base=base,
-        context=context,
+        context=context, runner=runner,
     )
 
 
@@ -247,12 +258,15 @@ def build_plain_language_stage(cfg: RunConfig, *, workdir: str, base: str) -> Pl
     return PlainLanguageStage(command=command, workdir=workdir, base=base)
 
 
-def build_context_filter(cfg: RunConfig, *, workdir: str, context_path: str) -> ContextFilter | None:
+def build_context_filter(
+    cfg: RunConfig, *, workdir: str, context_path: str, runner=run_cli_json,
+) -> ContextFilter | None:
     if cfg.no_context or cfg.no_context_filter:
         return None
     agent, model = cfg.context_filter_model or cfg.synthesis_model
     command = get_reviewer(agent).command(model, cfg.flags_by_agent.get(agent, []))
-    return ContextFilter(command=command, workdir=workdir, context_path=context_path)
+    return ContextFilter(command=command, workdir=workdir, context_path=context_path,
+                         runner=runner)
 
 
 def build_jobs(cfg: RunConfig) -> list[ReviewJob]:
@@ -314,6 +328,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     jobs = build_jobs(cfg)  # validates agent/type names before any clone
 
+    if cfg.isolation:
+        try:
+            coop.preflight()  # a missing prerequisite aborts before any clone
+        except coop.CoopUnavailable as e:
+            print(f"pr-review: {e}", file=sys.stderr)
+            return 2
+
     ctx = None
     if not cfg.no_context:
         try:
@@ -329,6 +350,7 @@ def main(argv: list[str] | None = None) -> int:
     filtered = None
     staged = None
     missing = 0
+    vm = None
     try:
         summary, context_path = "", ""
         if ctx:
@@ -338,20 +360,31 @@ def main(argv: list[str] | None = None) -> int:
             context_path = write_context_file(checkout.workdir, render_context_file(ctx))
             summary = prompt_summary(ctx, context_path)
 
+        if cfg.isolation:
+            vcpus, mem = coop.vm_size(len(jobs))
+            vm = coop.vm_name(cfg.target.owner, cfg.target.repo, cfg.target.number)
+            coop.create_vm(checkout.workdir, vm, vcpus=vcpus, mem=mem)
+            coop.install_ssh_alias(vm)
+            executor = coop.CoopExecutor(vm)
+        else:
+            executor = coop.HostExecutor()
+
         print(
             f"pr-review: {cfg.target.slug}#{cfg.target.number} "
             f"base={checkout.base_ref}@{checkout.base[:12]} jobs={len(jobs)}",
             file=sys.stderr,
         )
-        collator = build_collator(cfg, workdir=checkout.workdir, base=checkout.base, context=summary)
+        collator = build_collator(cfg, workdir=checkout.workdir, base=checkout.base, context=summary,
+                                runner=executor.run_json)
         stage = build_plain_language_stage(cfg, workdir=checkout.workdir, base=checkout.base)
         context_filter = (
-            build_context_filter(cfg, workdir=checkout.workdir, context_path=context_path) if ctx else None
+            build_context_filter(cfg, workdir=checkout.workdir, context_path=context_path,
+                                 runner=executor.run_json) if ctx else None
         )
         result = run_reviews(
             jobs=jobs, workdir=checkout.workdir, base=checkout.base,
             owner=cfg.target.owner, repo=cfg.target.repo, number=cfg.target.number,
-            collator=collator, context=summary,
+            collator=collator, context=summary, runner=executor.run_json,
         )
         # The stage reads diff hunks from the clone, so it runs before cleanup.
         if result.payload is not None:
@@ -375,6 +408,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"pr-review: kept checkout at {checkout.workdir}", file=sys.stderr)
         else:
             cleanup(checkout)
+        if cfg.isolation and vm is not None:
+            if cfg.keep:
+                print(f"pr-review: kept VM {vm}", file=sys.stderr)
+            else:
+                coop.destroy_vm(vm)
 
     for label, rtype, err in result.failures:
         print(f"pr-review: {label} / {rtype} failed: {err}", file=sys.stderr)

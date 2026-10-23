@@ -4,6 +4,23 @@ from pr_review.cli import build_jobs, config_from_args, resolve_agent_models, re
 from pr_review.target import Target
 
 
+@pytest.fixture(autouse=True)
+def coop_calls(monkeypatch):
+    """Fake every coop call so no test starts a VM; records what main() did."""
+    import pr_review.cli as cli
+
+    calls = {"create": [], "destroy": [], "alias": [], "preflight": 0}
+
+    def preflight():
+        calls["preflight"] += 1
+
+    monkeypatch.setattr(cli.coop, "preflight", preflight)
+    monkeypatch.setattr(cli.coop, "create_vm", lambda workdir, name, **kw: calls["create"].append((workdir, name, kw)))
+    monkeypatch.setattr(cli.coop, "install_ssh_alias", lambda name: calls["alias"].append(name))
+    monkeypatch.setattr(cli.coop, "destroy_vm", lambda name: calls["destroy"].append(name))
+    return calls
+
+
 def _patch_run(monkeypatch, *, payload, stage):
     """Patch main()'s side-effecting collaborators so it runs with no clone,
     no subprocess and no network, returning `payload` from run_reviews and
@@ -446,7 +463,7 @@ def test_main_with_context_prunes_the_stack_and_threads_it_through(monkeypatch):
         seen["context_file"] = text
         return "/wd/.git/pr-review/pr-context.md"
 
-    def build_collator(cfg, *, workdir, base, context):
+    def build_collator(cfg, *, workdir, base, context, runner=None):
         seen["collator_context"] = context
         return object()
 
@@ -472,7 +489,7 @@ def test_main_with_context_prunes_the_stack_and_threads_it_through(monkeypatch):
     monkeypatch.setattr(cli, "write_context_file", write_context_file)
     monkeypatch.setattr(cli, "build_collator", build_collator)
     monkeypatch.setattr(cli, "run_reviews", run_reviews)
-    monkeypatch.setattr(cli, "build_context_filter", lambda cfg, *, workdir, context_path: FakeFilter())
+    monkeypatch.setattr(cli, "build_context_filter", lambda cfg, *, workdir, context_path, runner=None: FakeFilter())
     monkeypatch.setattr(cli, "build_plain_language_stage", lambda cfg, *, workdir, base: FakeStage())
     monkeypatch.setattr(cli, "finalize", finalize)
     monkeypatch.setattr(cli, "cleanup", lambda checkout: None)
@@ -495,3 +512,89 @@ def test_main_with_context_prunes_the_stack_and_threads_it_through(monkeypatch):
     assert record.context_line == ("Context loaded: the description, 0 linked issue(s) "
                                    "and 1 discussion entries.")
     assert record.not_posted == ["**X.** Fixed in #8 (refs/stack/8:a.py)."]
+
+
+_ARGS = ["--model", "claude", "--review-type", "test-gap", "--print-only", "org/repo#1"]
+
+
+def _capture_runners(monkeypatch, cli):
+    from pr_review.orchestrator import RunResult
+
+    seen = {}
+
+    def run_reviews(**kw):
+        seen["runner"] = kw["runner"]
+        return RunResult(payload=None, failures=[], jobs=[])
+
+    monkeypatch.setattr(cli, "run_reviews", run_reviews)
+    return seen
+
+
+def test_config_isolation_is_the_default_and_no_isolation_turns_it_off():
+    assert config_from_args(["org/repo#1"]).isolation is True
+    assert config_from_args(["--no-isolation", "org/repo#1"]).isolation is False
+
+
+def test_isolation_is_the_default_and_builds_a_coop_executor(monkeypatch, coop_calls):
+    cli = _patch_run(monkeypatch, payload=None, stage=None)
+    seen = _capture_runners(monkeypatch, cli)
+    monkeypatch.setattr(cli.coop, "vm_size", lambda n: (4, 8))
+    monkeypatch.setattr(cli.coop, "vm_name", lambda o, r, n: "vm-1")
+
+    cli.main(_ARGS)
+
+    assert coop_calls["create"] == [("/wd", "vm-1", {"vcpus": 4, "mem": 8})]
+    assert coop_calls["alias"] == ["vm-1"]
+    assert seen["runner"].__self__.name == "vm-1"
+    assert isinstance(seen["runner"].__self__, cli.coop.CoopExecutor)
+    assert coop_calls["destroy"] == ["vm-1"]
+
+
+def test_no_isolation_runs_on_the_host_and_never_touches_coop(monkeypatch, coop_calls):
+    cli = _patch_run(monkeypatch, payload=None, stage=None)
+    seen = _capture_runners(monkeypatch, cli)
+
+    cli.main([*_ARGS, "--no-isolation"])
+
+    assert isinstance(seen["runner"].__self__, cli.coop.HostExecutor)
+    assert coop_calls["preflight"] == 0
+    assert coop_calls["create"] == [] and coop_calls["destroy"] == []
+
+
+def test_a_missing_proxy_aborts_before_the_clone(monkeypatch, capsys):
+    cli = _patch_run(monkeypatch, payload=None, stage=None)
+    cloned = []
+    monkeypatch.setattr(cli, "clone_pr", lambda *a, **kw: cloned.append(a))
+
+    def preflight():
+        raise cli.coop.CoopUnavailable("claude proxy not running")
+
+    monkeypatch.setattr(cli.coop, "preflight", preflight)
+
+    assert cli.main(_ARGS) == 2
+    assert cloned == []
+    assert "pr-review: claude proxy not running" in capsys.readouterr().err
+
+
+def test_a_failed_coop_up_still_destroys_the_half_made_vm(monkeypatch, coop_calls):
+    cli = _patch_run(monkeypatch, payload=None, stage=None)
+    monkeypatch.setattr(cli.coop, "vm_name", lambda o, r, n: "vm-1")
+
+    def boom(workdir, name, **kw):
+        raise RuntimeError("coop up failed")
+
+    monkeypatch.setattr(cli.coop, "create_vm", boom)
+
+    with pytest.raises(RuntimeError):
+        cli.main(_ARGS)
+    assert coop_calls["destroy"] == ["vm-1"]
+
+
+def test_keep_clone_keeps_the_vm_and_prints_its_name(monkeypatch, coop_calls, capsys):
+    cli = _patch_run(monkeypatch, payload=None, stage=None)
+    monkeypatch.setattr(cli.coop, "vm_name", lambda o, r, n: "vm-1")
+
+    cli.main([*_ARGS, "--keep-clone"])
+
+    assert coop_calls["destroy"] == []
+    assert "pr-review: kept VM vm-1" in capsys.readouterr().err
