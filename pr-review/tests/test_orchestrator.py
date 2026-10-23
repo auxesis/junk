@@ -15,7 +15,7 @@ class FakeReviewer:
         self.name = name
         self.calls = []
 
-    def review(self, *, workdir, base, owner, repo, number, review_type, model, extra_flags, context=""):
+    def review(self, *, workdir, base, owner, repo, number, review_type, model, extra_flags, context="", runner=None):
         self.calls.append({"type": review_type.name, "model": model, "flags": extra_flags, "context": context})
         return Payload(body=f"{self.name}/{review_type.name}", comments=[Comment("f.py", 1, "g")])
 
@@ -98,3 +98,21 @@ def test_the_context_summary_reaches_every_reviewer():
     run_reviews(jobs=[ReviewJob(r, FakeType("test-gap"), "m1", [])], workdir="/wd", base="b",
                 owner="o", repo="r", number=1, context="SUMMARY")
     assert r.calls[0]["context"] == "SUMMARY"
+
+
+def test_run_reviews_passes_the_injected_runner_to_each_reviewer():
+    seen = []
+
+    class RunnerReviewer:
+        name = "fake"
+
+        def review(self, *, runner, **kw):
+            seen.append(runner)
+            return Payload(body="b", comments=[])
+
+    sentinel = object()
+    run_reviews(
+        jobs=[ReviewJob(RunnerReviewer(), FakeType("test-gap"), "m", [])],
+        workdir="/wd", base="main", owner="o", repo="r", number=1, runner=sentinel,
+    )
+    assert seen == [sentinel]

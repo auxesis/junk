@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from pr_review.attribution import JobRecord
 from pr_review.collate import Collator, DeterministicMergeCollator, Job
 from pr_review.payload import Payload, Source
+from pr_review.reviewers._run import run_cli_json
 from pr_review.reviewers.base import Reviewer
 from pr_review.review_types.base import ReviewType
 
@@ -45,6 +46,7 @@ def run_reviews(
     collator: Collator | None = None,
     max_workers: int | None = None,
     context: str = "",
+    runner=run_cli_json,
 ) -> RunResult:
     collator = collator or DeterministicMergeCollator()
 
@@ -55,7 +57,7 @@ def run_reviews(
             payload = job.reviewer.review(
                 workdir=workdir, base=base, owner=owner, repo=repo, number=number,
                 review_type=job.review_type, model=job.model, extra_flags=job.extra_flags,
-                context=context,
+                context=context, runner=runner,
             )
             for comment in payload.comments:
                 comment.sources = [source]

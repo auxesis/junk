@@ -157,6 +157,7 @@ def run_cli_reviewer(
     base: str,
     review_type: ReviewType,
     context: str = "",
+    runner: Callable[..., Payload] = run_cli_json,
 ) -> Payload:
     def build(payload_path: str) -> str:
         return build_review_prompt(
@@ -164,4 +165,4 @@ def run_cli_reviewer(
             payload_path=payload_path, review_type=review_type, context=context,
         )
 
-    return run_cli_payload(cmd_prefix, build, workdir=workdir)
+    return runner(cmd_prefix, build, workdir=workdir, parse=parse_payload)

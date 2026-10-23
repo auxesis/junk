@@ -162,3 +162,42 @@ def test_cli_default_model_tracks_the_claude_reviewer():
     from pr_review.cli import DEFAULT_MODEL
 
     assert DEFAULT_MODEL == get_reviewer("claude").default_model
+
+
+def test_review_forwards_an_injected_runner_to_run_cli_reviewer(monkeypatch):
+    from pr_review.reviewers import base
+    from pr_review.payload import Payload
+
+    seen = {}
+
+    def fake_run_cli_reviewer(cmd, **kw):
+        seen.update(kw)
+        return Payload(body="b", comments=[])
+
+    monkeypatch.setattr(base, "run_cli_reviewer", fake_run_cli_reviewer)
+    sentinel = object()
+    get_reviewer("claude").review(
+        workdir="/wd", base="abc", owner="o", repo="r", number=1,
+        review_type=get_review_type("test-gap"), model="m", extra_flags=[],
+        runner=sentinel,
+    )
+    assert seen["runner"] is sentinel
+
+
+def test_run_cli_reviewer_calls_the_injected_runner_with_parse_payload():
+    from pr_review.payload import parse_payload
+    from pr_review.reviewers._run import run_cli_reviewer
+
+    calls = []
+
+    def fake_runner(cmd, build, *, workdir, parse):
+        calls.append((list(cmd), workdir, parse, build("/p")))
+        return "result"
+
+    out = run_cli_reviewer(
+        ["agent"], workdir="/wd", owner="o", repo="r", number=1, base="abc",
+        review_type=get_review_type("test-gap"), runner=fake_runner,
+    )
+    assert out == "result"
+    assert calls[0][:3] == (["agent"], "/wd", parse_payload)
+    assert "/p" in calls[0][3]

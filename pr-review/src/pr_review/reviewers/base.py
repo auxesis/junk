@@ -4,7 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 
 from pr_review.payload import Payload
-from pr_review.reviewers._run import run_cli_reviewer
+from pr_review.reviewers._run import run_cli_json, run_cli_reviewer
 from pr_review.review_types.base import ReviewType
 
 _REGISTRY: dict[str, "Reviewer"] = {}
@@ -36,11 +36,13 @@ class Reviewer(ABC):
         model: str,
         extra_flags: list[str],
         context: str = "",
+        runner=run_cli_json,
     ) -> Payload:
         return run_cli_reviewer(
             self.command(model, extra_flags),
             workdir=workdir, owner=owner, repo=repo, number=number,
             base=base, review_type=review_type, context=context,
+            runner=runner,
         )
 
 
