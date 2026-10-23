@@ -137,3 +137,29 @@ def test_destroy_vm_never_raises():
         raise FileNotFoundError("coop")
 
     destroy_vm("vm1", runner=boom)
+
+
+def test_create_vm_error_includes_coop_stderr():
+    def runner(cmd, **kw):
+        return SimpleNamespace(returncode=2, stdout="", stderr="no free port\n")
+
+    with pytest.raises(CoopUnavailable, match="no free port"):
+        create_vm("/clone", "n", vcpus=2, mem=4096, runner=runner)
+
+
+def test_install_ssh_alias_raises_on_nonzero_exit_with_stderr():
+    def runner(cmd, **kw):
+        return SimpleNamespace(returncode=1, stdout="", stderr="unknown vm")
+
+    with pytest.raises(CoopUnavailable, match="unknown vm"):
+        install_ssh_alias("vm1", runner=runner)
+
+
+def test_create_vm_and_install_ssh_alias_wrap_oserror():
+    def runner(cmd, **kw):
+        raise FileNotFoundError("coop")
+
+    with pytest.raises(CoopUnavailable, match="coop setup"):
+        create_vm("/clone", "n", vcpus=2, mem=4096, runner=runner)
+    with pytest.raises(CoopUnavailable, match="coop setup"):
+        install_ssh_alias("vm1", runner=runner)

@@ -59,6 +59,22 @@ def vm_name(owner: str, repo: str, number: int, *, suffix: str | None = None) ->
     return "-".join(["pr-review", _slug(owner), _slug(repo), str(number), suffix])
 
 
+def _run_checked(
+    cmd: list[str], runner: Callable[..., object], what: str
+) -> None:
+    """Run a coop command; raise CoopUnavailable with coop's own error text on failure."""
+    try:
+        result = runner(cmd, capture_output=True, text=True)
+    except OSError as e:
+        raise CoopUnavailable(
+            f"{what} could not run coop ({e}). Run: coop setup"
+        ) from e
+    if result.returncode != 0:
+        detail = (getattr(result, "stderr", "") or "").strip()
+        message = f"{what} failed with exit status {result.returncode}"
+        raise CoopUnavailable(f"{message}: {detail}" if detail else message)
+
+
 def create_vm(
     workdir: str,
     name: str,
@@ -68,7 +84,7 @@ def create_vm(
     runner: Callable[..., object] = subprocess.run,
 ) -> None:
     """Boot a fresh VM named `name` with `workdir` mounted; raise if coop fails."""
-    result = runner(
+    _run_checked(
         [
             "coop", "up", workdir,
             "--name", name,
@@ -77,22 +93,16 @@ def create_vm(
             "--vcpus", str(vcpus),
             "--mem", str(mem),
         ],
-        capture_output=True,
-        text=True,
+        runner,
+        "coop up",
     )
-    if result.returncode != 0:
-        raise CoopUnavailable(f"coop up failed with exit status {result.returncode}")
 
 
 def install_ssh_alias(
     name: str, *, runner: Callable[..., object] = subprocess.run
 ) -> None:
-    """Install the ssh alias for the VM `name`."""
-    result = runner(["coop", "ssh-config", name], capture_output=True, text=True)
-    if result.returncode != 0:
-        raise CoopUnavailable(
-            f"coop ssh-config failed with exit status {result.returncode}"
-        )
+    """Install the ssh alias for the VM `name`; raise if coop fails."""
+    _run_checked(["coop", "ssh-config", name], runner, "coop ssh-config")
 
 
 def destroy_vm(name: str, *, runner: Callable[..., object] = subprocess.run) -> None:
