@@ -115,11 +115,23 @@ def install_ssh_alias(
 
 
 def destroy_vm(name: str, *, runner: Callable[..., object] = subprocess.run) -> None:
-    """Destroy the VM `name`; never raises, so it is safe in a `finally` block."""
+    """Destroy the VM `name`; never raises, so it is safe in a `finally` block.
+
+    A failure prints a warning to stderr, because the VM holds credentials.
+    """
     try:
-        runner(["coop", "destroy", name], capture_output=True, text=True)
-    except Exception:
-        pass
+        result = runner(["coop", "destroy", name], capture_output=True, text=True)
+        if result.returncode == 0:
+            return
+        detail = (getattr(result, "stderr", "") or "").strip()
+        reason = f": {detail}" if detail else ""
+    except Exception as e:
+        reason = f": {e}"
+    print(
+        f"pr-review: could not destroy VM {name}; "
+        f"remove it manually with: coop destroy {name}{reason}",
+        file=sys.stderr,
+    )
 
 
 GUEST_WORKDIR = "/workspace"

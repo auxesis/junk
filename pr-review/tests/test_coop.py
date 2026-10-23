@@ -131,14 +131,27 @@ def test_destroy_vm_runs_destroy():
     assert seen[0] == ["coop", "destroy", "vm1"]
 
 
-def test_destroy_vm_never_raises():
-    _, runner = _recording(returncode=1)
-    destroy_vm("vm1", runner=runner)
+def test_destroy_vm_warns_on_nonzero_exit_without_raising(capsys):
+    def runner(cmd, **kw):
+        return SimpleNamespace(returncode=1, stdout="", stderr="busy")
 
+    destroy_vm("vm1", runner=runner)
+    err = capsys.readouterr().err
+    assert "vm1" in err and "coop destroy vm1" in err and "busy" in err
+
+
+def test_destroy_vm_warns_when_runner_raises_without_raising(capsys):
     def boom(cmd, **kw):
         raise FileNotFoundError("coop")
 
     destroy_vm("vm1", runner=boom)
+    assert "vm1" in capsys.readouterr().err
+
+
+def test_destroy_vm_is_silent_on_success(capsys):
+    _, runner = _recording()
+    destroy_vm("vm1", runner=runner)
+    assert capsys.readouterr().err == ""
 
 
 def test_create_vm_error_includes_coop_stderr():
