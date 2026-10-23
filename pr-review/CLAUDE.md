@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` holds 28 files, one per `src/pr_review/` module (375 tests total):
+`tests/` contains 29 files, one per `src/pr_review/` module (414 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -63,8 +63,12 @@ fake, not the real subprocess.
   (including that it names the base as a bare commit, never `origin/<ref>`, and
   that a passed-in context summary sits before the instructions while its
   absence leaves the prompt unchanged), and `_review_env` (trusts the clone's
-  `mise.toml`). The `review()` calls shell out to `claude`/`codex` and are not
-  unit-tested; the shell around them is covered by **test_run.py**.
+  `mise.toml`). The shared review path threads an injectable `runner` (default
+  `run_cli_json`) through `run_cli_reviewer`. `run_cli_reviewer` passes
+  `parse=parse_payload`. Each reviewer's `review()` forwards an injected
+  runner. The real `review()`
+  calls shell out to `claude`/`codex` and are not unit-tested; the shell around
+  them is covered by **test_run.py**.
 - **test_run.py** — the shared agent runner in `reviewers/_run.py`. `run_cli_payload`
   with an injected fake runner: the payload file, not the exit status, is the
   contract — a valid payload survives a non-zero exit (the `codex` EAGAIN panic:
@@ -181,7 +185,25 @@ fake, not the real subprocess.
   `RunResult.failures` (not raised); partial failures keep the successes and are
   recorded in `RunResult.jobs`; every comment carries its job's `Source`; and an
   all-failed run yields `payload=None`; and a context summary passed to
-  `run_reviews` reaches every job's `review()` call.
+  `run_reviews` reaches every job's `review()` call. An injected `runner`
+  also reaches every job's `review()` call unchanged.
+- **test_coop.py** — the isolated-VM helpers in `coop.py`, with injected fake
+  runners (no `coop`, no ssh). `vm_size` scales with the job count between a
+  floor and a ceiling, and treats zero jobs as the floor. `vm_name` sanitises
+  its input and adds a random four-character hex suffix. `preflight` raises
+  `CoopUnavailable` when the `coop` binary, the template, or the Claude proxy is
+  missing, including when `coop proxy status` exits non-zero. `create_vm` and
+  `install_ssh_alias` build the exact `coop up` and `coop ssh-config` argv,
+  with no `--exclude-git` and no `--no-agents`. They raise on a non-zero exit
+  with coop's stderr in the message, and they wrap an `OSError`. `destroy_vm`
+  never raises, even on a non-zero exit or a raising runner. `CoopExecutor.run_json`
+  runs over injected ssh `agent_runner` and `cat_runner`. It runs `ssh coop-<name>`
+  with the remote command `mkdir -p .../.git/pr-review && cd /workspace &&
+  MISE_TRUSTED_CONFIG_PATHS=/workspace`. It reads the payload from
+  `/workspace/.git/pr-review/`. An empty payload raises `RuntimeError`. A
+  non-zero `cat` exit raises with stderr. A custom `parse` is applied.
+  `HostExecutor.run_json` delegates to `run_cli_json`. `guest_path` is the
+  identity on the host and maps the clone prefix to `/workspace` on coop.
 - **test_cli.py** — `config_from_args` option parsing (`--model agent[=models]`
   repeatable → `(agent, model)` pairs, including one value that mixes bare
   agents with `agent=models` groups, `--review-type` lists, per-agent
@@ -210,7 +232,15 @@ fake, not the real subprocess.
   the prompt summary reaches both `run_reviews` and `build_collator`, the
   filter's output reaches `stage.apply` with the `answers` map, and the
   `RunRecord` carries the stack line (noting the unfetched pull request), the
-  context-loaded line and the not-posted list.
+  context-loaded line and the not-posted list. The isolation wiring is tested
+  with `coop` faked. `--no-isolation` parses. Isolation is the default and
+  builds a `CoopExecutor`. Under the flag, a host executor runs and `coop` is
+  never touched. `preflight` aborts before the clone when a prerequisite is
+  missing. `create_vm` and `destroy_vm` each run once, and the VM is destroyed
+  in the `finally`, also after a failed `coop up`. Under `--keep-clone`, the VM
+  is kept and named. The executor's `guest_path` translates the context path in
+  the prompts. The executor's `run_json` reaches `run_reviews`,
+  `build_collator`, and `build_context_filter`.
 - **test_prompts.py** — `select_from_menu` (numbers / names / empty-default /
   dedupe / invalid), `choose_review_types` (wraps it), and `choose_agent_models`
   (pick agents, then per-agent models with defaults). The `/dev/tty` wrappers are
