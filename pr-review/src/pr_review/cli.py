@@ -358,16 +358,21 @@ def main(argv: list[str] | None = None) -> int:
             missing = len(ctx.stack) - len(fetched)
             ctx.stack = fetched
             context_path = write_context_file(checkout.workdir, render_context_file(ctx))
-            summary = prompt_summary(ctx, context_path)
 
         if cfg.isolation:
             vcpus, mem = coop.vm_size(len(jobs))
             vm = coop.vm_name(cfg.target.owner, cfg.target.repo, cfg.target.number)
             coop.create_vm(checkout.workdir, vm, vcpus=vcpus, mem=mem)
             coop.install_ssh_alias(vm)
-            executor = coop.CoopExecutor(vm)
+            executor = coop.CoopExecutor(vm, host_workdir=checkout.workdir)
         else:
             executor = coop.HostExecutor()
+
+        # Agents read the context file from where they run, so prompts carry
+        # the executor's path for it, not the host clone's.
+        prompt_context_path = executor.guest_path(context_path)
+        if ctx:
+            summary = prompt_summary(ctx, prompt_context_path)
 
         print(
             f"pr-review: {cfg.target.slug}#{cfg.target.number} "
@@ -378,7 +383,7 @@ def main(argv: list[str] | None = None) -> int:
                                 runner=executor.run_json)
         stage = build_plain_language_stage(cfg, workdir=checkout.workdir, base=checkout.base)
         context_filter = (
-            build_context_filter(cfg, workdir=checkout.workdir, context_path=context_path,
+            build_context_filter(cfg, workdir=checkout.workdir, context_path=prompt_context_path,
                                  runner=executor.run_json) if ctx else None
         )
         result = run_reviews(

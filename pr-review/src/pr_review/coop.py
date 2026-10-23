@@ -165,6 +165,9 @@ def _ssh_cat(name: str, path: str) -> str:
 class HostExecutor:
     """Run agents as host subprocesses (the default, no isolation)."""
 
+    def guest_path(self, host_path: str) -> str:
+        return host_path
+
     def run_json(
         self,
         command: Sequence[str],
@@ -183,12 +186,21 @@ class CoopExecutor:
         self,
         name: str,
         *,
+        host_workdir: str,
         agent_runner: Callable[..., int] = _ssh_agent_runner,
         cat_runner: Callable[[str, str], str] = _ssh_cat,
     ) -> None:
         self.name = name
+        self._host_workdir = host_workdir.rstrip("/")
         self._agent_runner = agent_runner
         self._cat_runner = cat_runner
+
+    def guest_path(self, host_path: str) -> str:
+        """Translate a path inside the host clone to the same path in the guest."""
+        prefix = self._host_workdir
+        if host_path and host_path.startswith(prefix + "/"):
+            return GUEST_WORKDIR + host_path[len(prefix):]
+        return host_path
 
     def run_json(
         self,

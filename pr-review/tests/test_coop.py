@@ -3,7 +3,9 @@ from types import SimpleNamespace
 import pytest
 
 from pr_review.coop import (
+    CoopExecutor,
     CoopUnavailable,
+    HostExecutor,
     create_vm,
     destroy_vm,
     install_ssh_alias,
@@ -179,7 +181,7 @@ def test_coop_executor_runs_over_ssh_and_reads_the_guest_payload():
         calls.append(("cat", name, path))
         return json.dumps({"body": "b", "comments": []})
 
-    ex = CoopExecutor("pr-review-o-r-1-ab12",
+    ex = CoopExecutor("pr-review-o-r-1-ab12", host_workdir="/host",
                       agent_runner=agent_runner, cat_runner=cat_runner)
     out = ex.run_json(["claude", "--print"], lambda p: f"PROMPT->{p}", workdir="/ignored")
     assert out == {"body": "b", "comments": []}
@@ -196,7 +198,7 @@ def test_coop_executor_reports_an_empty_payload():
     import pytest
     from pr_review.coop import CoopExecutor
 
-    ex = CoopExecutor("vm", agent_runner=lambda *a, **k: 0,
+    ex = CoopExecutor("vm", host_workdir="/host", agent_runner=lambda *a, **k: 0,
                       cat_runner=lambda name, path: "")
     with pytest.raises(RuntimeError, match="empty payload"):
         ex.run_json(["claude"], lambda p: p, workdir="/x")
@@ -220,8 +222,7 @@ def test_coop_executor_remote_command_creates_dir_before_cd():
     from pr_review.coop import CoopExecutor
 
     seen = []
-    ex = CoopExecutor(
-        "vm",
+    ex = CoopExecutor("vm", host_workdir="/host",
         agent_runner=lambda cmd, prompt, *, workdir: seen.append(cmd) or 0,
         cat_runner=lambda name, path: "{}",
     )
@@ -236,7 +237,7 @@ def test_coop_executor_remote_command_creates_dir_before_cd():
 def test_coop_executor_payload_wins_over_nonzero_status():
     from pr_review.coop import CoopExecutor
 
-    ex = CoopExecutor("vm", agent_runner=lambda *a, **k: 101,
+    ex = CoopExecutor("vm", host_workdir="/host", agent_runner=lambda *a, **k: 101,
                       cat_runner=lambda name, path: '{"ok": true}')
     assert ex.run_json(["codex"], lambda p: p, workdir="/x") == {"ok": True}
 
@@ -244,7 +245,7 @@ def test_coop_executor_payload_wins_over_nonzero_status():
 def test_coop_executor_applies_custom_parse():
     from pr_review.coop import CoopExecutor
 
-    ex = CoopExecutor("vm", agent_runner=lambda *a, **k: 0,
+    ex = CoopExecutor("vm", host_workdir="/host", agent_runner=lambda *a, **k: 0,
                       cat_runner=lambda name, path: "  raw text \n")
     assert ex.run_json(["x"], lambda p: p, workdir="/x", parse=str.strip) == "raw text"
 
@@ -271,3 +272,14 @@ def test_ssh_cat_returns_stdout_on_success(monkeypatch):
         lambda *a, **k: subprocess.CompletedProcess(a, 0, "data", ""),
     )
     assert coop._ssh_cat("vm", "/p") == "data"
+
+
+def test_guest_path_maps_the_clone_to_the_guest_workdir():
+    ex = CoopExecutor("vm", host_workdir="/tmp/clone/")
+    assert ex.guest_path("/tmp/clone/.git/pr-review/x") == "/workspace/.git/pr-review/x"
+    assert ex.guest_path("/elsewhere/x") == "/elsewhere/x"
+    assert ex.guest_path("") == ""
+
+
+def test_host_executor_guest_path_is_the_identity():
+    assert HostExecutor().guest_path("/tmp/clone/x") == "/tmp/clone/x"

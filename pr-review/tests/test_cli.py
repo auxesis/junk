@@ -502,7 +502,7 @@ def test_main_with_context_prunes_the_stack_and_threads_it_through(monkeypatch):
     assert [e.number for e in ctx.stack] == [8]
     assert "### #8 Locking" in seen["context_file"] and "#9" not in seen["context_file"]
     summary = seen["review_context"]
-    assert "/wd/.git/pr-review/pr-context.md" in summary and "- #8 Locking" in summary
+    assert "/workspace/.git/pr-review/pr-context.md" in summary and "- #8 Locking" in summary
     assert seen["collator_context"] == summary
     assert seen["filtered"] is reviewed
     assert seen["stage"] == (filtered, {11: "Done in #8."})
@@ -598,3 +598,46 @@ def test_keep_clone_keeps_the_vm_and_prints_its_name(monkeypatch, coop_calls, ca
 
     assert coop_calls["destroy"] == []
     assert "pr-review: kept VM vm-1" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("extra, expected, executor_name", [
+    ([], "/workspace/.git/pr-review/pr-context.md", "CoopExecutor"),
+    (["--no-isolation"], "/wd/.git/pr-review/pr-context.md", "HostExecutor"),
+])
+def test_prompts_carry_the_executors_path_and_every_stage_gets_its_runner(
+    monkeypatch, extra, expected, executor_name,
+):
+    from pr_review.context.model import PullRequestContext
+    from pr_review.orchestrator import RunResult
+
+    cli = _patch_run(monkeypatch, payload=None, stage=None)
+    ctx = PullRequestContext(number=1, title="T", body="", author="ada", issues=[], comments=[],
+                             threads=[], stack=[], stack_position=None, failed=[])
+    monkeypatch.setattr(cli, "gather_context", lambda gh, number: ctx)
+    monkeypatch.setattr(cli, "write_context_file", lambda workdir, text: "/wd/.git/pr-review/pr-context.md")
+    seen = {}
+
+    def build_collator(cfg, *, workdir, base, context, runner):
+        seen["collator"] = (context, runner)
+        return object()
+
+    def build_filter(cfg, *, workdir, context_path, runner):
+        seen["filter"] = (context_path, runner)
+        return None
+
+    def run_reviews(**kw):
+        seen["review"] = (kw["context"], kw["runner"])
+        return RunResult(payload=None, failures=[], jobs=[])
+
+    monkeypatch.setattr(cli, "build_collator", build_collator)
+    monkeypatch.setattr(cli, "build_context_filter", build_filter)
+    monkeypatch.setattr(cli, "run_reviews", run_reviews)
+
+    cli.main([*_ARGS[:-1], *extra, "org/repo#1"])
+
+    assert seen["filter"][0] == expected
+    assert expected in seen["collator"][0] and seen["collator"][0] == seen["review"][0]
+    runners = {seen["collator"][1], seen["filter"][1], seen["review"][1]}
+    assert len(runners) == 1
+    runner = runners.pop()
+    assert type(runner.__self__).__name__ == executor_name
