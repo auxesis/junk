@@ -2,7 +2,15 @@ from types import SimpleNamespace
 
 import pytest
 
-from pr_review.coop import CoopUnavailable, preflight, vm_name, vm_size
+from pr_review.coop import (
+    CoopUnavailable,
+    create_vm,
+    destroy_vm,
+    install_ssh_alias,
+    preflight,
+    vm_name,
+    vm_size,
+)
 
 
 def test_vm_size_scales_with_jobs_within_caps():
@@ -77,3 +85,55 @@ def test_preflight_raises_when_proxy_status_fails():
 
     with pytest.raises(CoopUnavailable, match="coop proxy setup"):
         preflight(runner=runner)
+
+
+def _recording(returncode=0):
+    seen = []
+
+    def runner(cmd, **kw):
+        seen.append(cmd)
+        return SimpleNamespace(returncode=returncode, stdout="")
+
+    return seen, runner
+
+
+def test_create_vm_builds_the_right_argv():
+    seen, runner = _recording()
+    create_vm("/clone", "pr-review-o-r-1-ab12", vcpus=3, mem=4608, runner=runner)
+    cmd = seen[0]
+    assert cmd[:2] == ["coop", "up"]
+    assert "/clone" in cmd
+    assert "--name" in cmd and "pr-review-o-r-1-ab12" in cmd
+    assert "--new-instance" in cmd and "--no-prompt" in cmd
+    assert "--vcpus" in cmd and "3" in cmd
+    assert "--mem" in cmd and "4608" in cmd
+    assert "--exclude-git" not in cmd
+    assert "--no-agents" not in cmd
+
+
+def test_create_vm_raises_on_nonzero_exit():
+    _, runner = _recording(returncode=1)
+    with pytest.raises(CoopUnavailable):
+        create_vm("/clone", "n", vcpus=2, mem=4096, runner=runner)
+
+
+def test_install_ssh_alias_runs_ssh_config():
+    seen, runner = _recording()
+    install_ssh_alias("vm1", runner=runner)
+    assert seen[0] == ["coop", "ssh-config", "vm1"]
+
+
+def test_destroy_vm_runs_destroy():
+    seen, runner = _recording()
+    destroy_vm("vm1", runner=runner)
+    assert seen[0] == ["coop", "destroy", "vm1"]
+
+
+def test_destroy_vm_never_raises():
+    _, runner = _recording(returncode=1)
+    destroy_vm("vm1", runner=runner)
+
+    def boom(cmd, **kw):
+        raise FileNotFoundError("coop")
+
+    destroy_vm("vm1", runner=boom)

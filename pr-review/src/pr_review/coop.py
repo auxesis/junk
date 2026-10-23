@@ -57,3 +57,47 @@ def vm_name(owner: str, repo: str, number: int, *, suffix: str | None = None) ->
     """Return a VM name safe for coop: `pr-review-<owner>-<repo>-<n>-<suffix>`."""
     suffix = suffix if suffix is not None else secrets.token_hex(2)
     return "-".join(["pr-review", _slug(owner), _slug(repo), str(number), suffix])
+
+
+def create_vm(
+    workdir: str,
+    name: str,
+    *,
+    vcpus: int,
+    mem: int,
+    runner: Callable[..., object] = subprocess.run,
+) -> None:
+    """Boot a fresh VM named `name` with `workdir` mounted; raise if coop fails."""
+    result = runner(
+        [
+            "coop", "up", workdir,
+            "--name", name,
+            "--new-instance",
+            "--no-prompt",
+            "--vcpus", str(vcpus),
+            "--mem", str(mem),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise CoopUnavailable(f"coop up failed with exit status {result.returncode}")
+
+
+def install_ssh_alias(
+    name: str, *, runner: Callable[..., object] = subprocess.run
+) -> None:
+    """Install the ssh alias for the VM `name`."""
+    result = runner(["coop", "ssh-config", name], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise CoopUnavailable(
+            f"coop ssh-config failed with exit status {result.returncode}"
+        )
+
+
+def destroy_vm(name: str, *, runner: Callable[..., object] = subprocess.run) -> None:
+    """Destroy the VM `name`; never raises, so it is safe in a `finally` block."""
+    try:
+        runner(["coop", "destroy", name], capture_output=True, text=True)
+    except Exception:
+        pass
