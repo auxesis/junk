@@ -163,3 +163,54 @@ def test_create_vm_and_install_ssh_alias_wrap_oserror():
         create_vm("/clone", "n", vcpus=2, mem=4096, runner=runner)
     with pytest.raises(CoopUnavailable, match="coop setup"):
         install_ssh_alias("vm1", runner=runner)
+
+
+def test_coop_executor_runs_over_ssh_and_reads_the_guest_payload():
+    import json
+    from pr_review.coop import CoopExecutor
+
+    calls = []
+
+    def agent_runner(cmd, prompt, *, workdir):
+        calls.append(("agent", cmd, prompt, workdir))
+        return 0
+
+    def cat_runner(name, path):
+        calls.append(("cat", name, path))
+        return json.dumps({"body": "b", "comments": []})
+
+    ex = CoopExecutor("pr-review-o-r-1-ab12",
+                      agent_runner=agent_runner, cat_runner=cat_runner)
+    out = ex.run_json(["claude", "--print"], lambda p: f"PROMPT->{p}", workdir="/ignored")
+    assert out == {"body": "b", "comments": []}
+    agent_cmd = calls[0][1]
+    assert agent_cmd[0] == "ssh" and "coop-pr-review-o-r-1-ab12" in agent_cmd
+    guest_payload = [c for c in calls if c[0] == "cat"][0][2]
+    assert guest_payload.startswith("/workspace/.git/pr-review/")
+    assert "MISE_TRUSTED_CONFIG_PATHS=/workspace" in " ".join(agent_cmd)
+    assert "/workspace" in " ".join(agent_cmd)
+    assert calls[0][2] == f"PROMPT->{guest_payload}"
+
+
+def test_coop_executor_reports_an_empty_payload():
+    import pytest
+    from pr_review.coop import CoopExecutor
+
+    ex = CoopExecutor("vm", agent_runner=lambda *a, **k: 0,
+                      cat_runner=lambda name, path: "")
+    with pytest.raises(RuntimeError, match="empty payload"):
+        ex.run_json(["claude"], lambda p: p, workdir="/x")
+
+
+def test_host_executor_delegates_to_run_cli_json(monkeypatch):
+    from pr_review import coop
+
+    seen = {}
+
+    def fake(command, build_prompt, *, workdir, parse):
+        seen.update(command=command, workdir=workdir, parse=parse)
+        return "ok"
+
+    monkeypatch.setattr(coop, "run_cli_json", fake)
+    assert coop.HostExecutor().run_json(["x"], lambda p: p, workdir="/w") == "ok"
+    assert seen["command"] == ["x"] and seen["workdir"] == "/w"
