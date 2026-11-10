@@ -1,1 +1,5 @@
 .DS_Store
+
+# SolidCraft backup and lock files
+*.sc.bak
+.~*.sc.lock
