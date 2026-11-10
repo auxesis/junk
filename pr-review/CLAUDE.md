@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` contains 29 files, one per `src/pr_review/` module (414 tests total):
+`tests/` contains 30 files, one per `src/pr_review/` module (423 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -85,6 +85,15 @@ fake, not the real subprocess.
   passthrough, empty-jobs placeholder, two-job merge (sorted provenance headers +
   concatenated comments), and cap re-application with an overflow section across
   the merged set. The overflow heading is "Other findings not posted as comments".
+- **test_diff_guard.py** — `changed_paths` builds the `git diff --name-only
+  <base>...HEAD` call in the workdir through a fake runner, and drops blank
+  lines. `guard_off_diff` keeps a comment whose path is in the diff. It moves
+  an off-diff comment to a body bullet under "## Other findings not posted as
+  comments". It appends to an existing section rather than repeat the heading.
+  It preserves the payload's event, its replies, and each comment's sources.
+  GitHub rejects the whole review (422 "Path could not be resolved") when any
+  comment names a file outside the diff. So `cli.main` runs this guard before
+  it posts.
 - **test_checkout.py** — `clone_pr` builds the exact `gh api` (base ref + sha) /
   `git clone --filter=blob:none` / `git fetch refs/pull/<n>/head` / `git fetch
   <base-sha>` / `git checkout --detach` sequence with the right `cwd`, via an

@@ -48,6 +48,11 @@ def _patch_run(monkeypatch, *, payload, stage):
     monkeypatch.setattr(
         cli, "build_plain_language_stage", lambda cfg, *, workdir, base: stage,
     )
+    # Keep every comment's path "in the diff" by default, with no real git call.
+    monkeypatch.setattr(
+        cli, "changed_paths",
+        lambda workdir, base: {c.path for c in payload.comments} if payload else set(),
+    )
     monkeypatch.setattr(cli.output, "tty_available", lambda: False)
     return cli
 
@@ -368,6 +373,33 @@ def test_the_plain_language_report_prints_after_show_review(monkeypatch, capsys)
     err = capsys.readouterr().err
     assert "SHOW_REVIEW_CALLED" in err and "a plain-language warning" in err
     assert err.index("SHOW_REVIEW_CALLED") < err.index("a plain-language warning")
+
+
+def test_main_moves_an_off_diff_comment_to_the_body_before_posting(monkeypatch, capsys):
+    from pr_review.payload import Comment, Payload
+    from pr_review.plain_language.stage import StageResult
+
+    in_diff = Comment("in.rs", 3, "**keep**\n\n**Impact:** y\n\n**Fix:** z")
+    off_diff = Comment("gone.rs", 9, "**dropped**\n\n**Impact:** y\n\n**Fix:** z")
+    payload = Payload(body="Verdict.", comments=[in_diff, off_diff])
+
+    class FakeStage:
+        def apply(self, payload, answers=None):
+            return StageResult(payload=payload, remaining={}, body_remaining=[])
+
+    cli = _patch_run(monkeypatch, payload=payload, stage=FakeStage())
+    monkeypatch.setattr(cli, "changed_paths", lambda workdir, base: {"in.rs"})
+    posted = {}
+    monkeypatch.setattr(
+        cli.output, "dispatch",
+        lambda mode, target, p, **kw: posted.setdefault("payload", p) or 0,
+    )
+    cli.main(["--model", "claude", "--review-type", "test-gap", "org/repo#1"])
+
+    p = posted["payload"]
+    assert [c.path for c in p.comments] == ["in.rs"]
+    assert "gone.rs:9" in p.body
+    assert "not in the diff" in capsys.readouterr().err
 
 
 def test_config_context_defaults():

@@ -11,6 +11,7 @@ from pr_review.checkout import cleanup, clone_pr, write_context_file
 from pr_review.collate import Collator, DeterministicMergeCollator
 from pr_review.context.filter import ContextFilter, FilterResult, answers_by_id
 from pr_review.context.gather import gather_context
+from pr_review.diff_guard import changed_paths, guard_off_diff
 from pr_review.context.github import GitHub
 from pr_review.context.render import (
     describe_dropped, describe_loaded, describe_stack, prompt_summary, render_context_file,
@@ -408,6 +409,19 @@ def main(argv: list[str] | None = None) -> int:
                         file=sys.stderr,
                     )
                     staged = check_payload(filtered.payload)
+            # A comment on a path outside the diff makes GitHub reject the whole
+            # review (422), so move those to the body while the clone still exists.
+            try:
+                diff_paths = changed_paths(checkout.workdir, checkout.base)
+            except Exception as e:
+                print(f"pr-review: could not list the changed files ({e}); "
+                      "posting every comment.", file=sys.stderr)
+            else:
+                staged.payload, off_diff = guard_off_diff(staged.payload, diff_paths)
+                for c in off_diff:
+                    print(f"pr-review: {c.path}:{c.line} is not in the diff of "
+                          f"{cfg.target.slug}#{cfg.target.number}; moved it to the review body.",
+                          file=sys.stderr)
     finally:
         if cfg.keep:
             print(f"pr-review: kept checkout at {checkout.workdir}", file=sys.stderr)
