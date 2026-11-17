@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` contains 30 files, one per `src/pr_review/` module (423 tests total):
+`tests/` contains 30 files, one per `src/pr_review/` module (421 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -197,20 +197,21 @@ fake, not the real subprocess.
   `run_reviews` reaches every job's `review()` call. An injected `runner`
   also reaches every job's `review()` call unchanged.
 - **test_coop.py** — the isolated-VM helpers in `coop.py`, with injected fake
-  runners (no `coop`, no ssh). `vm_size` scales with the job count between a
+  runners (no `coop` process runs). `vm_size` scales with the job count between a
   floor and a ceiling, and treats zero jobs as the floor. `vm_name` sanitises
   its input and adds a random four-character hex suffix. `preflight` raises
   `CoopUnavailable` when the `coop` binary, the template, or the Claude proxy is
-  missing, including when `coop proxy status` exits non-zero. `create_vm` and
-  `install_ssh_alias` build the exact `coop up` and `coop ssh-config` argv,
-  with no `--exclude-git` and no `--no-agents`. They raise on a non-zero exit
-  with coop's stderr in the message, and they wrap an `OSError`. `destroy_vm`
-  never raises, even on a non-zero exit or a raising runner. `CoopExecutor.run_json`
-  runs over injected ssh `agent_runner` and `cat_runner`. It runs `ssh coop-<name>`
-  with the remote command `mkdir -p .../.git/pr-review && cd /workspace &&
+  missing, including when `coop proxy status` exits non-zero. `create_vm`
+  builds the exact `coop up` argv, with no `--exclude-git` and no `--no-agents`.
+  It raises on a non-zero exit with coop's stderr in the message, and it wraps
+  an `OSError`. `destroy_vm` never raises, even on a non-zero exit or a raising
+  runner. `CoopExecutor.run_json` runs over an injected `agent_runner` and
+  `cat_runner`. It runs `coop shell <name> -- sh -c` with the remote command
+  `mkdir -p .../.git/pr-review && cd /workspace &&
   MISE_TRUSTED_CONFIG_PATHS=/workspace`. It reads the payload from
-  `/workspace/.git/pr-review/`. An empty payload raises `RuntimeError`. A
-  non-zero `cat` exit raises with stderr. A custom `parse` is applied.
+  `/workspace/.git/pr-review/`. An empty payload raises `RuntimeError`.
+  `_coop_cat` reads the guest file with `coop exec <name> -- cat`, and a
+  non-zero exit raises with stderr. A custom `parse` is applied.
   `HostExecutor.run_json` delegates to `run_cli_json`. `guest_path` is the
   identity on the host and maps the clone prefix to `/workspace` on coop.
 - **test_cli.py** — `config_from_args` option parsing (`--model agent[=models]`

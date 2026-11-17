@@ -364,7 +364,6 @@ def main(argv: list[str] | None = None) -> int:
             vcpus, mem = coop.vm_size(len(jobs))
             vm = coop.vm_name(cfg.target.owner, cfg.target.repo, cfg.target.number)
             coop.create_vm(checkout.workdir, vm, vcpus=vcpus, mem=mem)
-            coop.install_ssh_alias(vm)
             executor = coop.CoopExecutor(vm, host_workdir=checkout.workdir)
         else:
             executor = coop.HostExecutor()

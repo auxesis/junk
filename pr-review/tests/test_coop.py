@@ -8,7 +8,6 @@ from pr_review.coop import (
     HostExecutor,
     create_vm,
     destroy_vm,
-    install_ssh_alias,
     preflight,
     vm_name,
     vm_size,
@@ -119,12 +118,6 @@ def test_create_vm_raises_on_nonzero_exit():
         create_vm("/clone", "n", vcpus=2, mem=4096, runner=runner)
 
 
-def test_install_ssh_alias_runs_ssh_config():
-    seen, runner = _recording()
-    install_ssh_alias("vm1", runner=runner)
-    assert seen[0] == ["coop", "ssh-config", "vm1"]
-
-
 def test_destroy_vm_runs_destroy():
     seen, runner = _recording()
     destroy_vm("vm1", runner=runner)
@@ -162,25 +155,15 @@ def test_create_vm_error_includes_coop_stderr():
         create_vm("/clone", "n", vcpus=2, mem=4096, runner=runner)
 
 
-def test_install_ssh_alias_raises_on_nonzero_exit_with_stderr():
-    def runner(cmd, **kw):
-        return SimpleNamespace(returncode=1, stdout="", stderr="unknown vm")
-
-    with pytest.raises(CoopUnavailable, match="unknown vm"):
-        install_ssh_alias("vm1", runner=runner)
-
-
-def test_create_vm_and_install_ssh_alias_wrap_oserror():
+def test_create_vm_wraps_oserror():
     def runner(cmd, **kw):
         raise FileNotFoundError("coop")
 
     with pytest.raises(CoopUnavailable, match="coop setup"):
         create_vm("/clone", "n", vcpus=2, mem=4096, runner=runner)
-    with pytest.raises(CoopUnavailable, match="coop setup"):
-        install_ssh_alias("vm1", runner=runner)
 
 
-def test_coop_executor_runs_over_ssh_and_reads_the_guest_payload():
+def test_coop_executor_runs_the_agent_with_coop_shell_and_reads_the_guest_payload():
     import json
     from pr_review.coop import CoopExecutor
 
@@ -199,7 +182,7 @@ def test_coop_executor_runs_over_ssh_and_reads_the_guest_payload():
     out = ex.run_json(["claude", "--print"], lambda p: f"PROMPT->{p}", workdir="/ignored")
     assert out == {"body": "b", "comments": []}
     agent_cmd = calls[0][1]
-    assert agent_cmd[0] == "ssh" and "coop-pr-review-o-r-1-ab12" in agent_cmd
+    assert agent_cmd[:6] == ["coop", "shell", "pr-review-o-r-1-ab12", "--", "sh", "-c"]
     guest_payload = [c for c in calls if c[0] == "cat"][0][2]
     assert guest_payload.startswith("/workspace/.git/pr-review/")
     assert "MISE_TRUSTED_CONFIG_PATHS=/workspace" in " ".join(agent_cmd)
@@ -240,8 +223,8 @@ def test_coop_executor_remote_command_creates_dir_before_cd():
         cat_runner=lambda name, path: "{}",
     )
     ex.run_json(["claude", "--print", "a b"], lambda p: p, workdir="/x")
-    assert seen[0][:2] == ["ssh", "coop-vm"]
-    assert seen[0][2] == (
+    assert seen[0][:6] == ["coop", "shell", "vm", "--", "sh", "-c"]
+    assert seen[0][6] == (
         "mkdir -p /workspace/.git/pr-review && cd /workspace && "
         "MISE_TRUSTED_CONFIG_PATHS=/workspace claude --print 'a b'"
     )
@@ -263,28 +246,32 @@ def test_coop_executor_applies_custom_parse():
     assert ex.run_json(["x"], lambda p: p, workdir="/x", parse=str.strip) == "raw text"
 
 
-def test_ssh_cat_raises_with_stderr_on_failure(monkeypatch):
+def test_coop_cat_reads_the_guest_file_with_coop_exec(monkeypatch):
+    import subprocess
+    from pr_review import coop
+
+    seen = []
+
+    def run(cmd, **kw):
+        seen.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, "data", "")
+
+    monkeypatch.setattr(coop.subprocess, "run", run)
+    assert coop._coop_cat("vm", "/workspace/p.json") == "data"
+    assert seen == [["coop", "exec", "vm", "--", "cat", "/workspace/p.json"]]
+
+
+def test_coop_cat_raises_with_stderr_on_failure(monkeypatch):
     import subprocess
     import pytest
     from pr_review import coop
 
     monkeypatch.setattr(
         coop.subprocess, "run",
-        lambda *a, **k: subprocess.CompletedProcess(a, 255, "", "connection refused\n"),
+        lambda *a, **k: subprocess.CompletedProcess(a, 1, "", "No such file or directory\n"),
     )
-    with pytest.raises(RuntimeError, match="exit status 255: connection refused"):
-        coop._ssh_cat("vm", "/workspace/p.json")
-
-
-def test_ssh_cat_returns_stdout_on_success(monkeypatch):
-    import subprocess
-    from pr_review import coop
-
-    monkeypatch.setattr(
-        coop.subprocess, "run",
-        lambda *a, **k: subprocess.CompletedProcess(a, 0, "data", ""),
-    )
-    assert coop._ssh_cat("vm", "/p") == "data"
+    with pytest.raises(RuntimeError, match="exit status 1: No such file or directory"):
+        coop._coop_cat("vm", "/workspace/p.json")
 
 
 def test_guest_path_maps_the_clone_to_the_guest_workdir():

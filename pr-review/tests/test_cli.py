@@ -9,14 +9,13 @@ def coop_calls(monkeypatch):
     """Fake every coop call so no test starts a VM; records what main() did."""
     import pr_review.cli as cli
 
-    calls = {"create": [], "destroy": [], "alias": [], "preflight": 0}
+    calls = {"create": [], "destroy": [], "preflight": 0}
 
     def preflight():
         calls["preflight"] += 1
 
     monkeypatch.setattr(cli.coop, "preflight", preflight)
     monkeypatch.setattr(cli.coop, "create_vm", lambda workdir, name, **kw: calls["create"].append((workdir, name, kw)))
-    monkeypatch.setattr(cli.coop, "install_ssh_alias", lambda name: calls["alias"].append(name))
     monkeypatch.setattr(cli.coop, "destroy_vm", lambda name: calls["destroy"].append(name))
     return calls
 
@@ -576,7 +575,6 @@ def test_isolation_is_the_default_and_builds_a_coop_executor(monkeypatch, coop_c
     cli.main(_ARGS)
 
     assert coop_calls["create"] == [("/wd", "vm-1", {"vcpus": 4, "mem": 8})]
-    assert coop_calls["alias"] == ["vm-1"]
     assert seen["runner"].__self__.name == "vm-1"
     assert isinstance(seen["runner"].__self__, cli.coop.CoopExecutor)
     assert coop_calls["destroy"] == ["vm-1"]

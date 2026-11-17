@@ -107,13 +107,6 @@ def create_vm(
     )
 
 
-def install_ssh_alias(
-    name: str, *, runner: Callable[..., object] = subprocess.run
-) -> None:
-    """Install the ssh alias for the VM `name`; raise if coop fails."""
-    _run_checked(["coop", "ssh-config", name], runner, "coop ssh-config")
-
-
 def destroy_vm(name: str, *, runner: Callable[..., object] = subprocess.run) -> None:
     """Destroy the VM `name`; never raises, so it is safe in a `finally` block.
 
@@ -138,12 +131,13 @@ GUEST_WORKDIR = "/workspace"
 GUEST_PAYLOAD_DIR = "/workspace/.git/pr-review"
 
 
-def _ssh_agent_runner(cmd: Sequence[str], prompt: str, *, workdir: str) -> int:
-    """Run an ssh command on pipes of our own, relaying its output; return its status.
+def _coop_agent_runner(cmd: Sequence[str], prompt: str, *, workdir: str) -> int:
+    """Run a coop command on pipes of our own, relaying its output; return its status.
 
-    Same private-pipe discipline as `run_agent`: the ssh child must not inherit
+    Same private-pipe discipline as `run_agent`: the coop child must not inherit
     our shared stdout/stderr, or a sibling job's O_NONBLOCK flag leaks into it.
     `workdir` is a host path and is ignored: the agent runs in the guest.
+    coop reports every non-zero remote status as 1.
     """
     proc = subprocess.Popen(
         list(cmd), text=True,
@@ -162,14 +156,14 @@ def _ssh_agent_runner(cmd: Sequence[str], prompt: str, *, workdir: str) -> int:
     return proc.wait()
 
 
-def _ssh_cat(name: str, path: str) -> str:
-    """Return the contents of guest file `path`; raise if ssh or cat fails."""
+def _coop_cat(name: str, path: str) -> str:
+    """Return the contents of guest file `path`; raise if coop or cat fails."""
     result = subprocess.run(
-        ["ssh", f"coop-{name}", "cat", path], capture_output=True, text=True
+        ["coop", "exec", name, "--", "cat", path], capture_output=True, text=True
     )
     if result.returncode != 0:
         detail = (result.stderr or "").strip()
-        message = f"ssh cat {path} on coop-{name} failed with exit status {result.returncode}"
+        message = f"coop exec cat {path} on {name} failed with exit status {result.returncode}"
         raise RuntimeError(f"{message}: {detail}" if detail else message)
     return result.stdout
 
@@ -192,15 +186,15 @@ class HostExecutor:
 
 
 class CoopExecutor:
-    """Run agents inside the coop VM `name` over ssh."""
+    """Run agents inside the coop VM `name`."""
 
     def __init__(
         self,
         name: str,
         *,
         host_workdir: str,
-        agent_runner: Callable[..., int] = _ssh_agent_runner,
-        cat_runner: Callable[[str, str], str] = _ssh_cat,
+        agent_runner: Callable[..., int] = _coop_agent_runner,
+        cat_runner: Callable[[str, str], str] = _coop_cat,
     ) -> None:
         self.name = name
         self._host_workdir = host_workdir.rstrip("/")
@@ -222,7 +216,7 @@ class CoopExecutor:
         workdir: str,
         parse: Callable[[str], T] = json.loads,
     ) -> T:
-        """Mirror `run_cli_json` over ssh; the guest payload file is the contract."""
+        """Mirror `run_cli_json` in the guest; the guest payload file is the contract."""
         guest_payload = f"{GUEST_PAYLOAD_DIR}/payload.{secrets.token_hex(8)}.json"
         prompt = build_prompt(guest_payload)
         remote = (
@@ -230,7 +224,8 @@ class CoopExecutor:
             f"MISE_TRUSTED_CONFIG_PATHS={GUEST_WORKDIR} "
             + shlex.join(command)
         )
-        argv = ["ssh", f"coop-{self.name}", remote]
+        # `coop shell`, not `coop exec`: only `shell` forwards stdin, which carries the prompt.
+        argv = ["coop", "shell", self.name, "--", "sh", "-c", remote]
         status = self._agent_runner(argv, prompt, workdir=workdir)
         raw = self._cat_runner(self.name, guest_payload)
         if not raw.strip():
