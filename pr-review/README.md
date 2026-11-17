@@ -228,6 +228,13 @@ Without it, coop copies `~/.codex/auth.json` into the VM.
 That file contains your ChatGPT login.
 The agents in the VM can read it.
 
+If a Codex job fails, look for one of these errors in pr-review's output:
+
+| Codex error | Fix |
+|---|---|
+| `Quota exceeded. Check your plan and billing details.` | Add credit to the OpenAI Platform account that you created the key in. |
+| `Missing scopes: api.responses.write` | Give the key **Responses** write permission. If you create a new key, run `coop proxy setup --openai` again. |
+
 #### Run without the VM
 
 Pass `--no-isolation` to run the agents on your machine.
