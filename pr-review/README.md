@@ -27,6 +27,7 @@ tested, so new agents and review types are additive — see [Developing](#develo
   request's discussion and stack).
 - [`claude`](https://docs.claude.com/en/docs/claude-code) — the Claude Code CLI, on your `PATH`.
 - [`codex`](https://github.com/openai/codex) — the OpenAI Codex CLI, on your `PATH` (only needed to run a `--model codex` job).
+- [`coop`](https://github.com/trailofbits/coop) — runs the review agents in a temporary virtual machine (VM). You need it unless you pass `--no-isolation`. To set it up, follow [Run agents in a coop VM](#run-agents-in-a-coop-vm).
 - [`glow`](https://github.com/charmbracelet/glow) — optional; if on your `PATH`, the review printed before the post prompt is rendered with it (`glow -p -w 100`).
 - `~/bin` on your `PATH` (the install step symlinks the commands there).
 
@@ -164,6 +165,89 @@ thread (at most 3 per run).
 - `--no-context-filter` — give reviewers the context, but do not filter findings.
 - `--context-filter-model AGENT[=MODEL]` — the filter's model (default: the synthesis model).
 
+### Run agents in a coop VM
+
+By default, pr-review runs the review agents in a temporary coop VM.
+The agents run with their permission checks turned off.
+In the VM, the commands they choose to run do not run on your machine.
+
+Each run starts its own VM, and coop copies the clone into it at `/workspace`.
+Changes that the agents make in the VM do not reach the clone on your machine.
+pr-review destroys the VM when the run ends.
+
+These steps run in the VM:
+
+- the review jobs
+- the synthesis judge
+- the context filter
+
+These steps run on your machine, so the [Requirements](#requirements) still apply there:
+
+- reading the pull request context with `gh`
+- cloning the pull request
+- the plain-language reader test and rewrite
+- posting the review
+
+The VM gets 1 vCPU for each review job, with at least 2 and at most 8.
+The VM gets 1536 MiB of memory for each job, with at least 4096 MiB and at most 12288 MiB.
+
+#### Set up coop
+
+Do these steps once:
+
+1. Install [`coop`](https://github.com/trailofbits/coop).
+2. Run `coop setup`. pr-review needs `coop images` to list at least one template image.
+3. Run `claude setup-token`, then `coop proxy setup`. pr-review needs coop's Anthropic proxy to be on.
+4. If you run `--model codex` jobs, set up coop's OpenAI proxy. Follow [Set up Codex in the VM](#set-up-codex-in-the-vm).
+
+Before every run, pr-review checks that `coop` runs, that it has a template image, and that the Anthropic proxy is on.
+If a check fails, pr-review prints the command that fixes it and exits with status 2.
+pr-review runs these checks before it clones anything.
+
+The checks do not cover Codex.
+A `--model codex` job runs `codex` inside the VM.
+If Codex cannot reach OpenAI from the VM, that job fails.
+The other jobs still produce a review.
+
+#### Set up Codex in the VM
+
+Use coop's OpenAI proxy with an OpenAI API key.
+The key stays on your machine.
+The proxy adds the key to Codex's requests when they leave the VM.
+
+1. Create an API key at <https://platform.openai.com/api-keys>.
+   A restricted key needs only one permission: **Responses**, set to **Write**.
+   coop's proxy blocks every other OpenAI request.
+2. Add credit to the OpenAI Platform account that you created the key in.
+   OpenAI bills API use to that account.
+   A ChatGPT plan does not pay for API use.
+3. Run `coop proxy setup --openai`, and paste the key when coop asks for it.
+
+Do not skip the proxy.
+Without it, coop copies `~/.codex/auth.json` into the VM.
+That file contains your ChatGPT login.
+The agents in the VM can read it.
+
+#### Run without the VM
+
+Pass `--no-isolation` to run the agents on your machine.
+pr-review then does not check coop or start a VM.
+
+Without the VM, the agents can run any command that your user account can run.
+The agents do not ask before they run a command.
+The flags that turn off the prompts are `--dangerously-skip-permissions` for `claude` and `--dangerously-bypass-approvals-and-sandbox` for `codex`.
+
+#### Keep the VM to inspect it
+
+`--keep-clone` keeps the VM as well as the clone.
+At the end of the run, pr-review prints the VM's name.
+The name has the form `pr-review-<owner>-<repo>-<n>-<suffix>`.
+To open a shell in the VM, run `coop shell <name>`.
+To remove it, run `coop destroy <name>`.
+
+Remove a kept VM when you finish with it, because the VM holds credentials.
+If pr-review cannot destroy a VM at the end of a run, it prints a warning with the `coop destroy` command to run.
+
 ### Security
 
 Context mode puts text written by any GitHub user (the description, linked
@@ -204,7 +288,8 @@ and exits 1.
 | `--post-without-prompting` | Post without prompting | off |
 | `--print-only` | Review and print only; never post | off |
 | `--claude-flags="<flags>"` | Extra flags appended to the `claude` invocation | empty |
-| `--keep-clone` | Keep the temp clone on exit (prints its path) instead of deleting it | off |
+| `--no-isolation` | Run the agents on this machine, not in a coop VM | off |
+| `--keep-clone` | Keep the temp clone and the coop VM on exit (prints the clone's path and the VM's name) instead of deleting them | off |
 
 (`--model` and `--review-type` are described above. Use the `--claude-flags="..."`
 form with the `=` so the leading dashes aren't read as `pr-review` options.)
@@ -219,10 +304,12 @@ pr-review --model claude=claude-opus-5 --claude-flags="--debug" org/repo#214
 ### What happens during a run
 
 ```
-target → clone (blobless) into a temp dir → check out refs/pull/<n>/head detached
+target → check that coop is ready (skipped under --no-isolation)
+       → clone (blobless) into a temp dir → check out refs/pull/<n>/head detached
+       → start a coop VM with a copy of the clone at /workspace (skipped under --no-isolation)
        → fan out (reviewer × type) jobs in parallel → collate (synthesise across models if >1 job) into one review
+       → delete the temp clone and destroy the VM (unless --keep-clone)
        → print, then post / prompt / review-only per the rules above
-       → delete the temp clone (unless --keep-clone)
 ```
 
 The clone uses `git clone --filter=blob:none`: it is fast and light but keeps the
