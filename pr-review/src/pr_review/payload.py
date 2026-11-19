@@ -76,32 +76,36 @@ def payload_from_dict(data: object) -> Payload:
         raise ValueError("payload must be a JSON object")
     if not isinstance(data.get("body"), str):
         raise ValueError("payload must have a string 'body'")
-    raw_comments = data.get("comments", [])
-    if not isinstance(raw_comments, list):
-        raise ValueError("payload 'comments' must be a list")
+    comments = parse_comments(data.get("comments", []), "comments")
+    return Payload(body=data["body"], comments=comments, event=data.get("event", "COMMENT"))
+
+
+def parse_comments(raw: object, key: str) -> list[Comment]:
+    if not isinstance(raw, list):
+        raise ValueError(f"payload '{key}' must be a list")
     comments: list[Comment] = []
-    for i, c in enumerate(raw_comments):
+    for i, c in enumerate(raw):
         if not isinstance(c, dict):
-            raise ValueError(f"comment {i} must be an object")
+            raise ValueError(f"{key}[{i}] must be an object")
         try:
             path = c["path"]
             line = c["line"]
             body = c["body"]
         except KeyError as e:
-            raise ValueError(f"comment {i} missing field {e}") from e
+            raise ValueError(f"{key}[{i}] missing field {e}") from e
         if not isinstance(path, str):
-            raise ValueError(f"comment {i} 'path' must be a string")
+            raise ValueError(f"{key}[{i}] 'path' must be a string")
         if not isinstance(body, str):
-            raise ValueError(f"comment {i} 'body' must be a string")
+            raise ValueError(f"{key}[{i}] 'body' must be a string")
         side = c.get("side", "RIGHT")
         if not isinstance(side, str):
-            raise ValueError(f"comment {i} 'side' must be a string")
+            raise ValueError(f"{key}[{i}] 'side' must be a string")
         try:
             line_int = int(line)
         except (TypeError, ValueError) as e:
-            raise ValueError(f"comment {i} 'line' must be an integer: {e}") from e
+            raise ValueError(f"{key}[{i}] 'line' must be an integer: {e}") from e
         comments.append(Comment(path=path, line=line_int, body=body, side=side))
-    return Payload(body=data["body"], comments=comments, event=data.get("event", "COMMENT"))
+    return comments
 
 
 def cap_comments(
