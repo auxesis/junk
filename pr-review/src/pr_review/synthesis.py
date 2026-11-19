@@ -1,11 +1,12 @@
 """LLM synthesis collation: one judge pass de-dupes and verifies findings."""
 from __future__ import annotations
 
+import re
 import sys
 from collections.abc import Callable
 
 from pr_review.collate import Collator, DeterministicMergeCollator, Job, _first_line
-from pr_review.payload import Payload, Source, cap_comments, payload_from_dict
+from pr_review.payload import Comment, Payload, Source, cap_comments, parse_comments, payload_from_dict
 from pr_review.plain_language.rules import writing_rules_block
 from pr_review.reviewers._run import run_cli_json
 
@@ -33,8 +34,11 @@ nearby lines.
    cannot substantiate from the code — these are likely hallucinations.
 4. Keep a finding only if you verified it against the code. A finding raised by
    two or more models is more likely to be real, but verify it too.
-5. HARD CAP: 8 inline comments (highest-confidence first). List any overflow as a
-   bullet list in the body under "## Other findings not posted as comments".
+5. HARD CAP: 8 inline comments (highest-confidence first). Put every other
+   verified finding in "overflow": those beyond the cap, and any you choose not
+   to post inline. pr-review lists them in the body under
+   "## Other findings not posted as comments".
+   Do not write that section in the body yourself.
 
 ## Output (REQUIRED)
 
@@ -43,13 +47,21 @@ JSON:
 
   {
     "event": "COMMENT",
-    "body": "<verdict + any overflow list>",
+    "body": "<verdict>",
     "comments": [
       {"path": "relative/path", "line": N, "side": "RIGHT",
        "sources": ["<label> [<review-type>]", "..."],
        "body": "**<finding line>**\n\n**Impact:** ...\n\n**Evidence:** ...\n\n**Fix:** ..."}
+    ],
+    "overflow": [
+      {"path": "relative/path", "line": N,
+       "body": "**<finding line>**\n\n**Impact:** ...\n\n**Fix:** ..."}
     ]
   }
+
+Write each "overflow" body exactly as you would write the comment. pr-review
+copies its first line, the finding line with its urgency phrase, into the body.
+An "overflow" line does not have to be in the diff.
 
 "sources" lists every source whose findings this comment merges, each written
 exactly as it appears after "### Source: " below, up to but not including " — ".
@@ -75,11 +87,36 @@ def serialize_findings(jobs: list[Job]) -> str:
     return "\n\n".join(blocks)
 
 
-def _cap_payload(payload: Payload) -> Payload:
-    """Enforce the inline-comment cap on a synthesised payload (defensive)."""
+# Matches the headings recommend() reads overflow bullets under.
+_OVERFLOW_HEADING = re.compile(r"^#{2,3}\s+Other findings not posted as comments\b")
+
+
+def _remove_overflow_section(body: str) -> tuple[str, bool]:
+    """Drop a judge-written overflow section: recommend() would read its free-text bullets."""
+    kept: list[str] = []
+    in_section = found = False
+    for line in body.splitlines():
+        if line.startswith("#"):
+            if _OVERFLOW_HEADING.match(line.strip()):
+                in_section = found = True
+                while kept and kept[-1].strip() in ("", "---"):
+                    kept.pop()
+                continue
+            if in_section and kept:
+                kept.append("")
+            in_section = False
+        if not in_section:
+            kept.append(line)
+    if not found:
+        return body, False
+    return "\n".join(kept).strip("\n"), True
+
+
+def _cap_payload(payload: Payload, extra: list[Comment] | None = None) -> Payload:
     kept, overflow = cap_comments(payload.comments)
+    overflow += extra or []
+    payload.comments = kept
     if overflow:
-        payload.comments = kept
         payload.body += (
             "\n\n---\n\n## Other findings not posted as comments\n\n"
             + "\n".join(f"- `{c.path}:{c.line}` — {_first_line(c.body)}" for c in overflow)
@@ -163,6 +200,7 @@ class LLMSynthesisCollator(Collator):
         try:
             data = self._runner(self._command, build, workdir=self._workdir)
             payload = payload_from_dict(data)
+            extra = parse_comments(data.get("overflow", []), "overflow")
         except Exception as e:
             print(
                 f"pr-review: synthesis failed ({self._command[0]}: {e}); "
@@ -183,5 +221,12 @@ class LLMSynthesisCollator(Collator):
                     f"{comment.path}:{comment.line}; its footer will say pr-review.",
                     file=sys.stderr,
                 )
+        payload.body, removed = _remove_overflow_section(payload.body)
+        if removed:
+            print(
+                "pr-review: removed the judge's own \"Other findings not posted as comments\" "
+                "section; that section lists only the judge's \"overflow\" findings.",
+                file=sys.stderr,
+            )
         self.ran = True
-        return _cap_payload(payload)
+        return _cap_payload(payload, extra)

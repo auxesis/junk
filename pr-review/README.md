@@ -468,7 +468,7 @@ forgets the rubric fails rather than rotting silently.
 
 `DeterministicMergeCollator` merges multiple jobs' payloads into one: bodies under
 per-job headers, comments concatenated with the 8-comment cap re-applied, and any
-overflow listed in the body. `LLMSynthesisCollator` (in `synthesis.py`) is the default for multi-job runs — a judge LLM de-dupes findings across models, verifies them against the diff, and emits one review; `cli.py`'s `build_collator` selects it (or the deterministic merge under `--no-synthesis`).
+overflow listed in the body. `LLMSynthesisCollator` (in `synthesis.py`) is the default for multi-job runs — a judge LLM de-dupes findings across models, verifies them against the diff, and emits one review. The judge returns the findings it does not post inline as structured data, and pr-review builds the "Other findings not posted as comments" bullets from each finding's first line, so the Recommendation heading reads each finding's own urgency label. `cli.py`'s `build_collator` selects it (or the deterministic merge under `--no-synthesis`).
 
 ### Design docs
 

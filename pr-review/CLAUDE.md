@@ -26,7 +26,7 @@ fake, not the real subprocess.
 
 ## Test suite
 
-`tests/` contains 30 files, one per `src/pr_review/` module (421 tests total):
+`tests/` contains 30 files, one per `src/pr_review/` module (427 tests total):
 
 - **test_target.py** — `parse_target`: PR URL, trailing-slash URL, `owner/repo#N`
   short form, whitespace stripping, and a parametrized rejection of malformed
@@ -268,7 +268,15 @@ fake, not the real subprocess.
   (unknown labels dropped, none left warns), `ran` is true only when the judge's
   output was used, and the prompt carries the writing rules instead of label
   prefixes and a stats section (including that overflow bullets carry the finding
-  line).
+  line). The judge returns the findings it verified but did not post as an
+  `overflow` list, and the prompt asks for it and tells the judge not to write
+  the overflow section itself. pr-review builds each `overflow` entry into a
+  `` `path:line` — <finding line>`` bullet under "## Other findings not posted
+  as comments", after any comments beyond the cap, under one heading. An
+  overflow section the judge wrote into the body anyway is removed, with a
+  warning, and a heading after it is kept. A malformed `overflow` falls back to
+  the deterministic merge. The regression pin: a judge body with an unlabelled
+  bullet of its own, plus only "Optional" findings, gives 🟢 from `recommend`.
 - **test_plain_language_rules.py** — `rules.json` loads with the spec's
   thresholds, labels and urgency phrases; every blocking word matches its display
   word; "surfaced" bans the verb ("this bug surfaced") but not the noun ("the

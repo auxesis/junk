@@ -149,3 +149,74 @@ def test_ran_is_false_for_a_single_job_and_after_a_fallback():
     failed = _collator(boom)
     failed.collate([_job("claude (opus)", "test-gap", 1), _job("codex", "test-gap", 1)])
     assert failed.ran is False
+
+
+def _optional(name):
+    return f"**Optional: {name}.**\n\n**Impact:** none.\n\n**Fix:** none."
+
+
+def test_the_judges_overflow_becomes_body_bullets_built_by_pr_review():
+    def runner(command, build_prompt, *, workdir):
+        return {"body": "SYNTH",
+                "comments": [{"path": "a.rs", "line": 1, "body": _optional("posted")}],
+                "overflow": [{"path": "g.go", "line": 97, "body": _optional("not posted")}]}
+
+    out = _collator(runner).collate([_job("claude (opus)", "rust", 1), _job("codex", "golang", 1)])
+    assert [c.path for c in out.comments] == ["a.rs"]
+    assert "## Other findings not posted as comments" in out.body
+    assert "- `g.go:97` — **Optional: not posted.**" in out.body
+
+
+def test_the_recommendation_agrees_with_an_all_optional_synthesis():
+    from pr_review.plain_language.recommendation import recommend
+
+    def runner(command, build_prompt, *, workdir):
+        return {"body": "Nothing must change before merging.\n\n"
+                        "## Other findings not posted as comments\n\n"
+                        "- `g.go:97`: the `date` branch ignores errors. No effect today.",
+                "comments": [{"path": "a.rs", "line": 1, "body": _optional("posted")}],
+                "overflow": [{"path": "g.go", "line": 97, "body": _optional("not posted")}]}
+
+    out = _collator(runner).collate([_job("claude (opus)", "rust", 1), _job("codex", "golang", 1)])
+    assert recommend(out) == "## Recommendation: 🟢 merge as it is"
+
+
+def test_a_section_the_judge_wrote_itself_is_removed_with_a_warning(capsys):
+    def runner(command, build_prompt, *, workdir):
+        return {"body": "Verdict.\n\n---\n\n## Other findings not posted as comments\n\n"
+                        "- `g.go:97`: free text with no label\n\n## Notes\n\nkept",
+                "comments": [],
+                "overflow": [{"path": "g.go", "line": 97, "body": _optional("labelled")}]}
+
+    out = _collator(runner).collate([_job("claude (opus)", "rust", 1), _job("codex", "golang", 1)])
+    assert "free text with no label" not in out.body
+    assert out.body.startswith("Verdict.\n\n## Notes\n\nkept")
+    assert out.body.count("## Other findings not posted as comments") == 1
+    assert "- `g.go:97` — **Optional: labelled.**" in out.body
+    assert "removed the judge's own" in capsys.readouterr().err
+
+
+def test_capped_comments_and_the_judges_overflow_share_one_section():
+    def runner(command, build_prompt, *, workdir):
+        return {"body": "SYNTH",
+                "comments": [{"path": "f.py", "line": i, "body": _optional(f"c{i}")} for i in range(9)],
+                "overflow": [{"path": "g.go", "line": 97, "body": _optional("judged")}]}
+
+    out = _collator(runner).collate([_job("claude (opus)", "rust", 1), _job("codex", "golang", 1)])
+    assert out.body.count("## Other findings not posted as comments") == 1
+    assert out.body.index("`f.py:8`") < out.body.index("`g.go:97`")
+
+
+def test_a_malformed_overflow_falls_back_to_the_merge(capsys):
+    def runner(command, build_prompt, *, workdir):
+        return {"body": "SYNTH", "comments": [], "overflow": [{"path": "g.go"}]}
+
+    out = _collator(runner).collate([_job("claude (opus)", "rust", 1), _job("codex", "golang", 1)])
+    assert "## rust — claude (opus)" in out.body
+    assert "synthesis failed" in capsys.readouterr().err
+
+
+def test_the_prompt_asks_for_overflow_as_data_not_body_text():
+    prompt = build_synthesis_prompt(owner="o", repo="r", number=7, base="b", payload_path="/p", findings="F")
+    assert '"overflow": [' in prompt
+    assert "Do not write that section in the body" in prompt
