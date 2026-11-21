@@ -16,6 +16,8 @@ The sleeve runs along the edge of a template, so the router cuts the same shape 
 | `ozito-sleeve-base.stl` | The full base, ready to print |
 | `ozito-sleeve-base.sc` | The editable SolidCraft design of the base |
 | `copy-sleeve-13mm.stl` | A 13 mm copy sleeve, made from the original 12 mm sleeve |
+| `copy-sleeve-17mm.stl` | A 17 mm copy sleeve, made from the original 16 mm sleeve |
+| `makerworld-description.md` | The description for the MakerWorld listing |
 
 ## Print the base
 
@@ -44,27 +46,31 @@ The workpiece side is the flat side that touches the wood while you cut.
 4. Screw the nut onto the sleeve from the router side.
 5. Fit the base to the router again.
 
-## Choose a bit for the 13 mm sleeve
+## Choose a bit for each sleeve
 
-The hole through the 13 mm sleeve is 10.5 mm wide.
-Use a router bit that is narrower than 10.5 mm.
+Use a router bit that is narrower than the hole through the sleeve:
 
-## Licence for the 13 mm sleeve
+- The hole through the 13 mm sleeve is 10.5 mm wide.
+- The hole through the 17 mm sleeve is 14.5 mm wide.
 
-The 13 mm sleeve is a remix of the 12 mm sleeve from [Copy sleeve Parkside 10-12-14-16-18-20-24-30mm](https://makerworld.com/en/models/191715-copy-sleeve-parkside-10-12-14-16-18-20-24-30mm) by [David Holecko](https://makerworld.com/en/@david.holecko).
+## Licence for the 13 mm and 17 mm sleeves
+
+The 13 mm and 17 mm sleeves are remixes of sleeves from [Copy sleeve Parkside 10-12-14-16-18-20-24-30mm](https://makerworld.com/en/models/191715-copy-sleeve-parkside-10-12-14-16-18-20-24-30mm) by [David Holecko](https://makerworld.com/en/@david.holecko).
 The original is licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).
 CC BY-NC-SA 4.0 is the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 licence.
 
-The remix changes two sizes:
+Each remix changes two sizes of an original sleeve:
 
-- the outside of the guide tube, from 12.0 mm to 13.0 mm
-- the hole through the guide tube, from 9.5 mm to 10.5 mm
+| Remix | Made from | Outside of the guide tube | Hole through the guide tube |
+|---|---|--:|--:|
+| 13 mm sleeve | 12 mm sleeve | 12.0 mm becomes 13.0 mm | 9.5 mm becomes 10.5 mm |
+| 17 mm sleeve | 16 mm sleeve | 16.0 mm becomes 17.0 mm | 13.5 mm becomes 14.5 mm |
 
-Everything else in the sleeve is the same as the original.
+Everything else in each sleeve is the same as the original.
 
-The remix is shared under the same licence, CC BY-NC-SA 4.0.
-If you share the remix, you must credit David Holecko and use the same licence.
-You must not use the remix for commercial purposes.
+The remixes are shared under the same licence, CC BY-NC-SA 4.0.
+If you share a remix, you must credit David Holecko and use the same licence.
+You must not use the remixes for commercial purposes.
 
 To fit the same sleeves and nut, the base was modelled separately.
 The base does not contain any part of the original model's files.
